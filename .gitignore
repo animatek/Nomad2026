@@ -1,0 +1,38 @@
+# Original project (local reference only)
+nmedit/
+nomad-0-3_2/
+
+# Portable JDK (for running original)
+jdk8u482-b08/
+
+# Build output
+build/
+Builds/
+JuceLibraryCode/
+
+# IDE files
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Compiled objects
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Legacy notes (not part of the project)
+Info.md
+
+# Claude Code local data
+.claude/
