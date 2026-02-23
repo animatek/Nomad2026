@@ -14,7 +14,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 
 - [x] Original editor running and verified
 - [x] Technical research and protocol documentation
-- [ ] JUCE project setup
+- [x] JUCE project setup
 - [ ] MIDI SysEx protocol implementation (C++)
 - [ ] Patch file parser (C++)
 - [ ] Module system and definitions
@@ -54,5 +54,5 @@ This project is a reimplementation based on the work of the original nmedit/Noma
 
 ## License
 
-This project is licensed under the [GNU General Public License v2](LICENSE),
-the same license as the original Nomad/nmedit project.
+This project is licensed under the [GNU General Public License v3](LICENSE)
+(upgraded from v2 for JUCE AGPLv3 compatibility).
