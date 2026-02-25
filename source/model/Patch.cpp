@@ -1,0 +1,91 @@
+#include "Patch.h"
+
+// --- Module ---
+
+std::unique_ptr<Module> Module::createFromDescriptor(const ModuleDescriptor& desc)
+{
+    auto module = std::unique_ptr<Module>(new Module());
+    module->descriptor = &desc;
+    module->title = desc.fullname;
+
+    for (auto& pd : desc.parameters)
+        module->parameters.emplace_back(pd);
+    for (auto& cd : desc.connectors)
+        module->connectors.emplace_back(cd);
+    for (auto& ld : desc.lights)
+        module->lights.emplace_back(ld);
+
+    return module;
+}
+
+Parameter* Module::getParameter(int index)
+{
+    for (auto& p : parameters)
+        if (p.getDescriptor()->index == index)
+            return &p;
+    return nullptr;
+}
+
+Connector* Module::getConnector(int index)
+{
+    for (auto& c : connectors)
+        if (c.getDescriptor()->index == index)
+            return &c;
+    return nullptr;
+}
+
+// --- ModuleContainer ---
+
+Module* ModuleContainer::addModule(std::unique_ptr<Module> module)
+{
+    auto* ptr = module.get();
+    modules.push_back(std::move(module));
+    return ptr;
+}
+
+void ModuleContainer::removeModule(Module* module)
+{
+    // Remove connections involving this module's connectors
+    for (auto& conn : module->getConnectors())
+    {
+        connections.erase(
+            std::remove_if(connections.begin(), connections.end(),
+                [&conn](const Connection& c) { return c.output == &conn || c.input == &conn; }),
+            connections.end());
+    }
+
+    modules.erase(
+        std::remove_if(modules.begin(), modules.end(),
+            [module](const std::unique_ptr<Module>& m) { return m.get() == module; }),
+        modules.end());
+}
+
+bool ModuleContainer::canAdd(const ModuleDescriptor& desc) const
+{
+    if (desc.limit <= 0)
+        return desc.instantiable;
+
+    int count = 0;
+    for (auto& m : modules)
+        if (m->getDescriptor()->index == desc.index)
+            ++count;
+
+    return count < desc.limit && desc.instantiable;
+}
+
+void ModuleContainer::addConnection(Connector* output, Connector* input)
+{
+    connections.push_back({ output, input });
+}
+
+void ModuleContainer::removeConnection(Connector* output, Connector* input)
+{
+    connections.erase(
+        std::remove_if(connections.begin(), connections.end(),
+            [output, input](const Connection& c) { return c.output == output && c.input == input; }),
+        connections.end());
+}
+
+// --- Patch ---
+
+Patch::Patch() = default;

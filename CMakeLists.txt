@@ -15,6 +15,27 @@ juce_add_gui_app(Nomad2026
 target_sources(Nomad2026 PRIVATE
     source/Main.cpp
     source/MainComponent.cpp
+
+    # Data Model
+    source/model/ModuleDescriptions.cpp
+    source/model/Patch.cpp
+
+    # UI
+    source/ui/MainLayout.cpp
+    source/ui/ModuleBrowserPanel.cpp
+    source/ui/PatchCanvasComponent.cpp
+    source/ui/InspectorPanel.cpp
+    source/ui/StatusBar.cpp
+
+    # UI
+    source/ui/MidiSettingsDialog.cpp
+
+    # MIDI/SysEx
+    source/midi/SysExCodec.cpp
+    source/midi/NmMessages.cpp
+    source/midi/NmProtocol.cpp
+    source/midi/MidiDeviceManager.cpp
+    source/midi/ConnectionManager.cpp
 )
 
 target_include_directories(Nomad2026 PRIVATE source)

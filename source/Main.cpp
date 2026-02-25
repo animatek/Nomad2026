@@ -10,7 +10,13 @@ public:
 
     void initialise(const juce::String&) override
     {
-        mainWindow = std::make_unique<MainWindow>(getApplicationName());
+        juce::PropertiesFile::Options options;
+        options.applicationName = "Nomad2026";
+        options.filenameSuffix = ".settings";
+        options.osxLibrarySubFolder = "Application Support";
+        appProperties.setStorageParameters(options);
+
+        mainWindow = std::make_unique<MainWindow>(getApplicationName(), appProperties);
     }
 
     void shutdown() override
@@ -26,11 +32,11 @@ public:
     class MainWindow : public juce::DocumentWindow
     {
     public:
-        explicit MainWindow(const juce::String& name)
+        explicit MainWindow(const juce::String& name, juce::ApplicationProperties& props)
             : DocumentWindow(name, juce::Colour(0xff1a1a2e), allButtons)
         {
             setUsingNativeTitleBar(true);
-            setContentOwned(new MainComponent(), true);
+            setContentOwned(new MainComponent(props), true);
             setResizable(true, true);
             centreWithSize(getWidth(), getHeight());
             setVisible(true);
@@ -46,6 +52,7 @@ public:
     };
 
 private:
+    juce::ApplicationProperties appProperties;
     std::unique_ptr<MainWindow> mainWindow;
 };
 
