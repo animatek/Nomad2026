@@ -15,13 +15,32 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] Original editor running and verified
 - [x] Technical research and protocol documentation
 - [x] JUCE project setup
-- [ ] MIDI SysEx protocol implementation (C++)
-- [ ] Patch file parser (C++)
-- [ ] Module system and definitions
-- [ ] Patch editor UI (canvas, modules, cables)
-- [ ] Synth connection manager
-- [ ] Knob/parameter control UI
+- [x] MIDI SysEx protocol implementation (C++)
+- [x] Synth connection manager (auto-connect, IAm handshake)
+- [x] Patch retrieval from synth (RequestPatch + 13-section GetPatch flow)
+- [x] Module descriptions loader (110 modules from modules.xml)
+- [x] UI framework (menu bar, module browser, patch canvas, inspector, status bar)
+- [x] MIDI settings dialog with port persistence
+- [ ] Patch data parser (decode modules, cables, parameters from SysEx)
+- [ ] Patch editor UI (canvas with draggable modules and cables)
+- [ ] Real-time parameter control (knobs, synth ↔ editor sync)
+- [ ] Patch file I/O (.pch load/save)
 - [ ] Bank/patch management
+
+## Building
+
+```bash
+# Configure
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+# Build
+cmake --build build -j$(nproc)
+
+# Run
+./build/Nomad2026_artefacts/Debug/Nomad2026
+```
+
+Requires JUCE (included in `JUCE/` directory) and a C++17 compiler.
 
 ## Technical Documentation
 
