@@ -19,6 +19,7 @@ target_sources(Nomad2026 PRIVATE
     # Data Model
     source/model/ModuleDescriptions.cpp
     source/model/Patch.cpp
+    source/model/PatchParser.cpp
 
     # UI
     source/ui/MainLayout.cpp

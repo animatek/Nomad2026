@@ -86,6 +86,22 @@ void ModuleContainer::removeConnection(Connector* output, Connector* input)
         connections.end());
 }
 
+Module* ModuleContainer::getModuleByIndex(int containerIndex)
+{
+    for (auto& m : modules)
+        if (m->getContainerIndex() == containerIndex)
+            return m.get();
+    return nullptr;
+}
+
+const Module* ModuleContainer::getModuleByIndex(int containerIndex) const
+{
+    for (auto& m : modules)
+        if (m->getContainerIndex() == containerIndex)
+            return m.get();
+    return nullptr;
+}
+
 // --- Patch ---
 
 Patch::Patch() = default;

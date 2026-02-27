@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_data_structures/juce_data_structures.h>
 #include "model/ModuleDescriptions.h"
+#include "model/Patch.h"
 #include "midi/ConnectionManager.h"
 #include "ui/MainLayout.h"
 
@@ -35,6 +36,8 @@ private:
     ConnectionManager connectionManager;
     std::unique_ptr<MainLayout> mainLayout;
     std::unique_ptr<juce::MenuBarComponent> menuBar;
+
+    std::unique_ptr<Patch> currentPatch;
 
     juce::String lastInputId;
     juce::String lastOutputId;

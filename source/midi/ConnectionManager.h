@@ -46,7 +46,7 @@ public:
     using VoiceCountCallback = std::function<void(const int voiceCounts[4])>;
     void setVoiceCountCallback(VoiceCountCallback cb) { voiceCountCallback = std::move(cb); }
 
-    using PatchDataCallback = std::function<void(const std::vector<uint8_t>& data)>;
+    using PatchDataCallback = std::function<void(const std::vector<std::vector<uint8_t>>& sections)>;
     void setPatchDataCallback(PatchDataCallback cb) { patchDataCallback = std::move(cb); }
 
     NmProtocol& getProtocol() { return protocol; }
@@ -63,6 +63,9 @@ private:
     void startHandshakeTimeout();
     void cancelHandshakeTimeout();
     void sendGetPatchMessages(int patchId, int slot);
+    void startPatchTimeout();
+    void startSectionStaleTimeout();
+    void finalizePatch();
 
     NmProtocol protocol;
     std::unique_ptr<MidiDeviceManager> midiDevice;
@@ -73,11 +76,18 @@ private:
 
     // Patch request state
     bool waitingForPatchAck = false;
+    bool collectingSections = false;
     int pendingPatchSlot = 0;
     int patchPacketsReceived = 0;
 
-    // Accumulate PatchPacket stream
-    std::vector<uint8_t> patchAccumulator;
+    // Accumulate PatchPacket stream — each completed section stored separately
+    std::vector<uint8_t> sectionAccumulator;              // current section being assembled
+    std::vector<std::vector<uint8_t>> patchSections;      // completed sections
+    int sectionsReceived = 0;
+    static constexpr int totalSections = 13;
+    static constexpr int patchTimeoutMs = 8000;   // Hard timeout: 8 seconds max for entire patch
+    static constexpr int sectionStaleMs = 2000;   // Stale timeout: 2 seconds since last section received
+    int patchTimeoutGeneration = 0;  // Incremented on each new request to invalidate old timeouts
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ConnectionManager)
 };

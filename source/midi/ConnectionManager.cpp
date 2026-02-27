@@ -42,6 +42,7 @@ bool ConnectionManager::connect(const juce::String& inputId, const juce::String&
 void ConnectionManager::disconnect()
 {
     cancelHandshakeTimeout();
+    collectingSections = false;
 
     if (midiDevice)
     {
@@ -84,10 +85,15 @@ void ConnectionManager::requestPatch(int slot)
     if (!isConnected())
         return;
 
+    // Reset any in-progress request (new request supersedes old one)
     waitingForPatchAck = true;
+    collectingSections = false;
     pendingPatchSlot = slot;
     patchPacketsReceived = 0;
-    patchAccumulator.clear();
+    sectionAccumulator.clear();
+    patchSections.clear();
+    sectionsReceived = 0;
+    patchTimeoutGeneration++;  // Invalidate any pending timeout
 
     RequestPatchMessage req;
     req.slot = slot;
@@ -106,10 +112,12 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     if (waitingForPatchAck)
     {
         waitingForPatchAck = false;
+        collectingSections = true;
         int patchId = msg.pid1;
         DBG("Patch ACK for slot " + juce::String(pendingPatchSlot)
             + ", patchId=" + juce::String(patchId) + " — sending GetPatch for all 13 sections");
         sendGetPatchMessages(patchId, pendingPatchSlot);
+        startPatchTimeout();
     }
 }
 
@@ -127,28 +135,113 @@ void ConnectionManager::sendGetPatchMessages(int patchId, int slot)
     }
 }
 
+void ConnectionManager::startPatchTimeout()
+{
+    int generation = patchTimeoutGeneration;
+
+    // Hard timeout: absolute max wait for entire patch
+    juce::Timer::callAfterDelay(patchTimeoutMs, [this, generation]()
+    {
+        if (generation == patchTimeoutGeneration && collectingSections && sectionsReceived < totalSections)
+        {
+            DBG("Patch hard timeout: received " + juce::String(sectionsReceived) + "/" + juce::String(totalSections)
+                + " sections — parsing partial data");
+            finalizePatch();
+        }
+    });
+}
+
+void ConnectionManager::startSectionStaleTimeout()
+{
+    int generation = patchTimeoutGeneration;
+    int currentCount = sectionsReceived;
+
+    juce::Timer::callAfterDelay(sectionStaleMs, [this, generation, currentCount]()
+    {
+        // Fire if no new sections arrived since this timer was started
+        if (generation == patchTimeoutGeneration && collectingSections
+            && sectionsReceived == currentCount && sectionsReceived > 0
+            && sectionsReceived < totalSections)
+        {
+            DBG("Patch stale timeout: no new sections for " + juce::String(sectionStaleMs) + "ms"
+                + " (have " + juce::String(sectionsReceived) + "/" + juce::String(totalSections) + ")");
+            finalizePatch();
+        }
+    });
+}
+
+void ConnectionManager::finalizePatch()
+{
+    collectingSections = false;
+
+    // If we have a partial accumulator (section in progress), discard it
+    sectionAccumulator.clear();
+
+    if (patchSections.empty())
+    {
+        DBG("No patch sections to parse");
+        return;
+    }
+
+    DBG(juce::String(sectionsReceived < totalSections ? "Partial" : "All") + " "
+        + juce::String(patchSections.size()) + " sections — invoking parser");
+
+    if (patchDataCallback)
+        patchDataCallback(patchSections);
+
+    patchSections.clear();
+    sectionsReceived = 0;
+}
+
 void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 {
     if (msg.sc == 0x05 && voiceCountCallback)  // VoiceCount
         voiceCountCallback(msg.voiceCount);
 
     if (msg.sc == 0x38)  // NewPatchInSlot
+    {
         DBG("New patch in slot " + juce::String(msg.newPatchSlot) + " pid=" + juce::String(msg.newPatchPid));
+
+        // Auto-request the new patch data from the synth
+        // Don't interrupt an in-progress collection
+        if (isConnected() && !waitingForPatchAck && !collectingSections && msg.newPatchSlot >= 0)
+            requestPatch(msg.newPatchSlot);
+    }
+
+    // Silently handle high-frequency messages (Lights, Meters, SlotsSelected, SlotActivated)
+    // sc=0x39 (Lights), sc=0x3a (Meters), sc=0x07 (SlotsSelected), sc=0x09 (SlotActivated)
 }
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 {
-    if (msg.isFirst)
-        patchAccumulator.clear();
+    if (!collectingSections && !waitingForPatchAck)
+        return;  // Not expecting patch data
 
-    patchAccumulator.insert(patchAccumulator.end(), msg.patchData.begin(), msg.patchData.end());
+    if (msg.isFirst)
+        sectionAccumulator.clear();
+
+    sectionAccumulator.insert(sectionAccumulator.end(), msg.patchData.begin(), msg.patchData.end());
 
     if (msg.isLast)
     {
-        DBG("Received complete patch data: " + juce::String(patchAccumulator.size()) + " bytes");
-        if (patchDataCallback)
-            patchDataCallback(patchAccumulator);
-        patchAccumulator.clear();
+        // Store completed section separately (each has independent 7-bit encoding)
+        patchSections.push_back(std::move(sectionAccumulator));
+        sectionAccumulator.clear();
+        sectionsReceived++;
+
+        DBG("Received section " + juce::String(sectionsReceived) + "/" + juce::String(totalSections)
+            + " (" + juce::String(patchSections.back().size()) + " bytes)");
+
+        if (sectionsReceived >= totalSections)
+        {
+            DBG("All " + juce::String(totalSections) + " sections received");
+            finalizePatch();
+        }
+        else
+        {
+            // Reset the stale timer — if no more sections arrive within sectionStaleMs, finalize
+            startSectionStaleTimeout();
+        }
     }
 }
 

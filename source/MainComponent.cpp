@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "model/PatchParser.h"
 #include "ui/MidiSettingsDialog.h"
 
 MainComponent::MainComponent(juce::ApplicationProperties& props)
@@ -46,9 +47,23 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
         });
     });
 
-    connectionManager.setPatchDataCallback([](const std::vector<uint8_t>& data)
+    connectionManager.setPatchDataCallback([this](const std::vector<std::vector<uint8_t>>& sections)
     {
-        DBG("Patch data received: " + juce::String(data.size()) + " bytes");
+        DBG("Patch data received: " + juce::String(sections.size()) + " sections — parsing...");
+
+        PatchParser parser(moduleDescs);
+        auto patch = parser.parse(sections);
+
+        juce::MessageManager::callAsync([this, p = std::move(patch)]() mutable
+        {
+            currentPatch = std::move(p);
+            if (currentPatch)
+            {
+                mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs);
+                mainLayout->getStatusBar().setConnectionStatus(
+                    "Connected - " + currentPatch->getName(), true);
+            }
+        });
     });
 
     setSize(1280, 800);
@@ -157,10 +172,11 @@ void MainComponent::handleDisconnectionRequest()
 
 void MainComponent::onConnectionStatusChanged(const ConnectionManager::Status& status)
 {
-    mainLayout->getStatusBar().setConnectionStatus(status.message);
+    bool connected = (status.state == ConnectionManager::State::Connected);
+    mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
 
     // Save settings on successful connection
-    if (status.state == ConnectionManager::State::Connected)
+    if (connected)
         saveMidiSettings(lastInputId, lastOutputId);
 }
 
