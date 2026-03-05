@@ -21,6 +21,21 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
 
     DBG("Loaded " + juce::String(moduleDescs.getModuleCount()) + " module descriptions");
 
+    // Load classic theme
+    auto themePath = juce::File::getCurrentWorkingDirectory()
+                         .getChildFile("nmedit/libs/nordmodular/data/classic-theme/classic-theme.xml");
+    if (!themeData.loadFromFile(themePath))
+    {
+        themePath = juce::File::getSpecialLocation(juce::File::currentExecutableFile)
+                        .getParentDirectory()
+                        .getParentDirectory()
+                        .getParentDirectory()
+                        .getChildFile("nmedit/libs/nordmodular/data/classic-theme/classic-theme.xml");
+        themeData.loadFromFile(themePath);
+    }
+
+    DBG("Loaded " + juce::String(themeData.getModuleThemeCount()) + " module themes");
+
     // Menu bar
     menuBar = std::make_unique<juce::MenuBarComponent>(this);
     addAndMakeVisible(menuBar.get());
@@ -59,7 +74,7 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
             currentPatch = std::move(p);
             if (currentPatch)
             {
-                mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs);
+                mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
                 mainLayout->getStatusBar().setConnectionStatus(
                     "Connected - " + currentPatch->getName(), true);
             }

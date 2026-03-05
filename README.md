@@ -12,19 +12,35 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 
 ## Development Status
 
-- [x] Original editor running and verified
+### Completed
+- [x] Original editor running and verified (JDK 8)
 - [x] Technical research and protocol documentation
-- [x] JUCE project setup
+- [x] JUCE project setup with CMake
 - [x] MIDI SysEx protocol implementation (C++)
 - [x] Synth connection manager (auto-connect, IAm handshake)
 - [x] Patch retrieval from synth (RequestPatch + 13-section GetPatch flow)
-- [x] Module descriptions loader (110 modules from modules.xml)
+- [x] Patch data parser (modules, cables, parameters, morphs, knob/ctrl maps, names, notes)
+- [x] Module descriptions loader (110+ modules from modules.xml)
 - [x] UI framework (menu bar, module browser, patch canvas, inspector, status bar)
 - [x] MIDI settings dialog with port persistence
-- [ ] Patch data parser (decode modules, cables, parameters from SysEx)
-- [ ] Patch editor UI (canvas with draggable modules and cables)
-- [ ] Real-time parameter control (knobs, synth ↔ editor sync)
+- [x] Pixel-perfect module rendering (classic-theme.xml: connectors, knobs, sliders, labels, text displays, lights)
+- [x] Radio-selector buttons (multi-option with highlighted selection)
+- [x] Increment/arrow buttons
+- [x] Custom display renderers (ADSR/AD/AHD envelopes, LFO waveforms, filter response, overdrive/clip curves, EQ, compressor/expander, phaser)
+- [x] Cables with signal-type colors, dark outline, rendered on top of modules
+
+### In Progress
+- [ ] Verify input/output connector visuals (distinguish inputs vs outputs)
+- [ ] Polish individual module rendering (compare each with original editor)
+
+### Next Up
+- [ ] Interactivity: click knobs/buttons/sliders to modify parameter values
+- [ ] Status bar parameter indicator (show parameter name + value on hover)
+- [ ] Send parameter changes to synth in real-time
 - [ ] Patch file I/O (.pch load/save)
+- [ ] Drag & drop modules on canvas
+- [ ] Cable creation/deletion by clicking connectors
+- [ ] Multi-slot support (slots 1-4, currently slot 0 only)
 - [ ] Bank/patch management
 
 ## Building
