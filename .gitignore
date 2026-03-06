@@ -38,3 +38,6 @@ Info.md
 
 # Claude Code local data
 .claude/
+
+# LSP cache
+.cache/
