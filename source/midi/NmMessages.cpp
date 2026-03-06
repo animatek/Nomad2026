@@ -43,7 +43,7 @@ IAmMessage IAmMessage::decode(const uint8_t* data, size_t length)
 std::vector<uint8_t> ParameterChangeMessage::encode() const
 {
     return {
-        static_cast<uint8_t>(0x00),               // pid
+        static_cast<uint8_t>(pid & 0x7F),         // patch ID from ACK
         static_cast<uint8_t>(0x40),               // sc = ParameterChange
         static_cast<uint8_t>(section & 0x7F),
         static_cast<uint8_t>(module & 0x7F),
@@ -57,8 +57,12 @@ ParameterChangeMessage ParameterChangeMessage::decode(const uint8_t* data, size_
     ParameterChangeMessage msg;
     // Payload: pid(1) + sc(1) + section + module + parameter + value [+ checksum]
     if (length < 6 || data[1] != 0x40)
+    {
+        msg.pid = -1;  // Mark as invalid (sc != ParameterChange)
         return msg;
+    }
 
+    msg.pid       = data[0];
     msg.section   = data[2];
     msg.module    = data[3];
     msg.parameter = data[4];

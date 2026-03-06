@@ -130,7 +130,7 @@ plugins/
 ```
 cc=0x13, sc=0x40: section:7 module:7 parameter:7 value:7
 ```
-- section: 0=poly voice area, 1=common voice area
+- section: 0=common voice area, 1=poly voice area (verified from Java Format.java)
 - module: module index (0-127)
 - parameter: parameter index (0-127)
 - value: parameter value (0-127)

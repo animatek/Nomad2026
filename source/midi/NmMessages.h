@@ -30,7 +30,8 @@ struct IAmMessage
 
 struct ParameterChangeMessage
 {
-    int section = 0;     // 0 = poly voice area, 1 = common area
+    int pid = 0;         // patch ID from ACK
+    int section = 0;     // 0 = common voice area, 1 = poly voice area
     int module = 0;
     int parameter = 0;
     int value = 0;

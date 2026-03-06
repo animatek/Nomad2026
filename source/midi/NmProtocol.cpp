@@ -61,6 +61,15 @@ void NmProtocol::timerCallback()
     if (!sendQueue.empty() && sendFn)
     {
         auto& pending = sendQueue.front();
+
+        // Debug: log outgoing message
+        juce::String hexDump;
+        for (size_t i = 0; i < juce::jmin(pending.encoded.size(), size_t(20)); ++i)
+            hexDump += juce::String::toHexString(pending.encoded[i]).paddedLeft('0', 2) + " ";
+        if (pending.encoded.size() > 20)
+            hexDump += "...";
+        DBG("NmProtocol SEND: " + hexDump + " (size=" + juce::String(pending.encoded.size()) + ")");
+
         sendFn(pending.encoded);
 
         if (pending.expectsReply)
@@ -87,7 +96,8 @@ void NmProtocol::dispatchMessage(const SysEx::DecodedMessage& msg)
         case NmCmd::ParameterChange:
         {
             auto param = ParameterChangeMessage::decode(msg.payload.data(), msg.payload.size());
-            listeners.call([&](Listener& l) { l.onParameterChanged(param); });
+            if (param.pid >= 0)  // Only dispatch valid ParameterChange (sc=0x40), skip ParameterSelect etc.
+                listeners.call([&](Listener& l) { l.onParameterChanged(param); });
             break;
         }
         case NmCmd::NMInfo:

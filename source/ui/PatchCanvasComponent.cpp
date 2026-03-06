@@ -1142,6 +1142,216 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
     }
 }
 
+// --- Mouse Event Handlers ---
+
+void PatchCanvas::mouseDown(const juce::MouseEvent& e)
+{
+    if (patch == nullptr || themeData == nullptr)
+        return;
+
+    auto pos = e.getPosition();
+
+    // Calculate separator position
+    int separatorY = patch->getHeader().separatorPosition * gridY;
+    if (separatorY == 0)
+        separatorY = canvasHeight / 2;
+
+    // Search both areas
+    // Protocol convention: section 1 = poly, section 0 = common
+    struct { const ModuleContainer* container; int section; int yOffset; } areas[] = {
+        { &patch->getPolyVoiceArea(), 1, polyAreaOffsetY },
+        { &patch->getCommonArea(), 0, separatorY }
+    };
+
+    for (auto& area : areas)
+    {
+        for (auto& modulePtr : area.container->getModules())
+        {
+            auto& m = *modulePtr;
+            auto rect = getModuleBounds(m, area.yOffset);
+
+            if (!rect.contains(pos))
+                continue;
+
+            // Module was clicked, now test UI components
+            auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
+            if (theme == nullptr)
+                continue;
+
+            auto relPos = pos - rect.getPosition();
+
+            // Test knobs
+            for (auto& tk : theme->knobs)
+            {
+                juce::Rectangle<int> knobRect(tk.x, tk.y, tk.size, tk.size);
+                if (knobRect.contains(relPos))
+                {
+                    auto* param = findParameter(m, tk.componentId);
+                    if (param != nullptr)
+                    {
+                        dragState.type = DragState::Knob;
+                        dragState.module = &m;
+                        dragState.parameter = const_cast<Parameter*>(param);
+                        dragState.section = area.section;
+                        dragState.startPos = pos;
+                        dragState.startValue = param->getValue();
+                        return;
+                    }
+                }
+            }
+
+            // Test sliders
+            for (auto& ts : theme->sliders)
+            {
+                juce::Rectangle<int> sliderRect(ts.x, ts.y, ts.width, ts.height);
+                if (sliderRect.contains(relPos))
+                {
+                    auto* param = findParameter(m, ts.componentId);
+                    if (param != nullptr)
+                    {
+                        dragState.type = DragState::Slider;
+                        dragState.module = &m;
+                        dragState.parameter = const_cast<Parameter*>(param);
+                        dragState.section = area.section;
+                        dragState.startPos = pos;
+                        dragState.startValue = param->getValue();
+                        return;
+                    }
+                }
+            }
+
+            // Test buttons
+            for (auto& tb : theme->buttons)
+            {
+                juce::Rectangle<int> btnRect(tb.x, tb.y, tb.width, tb.height);
+                if (btnRect.contains(relPos))
+                {
+                    auto* param = findParameter(m, tb.componentId);
+                    if (param != nullptr)
+                    {
+                        dragState.type = DragState::Button;
+                        dragState.module = &m;
+                        dragState.parameter = const_cast<Parameter*>(param);
+                        dragState.section = area.section;
+                        dragState.startPos = pos;
+                        dragState.startValue = param->getValue();
+
+                        // Buttons toggle/cycle on click (no drag)
+                        auto* pd = param->getDescriptor();
+                        int newValue = param->getValue() + 1;
+                        if (newValue > pd->maxValue)
+                            newValue = pd->minValue;
+
+                        dragState.parameter->setValue(newValue);
+
+                        if (parameterChangeCallback)
+                            parameterChangeCallback(dragState.section, m.getContainerIndex(), pd->index, newValue);
+
+                        repaint();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
+{
+    if (dragState.type == DragState::None || dragState.parameter == nullptr)
+        return;
+
+    auto* pd = dragState.parameter->getDescriptor();
+    int range = pd->maxValue - pd->minValue;
+    if (range <= 0)
+        return;
+
+    auto currentPos = e.getPosition();
+    int newValue = dragState.startValue;
+
+    if (dragState.type == DragState::Knob)
+    {
+        // Rotary control: vertical drag (down = increase, up = decrease)
+        int deltaY = dragState.startPos.y - currentPos.y;
+        float sensitivity = 0.5f;  // Adjust for feel
+        int valueDelta = static_cast<int>(deltaY * sensitivity);
+        newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
+    }
+    else if (dragState.type == DragState::Slider)
+    {
+        // Linear control: drag along slider axis
+        // Determine if vertical or horizontal
+        bool isVertical = true;  // Default, could check theme orientation
+
+        if (isVertical)
+        {
+            // Vertical slider: drag up = increase
+            int deltaY = dragState.startPos.y - currentPos.y;
+            float normalized = static_cast<float>(deltaY) / 100.0f;  // 100px = full range
+            int valueDelta = static_cast<int>(normalized * range);
+            newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
+        }
+        else
+        {
+            // Horizontal slider: drag right = increase
+            int deltaX = currentPos.x - dragState.startPos.x;
+            float normalized = static_cast<float>(deltaX) / 100.0f;
+            int valueDelta = static_cast<int>(normalized * range);
+            newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
+        }
+    }
+
+    // Update parameter and repaint
+    if (newValue != dragState.parameter->getValue())
+    {
+        dragState.parameter->setValue(newValue);
+        repaint();
+
+        // Send to synth in real-time (rate limited)
+        if (parameterChangeCallback && dragState.module != nullptr && newValue != dragState.lastSentValue)
+        {
+            auto now = juce::Time::getMillisecondCounter();
+            if (now - dragState.lastSendTime >= paramSendIntervalMs)
+            {
+                parameterChangeCallback(dragState.section, dragState.module->getContainerIndex(), pd->index, newValue);
+                dragState.lastSentValue = newValue;
+                dragState.lastSendTime = now;
+            }
+        }
+    }
+}
+
+void PatchCanvas::mouseUp(const juce::MouseEvent&)
+{
+    if (dragState.type == DragState::None || dragState.parameter == nullptr)
+        return;
+
+    // Send final value to synth (only for knobs/sliders, buttons already sent on mouseDown)
+    // Skip if the value was already sent during drag
+    if (dragState.type != DragState::Button && parameterChangeCallback && dragState.module != nullptr)
+    {
+        int finalValue = dragState.parameter->getValue();
+        if (finalValue != dragState.lastSentValue)
+        {
+            auto* pd = dragState.parameter->getDescriptor();
+            parameterChangeCallback(dragState.section, dragState.module->getContainerIndex(), pd->index, finalValue);
+        }
+    }
+
+    // Clear drag state
+    dragState = DragState();
+}
+
+bool PatchCanvas::isDragging(int section, int moduleId, int parameterId) const
+{
+    if (dragState.type == DragState::None || dragState.module == nullptr || dragState.parameter == nullptr)
+        return false;
+
+    return dragState.section == section
+        && dragState.module->getContainerIndex() == moduleId
+        && dragState.parameter->getDescriptor()->index == parameterId;
+}
+
 // --- PatchCanvasComponent (viewport wrapper) ---
 
 PatchCanvasComponent::PatchCanvasComponent()
@@ -1159,4 +1369,38 @@ void PatchCanvasComponent::resized()
 void PatchCanvasComponent::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td)
 {
     canvas.setPatch(p, md, td);
+
+    // Auto-scroll to where the modules are (use callAfterDelay to ensure viewport is sized)
+    if (p != nullptr)
+    {
+        int separatorY = p->getHeader().separatorPosition * PatchCanvas::gridY;
+        if (separatorY == 0)
+            separatorY = PatchCanvas::canvasHeight / 2;
+
+        // Find the topmost module across both areas
+        int minY = PatchCanvas::canvasHeight;
+
+        for (auto& m : p->getPolyVoiceArea().getModules())
+        {
+            int y = PatchCanvas::polyAreaOffsetY + m->getPosition().y * PatchCanvas::gridY;
+            minY = juce::jmin(minY, y);
+        }
+        for (auto& m : p->getCommonArea().getModules())
+        {
+            int y = separatorY + m->getPosition().y * PatchCanvas::gridY;
+            minY = juce::jmin(minY, y);
+        }
+
+        DBG("Auto-scroll: separatorY=" + juce::String(separatorY) + " topModule=" + juce::String(minY));
+
+        // Scroll to just above the topmost module
+        int scrollY = juce::jmax(0, minY - 20);
+        viewport.setViewPosition(0, scrollY);
+
+        // Also schedule a delayed scroll in case the viewport isn't sized yet
+        juce::Timer::callAfterDelay(100, [this, scrollY]()
+        {
+            viewport.setViewPosition(0, scrollY);
+        });
+    }
 }

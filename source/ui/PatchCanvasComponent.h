@@ -11,8 +11,18 @@ public:
     PatchCanvas();
 
     void paint(juce::Graphics& g) override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
+
+    // Callback for parameter changes
+    using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
+    void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
+
+    // Check if a specific parameter is currently being dragged by the user
+    bool isDragging(int section, int moduleId, int parameterId) const;
 
     // Matches original Java editor: 255px per column, 15px per row
     static constexpr int gridX = 255;         // pixels per grid column (module width)
@@ -49,6 +59,23 @@ private:
     const ModuleDescriptions* moduleDescs = nullptr;
     const ThemeData* themeData = nullptr;
 
+    // Dragging state
+    struct DragState
+    {
+        enum Type { None, Knob, Slider, Button } type = None;
+        Module* module = nullptr;
+        Parameter* parameter = nullptr;
+        int section = 0;  // 0=common, 1=poly (PDL2/Java convention)
+        juce::Point<int> startPos;
+        int startValue = 0;
+        int lastSentValue = -1;  // Track last value sent to avoid duplicates
+        juce::int64 lastSendTime = 0;  // Rate limiting for real-time sends
+    };
+    DragState dragState;
+    ParameterChangeCallback parameterChangeCallback;
+
+    static constexpr int paramSendIntervalMs = 50;  // Min interval between param sends during drag
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PatchCanvas)
 };
 
@@ -60,6 +87,18 @@ public:
     void resized() override;
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
+
+    void setParameterChangeCallback(PatchCanvas::ParameterChangeCallback cb)
+    {
+        canvas.setParameterChangeCallback(std::move(cb));
+    }
+
+    void repaintCanvas() { canvas.repaint(); }
+
+    bool isDragging(int section, int moduleId, int parameterId) const
+    {
+        return canvas.isDragging(section, moduleId, parameterId);
+    }
 
 private:
     juce::Viewport viewport;

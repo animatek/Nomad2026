@@ -80,6 +80,13 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
     }
 }
 
+void ConnectionManager::onParameterChanged(const ParameterChangeMessage& msg)
+{
+    // Synth notifies us of a parameter change (user turned a knob on the hardware)
+    if (parameterChangeCallback)
+        parameterChangeCallback(msg.section, msg.module, msg.parameter, msg.value);
+}
+
 void ConnectionManager::requestPatch(int slot)
 {
     if (!isConnected())
@@ -103,6 +110,40 @@ void ConnectionManager::requestPatch(int slot)
     DBG("Requesting patch from slot " + juce::String(slot));
 }
 
+int ConnectionManager::getCurrentSlot() const
+{
+    return currentSlot;
+}
+
+void ConnectionManager::sendParameter(int section, int moduleId, int parameterId, int value)
+{
+    if (!isConnected())
+    {
+        DBG("sendParameter: NOT CONNECTED");
+        return;
+    }
+
+    ParameterChangeMessage msg;
+    msg.pid = currentPatchId;
+    msg.section = section;
+    msg.module = moduleId;
+    msg.parameter = parameterId;
+    msg.value = value;
+
+    auto payload = msg.encode();
+
+    DBG("sendParameter: slot=" + juce::String(currentSlot)
+        + " pid=" + juce::String(currentPatchId)
+        + " section=" + juce::String(section)
+        + " module=" + juce::String(moduleId)
+        + " param=" + juce::String(parameterId)
+        + " value=" + juce::String(value));
+
+    // Parameter messages use cc=0x13, have checksum, no reply expected
+    // IMPORTANT: Use currentSlot, not 0!
+    protocol.sendMessage(NmCmd::ParameterChange, currentSlot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
+}
+
 void ConnectionManager::onAckReceived(const AckMessage& msg)
 {
     DBG("ACK received: pid1=" + juce::String(msg.pid1)
@@ -113,10 +154,10 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     {
         waitingForPatchAck = false;
         collectingSections = true;
-        int patchId = msg.pid1;
+        currentPatchId = msg.pid1;  // Store for use in parameter changes
         DBG("Patch ACK for slot " + juce::String(pendingPatchSlot)
-            + ", patchId=" + juce::String(patchId) + " — sending GetPatch for all 13 sections");
-        sendGetPatchMessages(patchId, pendingPatchSlot);
+            + ", patchId=" + juce::String(currentPatchId) + " — sending GetPatch for all 13 sections");
+        sendGetPatchMessages(currentPatchId, pendingPatchSlot);
         startPatchTimeout();
     }
 }
@@ -186,6 +227,9 @@ void ConnectionManager::finalizePatch()
     DBG(juce::String(sectionsReceived < totalSections ? "Partial" : "All") + " "
         + juce::String(patchSections.size()) + " sections — invoking parser");
 
+    // Mark this slot as the current one
+    currentSlot = pendingPatchSlot;
+
     if (patchDataCallback)
         patchDataCallback(patchSections);
 
@@ -206,6 +250,20 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         // Don't interrupt an in-progress collection
         if (isConnected() && !waitingForPatchAck && !collectingSections && msg.newPatchSlot >= 0)
             requestPatch(msg.newPatchSlot);
+    }
+
+    if (msg.sc == 0x40 && msg.data.size() >= 4)  // KnobChange: physical knob turned on synth
+    {
+        // Payload identical to ParameterChange: section, module, parameter, value
+        if (parameterChangeCallback)
+            parameterChangeCallback(msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
+    }
+
+    if (msg.sc == 0x7e)  // Error notification from synth
+    {
+        int errorCode = msg.data.empty() ? -1 : msg.data[0];
+        DBG("*** SYNTH ERROR: sc=0x7e code=" + juce::String(errorCode)
+            + " (pid=" + juce::String(msg.pid) + ")");
     }
 
     // Silently handle high-frequency messages (Lights, Meters, SlotsSelected, SlotActivated)

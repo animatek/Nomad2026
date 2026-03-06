@@ -81,10 +81,46 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
         });
     });
 
+    // Wire parameter changes from canvas to synth (user turns knob in editor)
+    mainLayout->getCanvas().setParameterChangeCallback([this](int section, int moduleId, int parameterId, int value)
+    {
+        connectionManager.sendParameter(section, moduleId, parameterId, value);
+    });
+
+    // Wire parameter changes from synth to editor (user turns knob on hardware)
+    connectionManager.setParameterChangeCallback([this](int section, int moduleId, int parameterId, int value)
+    {
+        juce::MessageManager::callAsync([this, section, moduleId, parameterId, value]()
+        {
+            if (currentPatch == nullptr)
+                return;
+
+            // Skip if the user is currently dragging this exact parameter (avoid fighting the user)
+            if (mainLayout->getCanvas().isDragging(section, moduleId, parameterId))
+                return;
+
+            auto& container = currentPatch->getContainer(section);
+            auto* module = container.getModuleByIndex(moduleId);
+            if (module == nullptr)
+                return;
+
+            auto* param = module->getParameter(parameterId);
+            if (param == nullptr)
+                return;
+
+            // Only update + repaint if value actually changed (prevents unnecessary repaints)
+            if (param->getValue() != value)
+            {
+                param->setValue(value);
+                mainLayout->getCanvas().repaintCanvas();
+            }
+        });
+    });
+
     setSize(1280, 800);
 
-    // Auto-connect after UI is set up
-    juce::MessageManager::callAsync([this]() { attemptAutoConnect(); });
+    // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
+    juce::Timer::callAfterDelay(500, [this]() { attemptAutoConnect(); });
 }
 
 MainComponent::~MainComponent()
@@ -190,9 +226,14 @@ void MainComponent::onConnectionStatusChanged(const ConnectionManager::Status& s
     bool connected = (status.state == ConnectionManager::State::Connected);
     mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
 
-    // Save settings on successful connection
     if (connected)
+    {
+        // Save settings on successful connection
         saveMidiSettings(lastInputId, lastOutputId);
+
+        // Auto-request patch from slot 0 once connected
+        connectionManager.requestPatch(0);
+    }
 }
 
 void MainComponent::attemptAutoConnect()
@@ -201,35 +242,69 @@ void MainComponent::attemptAutoConnect()
     if (settings == nullptr)
         return;
 
-    auto inputId = settings->getValue("midiInputDevice", "");
-    auto outputId = settings->getValue("midiOutputDevice", "");
+    auto savedInputId   = settings->getValue("midiInputDevice", "");
+    auto savedOutputId  = settings->getValue("midiOutputDevice", "");
+    auto savedInputName  = settings->getValue("midiInputName", "");
+    auto savedOutputName = settings->getValue("midiOutputName", "");
 
-    if (inputId.isEmpty() || outputId.isEmpty())
+    if (savedInputId.isEmpty() && savedInputName.isEmpty())
         return;
 
-    // Verify the saved ports still exist
     auto inputs = ConnectionManager::getAvailableInputDevices();
     auto outputs = ConnectionManager::getAvailableOutputDevices();
 
-    bool inputFound = false;
-    bool outputFound = false;
-
+    DBG("Available MIDI inputs (" + juce::String(inputs.size()) + "):");
     for (auto& dev : inputs)
-        if (dev.identifier == inputId) { inputFound = true; break; }
-
+        DBG("  id=\"" + dev.identifier + "\" name=\"" + dev.name + "\"");
+    DBG("Available MIDI outputs (" + juce::String(outputs.size()) + "):");
     for (auto& dev : outputs)
-        if (dev.identifier == outputId) { outputFound = true; break; }
+        DBG("  id=\"" + dev.identifier + "\" name=\"" + dev.name + "\"");
 
-    if (inputFound && outputFound)
+    // Find input: try identifier first, then fall back to name match
+    juce::String resolvedInputId;
+    for (auto& dev : inputs)
     {
-        DBG("Auto-connecting to saved MIDI ports");
-        lastInputId = inputId;
-        lastOutputId = outputId;
-        connectionManager.connect(inputId, outputId);
+        if (dev.identifier == savedInputId) { resolvedInputId = dev.identifier; break; }
+    }
+    if (resolvedInputId.isEmpty() && savedInputName.isNotEmpty())
+    {
+        for (auto& dev : inputs)
+            if (dev.name == savedInputName) { resolvedInputId = dev.identifier; break; }
+    }
+
+    // Find output: try identifier first, then fall back to name match
+    juce::String resolvedOutputId;
+    for (auto& dev : outputs)
+    {
+        if (dev.identifier == savedOutputId) { resolvedOutputId = dev.identifier; break; }
+    }
+    if (resolvedOutputId.isEmpty() && savedOutputName.isNotEmpty())
+    {
+        for (auto& dev : outputs)
+            if (dev.name == savedOutputName) { resolvedOutputId = dev.identifier; break; }
+    }
+
+    if (resolvedInputId.isNotEmpty() && resolvedOutputId.isNotEmpty())
+    {
+        DBG("Auto-connecting: input=" + resolvedInputId + " output=" + resolvedOutputId);
+        lastInputId = resolvedInputId;
+        lastOutputId = resolvedOutputId;
+        connectionManager.connect(resolvedInputId, resolvedOutputId);
     }
     else
     {
-        DBG("Saved MIDI ports no longer available");
+        // ALSA may not have enumerated devices yet — retry a few times
+        if (autoConnectRetries > 0 && (inputs.isEmpty() || outputs.isEmpty()))
+        {
+            autoConnectRetries--;
+            DBG("No MIDI devices found yet, retrying in 500ms (" + juce::String(autoConnectRetries) + " left)");
+            juce::Timer::callAfterDelay(500, [this]() { attemptAutoConnect(); });
+        }
+        else
+        {
+            DBG("Saved MIDI ports not found (id=" + savedInputId + "/" + savedOutputId
+                + " name=" + savedInputName + "/" + savedOutputName + ")");
+        }
     }
 }
 
@@ -241,5 +316,13 @@ void MainComponent::saveMidiSettings(const juce::String& inputId, const juce::St
 
     settings->setValue("midiInputDevice", inputId);
     settings->setValue("midiOutputDevice", outputId);
+
+    // Also save device names for robust matching (ALSA identifiers can change between reboots)
+    for (auto& dev : ConnectionManager::getAvailableInputDevices())
+        if (dev.identifier == inputId) { settings->setValue("midiInputName", dev.name); break; }
+    for (auto& dev : ConnectionManager::getAvailableOutputDevices())
+        if (dev.identifier == outputId) { settings->setValue("midiOutputName", dev.name); break; }
+
     settings->saveIfNeeded();
+    DBG("Saved MIDI settings: input=" + inputId + " output=" + outputId);
 }

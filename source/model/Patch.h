@@ -191,7 +191,7 @@ public:
     const ModuleContainer& getPolyVoiceArea() const { return polyVoiceArea; }
     const ModuleContainer& getCommonArea() const { return commonArea; }
 
-    // PDL2 convention: section 0 = common, section 1 = poly
+    // PDL2/Java convention: section 0 = common, section 1 = poly
     ModuleContainer& getContainer(int section) { return section == 1 ? polyVoiceArea : commonArea; }
 
     // Morph map
