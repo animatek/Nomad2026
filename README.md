@@ -47,6 +47,96 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [ ] Multi-slot support (slots 1-4, currently slot 0 only)
 - [ ] Bank/patch management
 
+## Roadmap
+
+This section outlines all planned features to achieve feature parity with the original Nomad editor. Features are organized by category.
+
+### File Operations
+- [ ] **New Patch** (Ctrl+N) - Create new empty patch
+- [ ] **Open Patch** (Ctrl+O) - Load .pch file from disk
+- [ ] **Close Patch** (Ctrl+W) - Close current patch
+- [ ] **Close All Patches** - Close all open patches
+- [ ] **Save Patch** (Ctrl+S) - Save current patch to disk
+- [ ] **Save Patch As** - Save patch with new filename
+- [ ] **Save All Patches** - Save all modified patches
+- [ ] **Quit Application** (Ctrl+Q) - Exit Nomad2026
+
+### Patch Management
+- [ ] **Patch Settings Dialog** (Ctrl+P) - Edit patch metadata and configuration
+- [ ] **Download Patch to Slot** - Send patch from editor to synth slot (A/B/C/D)
+- [ ] **Save Patch in Synth** - Store patch in synth's internal memory
+- [ ] **Multi-Slot Support** - Support all 4 slots (A, B, C, D) instead of just slot 0
+
+### Synth Communication
+- [ ] **Synth Settings Dialog** (Ctrl+G) - Configure synth parameters:
+  - Synth name editing
+  - MIDI channel assignment per slot (1-16)
+  - MIDI clock (Internal/External, BPM, Global sync)
+  - Master tune (cents, Hz display)
+  - Keyboard mode (Active slot / Selected slots)
+  - MIDI velocity scale (min/max 0-127)
+  - Knob mode (Immediate / Hook)
+  - Pedal polarity (Normal / Inverted)
+  - Program change send/receive
+  - Local off, LEDs active
+- [ ] **Upload Active Slot** (Ctrl+U) - Upload current synth patch to editor
+- [ ] **Send Controller Snapshot** - Send current controller state to synth
+- [ ] **Bank Upload from Synth** - Upload entire bank (99 patches) from synth to disk
+  - Bank selection dropdown
+  - Destination folder browser
+  - Progress bar
+- [ ] **Bank Download to Synth** - Download entire bank from disk to synth
+  - Source selection (bank file or folder)
+  - Bank number selection
+  - Progress bar with overwrite warning
+
+### Editor Preferences
+- [ ] **Editor Options Dialog** - Configure editor behavior:
+  - **Cable Style**: Straight 3D, Curved 3D (default), Straight Thin, Curved Thin
+  - **Knob Control**: Circular, Horizontal (default), Vertical
+  - **Auto Upload**: Automatically send parameter changes to synth
+  - **Recycle Windows**: Reuse patch windows instead of creating new ones
+
+### Floating Windows
+- [ ] **Keyboard Floater** (Ctrl+F) - Virtual MIDI keyboard
+  - Octave navigation (<<, <, >, >>)
+  - Drone mode (sustain notes)
+  - Repeat mode
+  - Visual key press feedback
+- [ ] **Knob Floater** (Ctrl+K) - Hardware knob mapper
+  - 18 assignable knobs with LED indicators
+  - Morph group selection arrows
+  - Displays current module/parameter assignments
+  - Sustain pedal icon
+  - Keyboard hold icon
+  - Joystick/modulation wheel icon
+- [ ] **Notes Floater** - Patch notes/comments window
+- [ ] **Browser** (Ctrl+B) - Patch library browser
+  - Search and filter patches
+  - Preview/audition patches
+  - Organize patch collections
+
+### Module Canvas Editing
+- [ ] **Drag & Drop Modules** - Add modules from browser to canvas by dragging
+- [ ] **Move Modules** - Reposition modules on canvas
+- [ ] **Delete Modules** - Remove modules from patch
+- [ ] **Cable Creation** - Click connectors to create cables
+- [ ] **Cable Deletion** - Click/right-click cables to delete
+- [ ] **Module Copy/Paste** - Duplicate module configurations
+- [ ] **Selection Tool** - Select multiple modules/cables for batch operations
+
+### Help System
+- [ ] **Help Contents** - Integrated help documentation
+- [ ] **Using Help** - Meta-help for navigating help system
+- [ ] **About Dialog** - Version info, credits, license
+
+### Quality of Life
+- [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
+- [ ] **Module Rendering Polish** - Compare each module type with original editor for pixel-perfect accuracy
+- [ ] **Undo/Redo System** - Full undo/redo for all patch operations
+- [ ] **Keyboard Shortcuts** - Complete keyboard shortcut system matching original editor
+- [ ] **Window Management** - Remember window positions and sizes across sessions
+
 ## Building
 
 ```bash

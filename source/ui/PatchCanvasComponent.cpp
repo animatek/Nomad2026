@@ -1393,30 +1393,28 @@ void PatchCanvasComponent::setPatch(Patch* p, const ModuleDescriptions* md, cons
         if (separatorY == 0)
             separatorY = PatchCanvas::canvasHeight / 2;
 
-        // Find the topmost module across both areas
-        int minY = PatchCanvas::canvasHeight;
+        // Find the topmost module across both areas.
+        // Use -1 as sentinel so we can detect "no modules found".
+        int minY = -1;
 
         for (auto& m : p->getPolyVoiceArea().getModules())
         {
             int y = PatchCanvas::polyAreaOffsetY + m->getPosition().y * PatchCanvas::gridY;
-            minY = juce::jmin(minY, y);
+            minY = (minY < 0) ? y : juce::jmin(minY, y);
         }
         for (auto& m : p->getCommonArea().getModules())
         {
             int y = separatorY + m->getPosition().y * PatchCanvas::gridY;
-            minY = juce::jmin(minY, y);
+            minY = (minY < 0) ? y : juce::jmin(minY, y);
         }
 
-        DBG("Auto-scroll: separatorY=" + juce::String(separatorY) + " topModule=" + juce::String(minY));
+        // If no modules found, scroll to top; otherwise scroll just above the topmost module.
+        int scrollY = (minY >= 0) ? juce::jmax(0, minY - 20) : 0;
 
-        // Scroll to just above the topmost module
-        int scrollY = juce::jmax(0, minY - 20);
+        DBG("Auto-scroll: separatorY=" + juce::String(separatorY)
+            + " topModule=" + juce::String(minY)
+            + " scrollY=" + juce::String(scrollY));
+
         viewport.setViewPosition(0, scrollY);
-
-        // Also schedule a delayed scroll in case the viewport isn't sized yet
-        juce::Timer::callAfterDelay(100, [this, scrollY]()
-        {
-            viewport.setViewPosition(0, scrollY);
-        });
     }
 }
