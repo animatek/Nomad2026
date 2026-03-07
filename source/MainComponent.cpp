@@ -75,6 +75,7 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
             if (currentPatch)
             {
                 mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
+                mainLayout->getHeaderBar().setPatch(currentPatch.get());
                 mainLayout->getStatusBar().setConnectionStatus(
                     "Connected - " + currentPatch->getName(), true);
             }
@@ -87,6 +88,19 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
         connectionManager.sendParameter(section, moduleId, parameterId, value);
     });
 
+    // Wire morph knob changes from header bar to synth
+    // Morphs use section=2 (morph section), module=1 (morph module), parameter=0-3
+    mainLayout->getHeaderBar().setMorphChangeCallback([this](int morphIndex, int value)
+    {
+        connectionManager.sendParameter(2, 1, morphIndex, value);
+    });
+
+    // Wire cable visibility toggles to repaint the canvas
+    mainLayout->getHeaderBar().setCableVisibilityCallback([this]()
+    {
+        mainLayout->getCanvas().repaintCanvas();
+    });
+
     // Wire parameter changes from synth to editor (user turns knob on hardware)
     connectionManager.setParameterChangeCallback([this](int section, int moduleId, int parameterId, int value)
     {
@@ -94,6 +108,14 @@ MainComponent::MainComponent(juce::ApplicationProperties& props)
         {
             if (currentPatch == nullptr)
                 return;
+
+            // Morph section (section=2, module=1, parameter=0-3)
+            if (section == 2 && moduleId == 1 && parameterId >= 0 && parameterId < 4)
+            {
+                currentPatch->morphValues[static_cast<size_t>(parameterId)] = value;
+                mainLayout->getHeaderBar().repaint();
+                return;
+            }
 
             // Skip if the user is currently dragging this exact parameter (avoid fighting the user)
             if (mainLayout->getCanvas().isDragging(section, moduleId, parameterId))

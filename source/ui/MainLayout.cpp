@@ -15,6 +15,7 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
     slotTabs.setColour(juce::TabbedButtonBar::frontOutlineColourId, juce::Colour(0xff5555aa));
 
     addAndMakeVisible(slotTabs);
+    addAndMakeVisible(headerBar);
     addAndMakeVisible(browserPanel);
     addAndMakeVisible(canvasComponent);
     addAndMakeVisible(inspectorPanel);
@@ -45,6 +46,9 @@ void MainLayout::resized()
 
     // Slot tabs above the main panels
     slotTabs.setBounds(area.removeFromTop(slotTabHeight));
+
+    // Patch header bar below slot tabs
+    headerBar.setBounds(area.removeFromTop(headerBarHeight));
 
     // Lay out the 3 panels + 2 resizer bars
     juce::Component* comps[] = {

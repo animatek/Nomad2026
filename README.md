@@ -28,15 +28,19 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] Increment/arrow buttons
 - [x] Custom display renderers (ADSR/AD/AHD envelopes, LFO waveforms, filter response, overdrive/clip curves, EQ, compressor/expander, phaser)
 - [x] Cables with signal-type colors, dark outline, rendered on top of modules
+- [x] Bidirectional parameter control (click knobs/buttons/sliders to modify values)
+- [x] Status bar parameter indicator (show parameter name + value on hover)
+- [x] Real-time parameter changes sent to synth with MIDI feedback
+- [x] Patch header bar (patch name, voices spinner, load meters, morph knobs with colors, cable visibility toggles)
+- [x] Cable visibility toggles (click colored circles to hide/show cables by signal type)
+- [x] Morph knobs with per-morph colors (red, green, blue, yellow — matching original editor)
+- [x] Correct patch name and module name parsing (null-terminated PDL2 strings)
 
 ### In Progress
 - [ ] Verify input/output connector visuals (distinguish inputs vs outputs)
 - [ ] Polish individual module rendering (compare each with original editor)
 
 ### Next Up
-- [ ] Interactivity: click knobs/buttons/sliders to modify parameter values
-- [ ] Status bar parameter indicator (show parameter name + value on hover)
-- [ ] Send parameter changes to synth in real-time
 - [ ] Patch file I/O (.pch load/save)
 - [ ] Drag & drop modules on canvas
 - [ ] Cable creation/deletion by clicking connectors

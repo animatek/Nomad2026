@@ -1096,6 +1096,22 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         if (conn.output == nullptr || conn.input == nullptr)
             continue;
 
+        // Check cable visibility by signal type
+        if (patch != nullptr)
+        {
+            const auto& hdr = patch->getHeader();
+            switch (conn.output->getDescriptor()->signalType)
+            {
+                case SignalType::Audio:       if (!hdr.cableVisRed)    continue; break;
+                case SignalType::Control:     if (!hdr.cableVisBlue)   continue; break;
+                case SignalType::Logic:       if (!hdr.cableVisYellow) continue; break;
+                case SignalType::MasterSlave: if (!hdr.cableVisGray)   continue; break;
+                case SignalType::User1:       if (!hdr.cableVisGreen)  continue; break;
+                case SignalType::User2:       if (!hdr.cableVisPurple) continue; break;
+                case SignalType::None:        if (!hdr.cableVisWhite)  continue; break;
+            }
+        }
+
         // Find the modules that own these connectors
         const Module* srcModule = nullptr;
         const Module* dstModule = nullptr;

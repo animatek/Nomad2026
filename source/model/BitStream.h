@@ -42,23 +42,24 @@ public:
         return value;
     }
 
-    // Read a 16-character null-terminated string (for NameDump/PatchName)
-    // Reads 16 x 8-bit chars, returns the string up to the first null.
+    // Read a null-terminated string, up to 16 chars max.
+    // PDL2: String := 16*chars:8/0 — the /0 means stop at null terminator.
     // Non-printable characters are replaced with '?' to avoid JUCE assertion failures.
     std::string readString16()
     {
         std::string result;
         result.reserve(16);
-        bool terminated = false;
         for (int i = 0; i < 16; ++i)
         {
+            if (remaining() < 8)
+                break;  // Not enough data
             auto val = readBits(8);
             if (val == 0)
-                terminated = true;
-            if (!terminated && val >= 0x20 && val <= 0x7E)
+                break;  // Null terminator — stop reading per PDL2 /0 rule
+            if (val >= 0x20 && val <= 0x7E)
                 result += static_cast<char>(val);
-            else if (!terminated && val != 0)
-                result += '?';  // Replace non-printable with placeholder
+            else
+                result += '?';
         }
         return result;
     }

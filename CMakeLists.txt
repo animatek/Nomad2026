@@ -28,6 +28,7 @@ target_sources(Nomad2026 PRIVATE
     source/ui/PatchCanvasComponent.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
+    source/ui/PatchHeaderBar.cpp
 
     # UI
     source/ui/MidiSettingsDialog.cpp

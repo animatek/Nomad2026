@@ -5,6 +5,7 @@
 #include "PatchCanvasComponent.h"
 #include "InspectorPanel.h"
 #include "StatusBar.h"
+#include "PatchHeaderBar.h"
 #include "../model/ModuleDescriptions.h"
 
 class MainLayout : public juce::Component
@@ -19,12 +20,14 @@ public:
     PatchCanvasComponent& getCanvas() { return canvasComponent; }
     InspectorPanel& getInspector() { return inspectorPanel; }
     StatusBar& getStatusBar() { return statusBar; }
+    PatchHeaderBar& getHeaderBar() { return headerBar; }
 
 private:
     ModuleBrowserPanel browserPanel;
     PatchCanvasComponent canvasComponent;
     InspectorPanel inspectorPanel;
     StatusBar statusBar;
+    PatchHeaderBar headerBar;
 
     // Slot tabs
     juce::TabbedButtonBar slotTabs { juce::TabbedButtonBar::TabsAtTop };
@@ -36,6 +39,7 @@ private:
 
     static constexpr int statusBarHeight = 24;
     static constexpr int slotTabHeight = 28;
+    static constexpr int headerBarHeight = 48;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainLayout)
 };

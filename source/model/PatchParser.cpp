@@ -22,15 +22,9 @@ std::unique_ptr<Patch> PatchParser::parse(const std::vector<std::vector<uint8_t>
     for (size_t i = 0; i < sections.size(); ++i)
     {
         BitStream bs(sections[i]);
-        DBG("PatchParser: section packet " + juce::String(i)
-            + ": " + juce::String(sections[i].size())
-            + " midi bytes -> " + juce::String(bs.getTotalBits()) + " bits");
-
         // A single PatchPacket response may contain multiple PDL2 sections
         // (e.g. Header + PatchName2 in one response).
-        // We need >= 16 bits: 8 for type + at least 1 byte of data.
-        // This avoids misinterpreting residual padding bits from 7-to-8-bit conversion.
-        while (bs.remaining() >= 16)
+        while (bs.remaining() >= 8)
         {
             try
             {
@@ -123,7 +117,7 @@ void PatchParser::parseHeader(BitStream& bs, Patch& patch)
     h.portamentoTime   = static_cast<int>(bs.readBits(7));
     h.portamento       = bs.readBits(1) != 0;
     h.pedalMode        = static_cast<int>(bs.readBits(1));
-    h.voices           = static_cast<int>(bs.readBits(5));
+    h.voices           = static_cast<int>(bs.readBits(5)) + 1;  // stored 0-based, display 1-based
     /*unknown2*/         bs.readBits(2);
     h.separatorPosition = static_cast<int>(bs.readBits(12));
     h.octaveShift      = static_cast<int>(bs.readBits(3));
@@ -392,13 +386,9 @@ void PatchParser::parseNameDump(BitStream& bs, Patch& patch)
 
     for (int i = 0; i < nmodules; ++i)
     {
-        // Each module name needs 8 (index) + 128 (16 chars * 8 bits) = 136 bits
-        if (bs.remaining() < 136)
-        {
-            DBG("    NameDump: truncated at module " + juce::String(i) + "/" + juce::String(nmodules)
-                + " (need 136 bits, have " + juce::String(bs.remaining()) + ")");
+        // Each module name needs at least 8 (index) + 8 (null terminator) = 16 bits
+        if (bs.remaining() < 16)
             break;
-        }
 
         int index = static_cast<int>(bs.readBits(8));
         auto name = bs.readString16();
