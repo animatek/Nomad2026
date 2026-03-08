@@ -83,6 +83,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         auto patch = parser.parse(sections);
 
         juce::MessageManager::callAsync([this, p = std::move(patch)]() mutable {
+          // CRITICAL: Destroy synchronizer BEFORE replacing patch to avoid dangling reference
+          patchSynchronizer.reset();
+
           currentPatch = std::move(p);
           if (currentPatch) {
             mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs,
@@ -95,7 +98,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             if (connectionManager.isConnected()) {
               patchSynchronizer = std::make_unique<PatchSynchronizer>(
                   *currentPatch, connectionManager);
-              DBG("Patch synchronizer enabled");
+              DBG("Patch synchronizer enabled after patch load");
             }
           }
         });
@@ -241,6 +244,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 }
 
 void MainComponent::newPatch() {
+  // CRITICAL: Destroy synchronizer BEFORE replacing patch
+  patchSynchronizer.reset();
+
   currentPatch = std::make_unique<Patch>();
   currentPatchFile = juce::File();
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
@@ -305,6 +311,9 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
     return;
   }
 
+  // CRITICAL: Destroy synchronizer BEFORE replacing patch
+  patchSynchronizer.reset();
+
   currentPatch = std::move(patch);
   currentPatchFile = file;
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
@@ -316,7 +325,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   if (connectionManager.isConnected()) {
     patchSynchronizer = std::make_unique<PatchSynchronizer>(
         *currentPatch, connectionManager);
-    DBG("Patch synchronizer enabled");
+    DBG("Patch synchronizer enabled after file load");
   }
 }
 
@@ -338,17 +347,31 @@ void MainComponent::savePatchToSynth() {
   }
 
   // Send StorePatch message to save current patch to synth flash
-  // For now: save to current slot, bank 0, position 0
-  // TODO: Add dialog to choose destination bank/position
+  //
+  // NOTE: The meaning of these parameters is not fully documented:
+  //   - slot: Synth slot (0-3) where the patch is currently loaded
+  //   - section: 0 = save both poly and common areas (best guess)
+  //   - position: Bank position (0-99) - WARNING: This will overwrite!
+  //
+  // TODO: Add dialog to choose destination bank/position instead of
+  //       hardcoding position=0
   int slot = connectionManager.getCurrentSlot();
-  int section = 0;  // 0 = save both common and poly areas
-  int position = 0; // Bank position (0-99)
+  int section = 0;   // 0 = save both areas (unverified)
+  int position = 0;  // Bank position - OVERWRITES position 0!
 
   StorePatchMessage msg(slot, section, position);
   auto sysex = msg.toSysEx(slot);
   connectionManager.sendRawSysEx(sysex);
 
-  DBG("Sent StorePatch to slot " + juce::String(slot) + " position " + juce::String(position));
+  DBG("Sent StorePatch: slot=" + juce::String(slot)
+      + " section=" + juce::String(section)
+      + " position=" + juce::String(position));
+
+  // Dump raw message for debugging
+  juce::String hexDump;
+  for (auto byte : sysex)
+    hexDump += juce::String::toHexString((int)byte) + " ";
+  DBG("StorePatch SysEx: " + hexDump);
 
   // Show confirmation
   mainLayout->getStatusBar().setConnectionStatus(
@@ -357,8 +380,10 @@ void MainComponent::savePatchToSynth() {
   juce::AlertWindow::showMessageBoxAsync(
       juce::MessageBoxIconType::InfoIcon,
       "Saved to Synth",
-      "Patch saved to synthesizer slot " + juce::String(slot) +
-      "\n\nThe patch has been written to permanent memory.");
+      juce::String("Patch saved to synthesizer:\n") +
+      "Slot: " + juce::String(slot) + "\n" +
+      "Bank position: " + juce::String(position) + "\n\n" +
+      "The patch has been written to permanent memory.");
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {

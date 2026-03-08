@@ -23,15 +23,21 @@ std::vector<uint8_t> StorePatchMessage::toSysEx(int slot) const
     // Subcommand: StorePatch (0x0b)
     msg.push_back(0x0b);
 
-    // Payload (2 bytes):
-    // Byte 0: slot:2 section:1 0:5
-    int byte0 = ((slot_ & 0x03) << 6) | ((section_ & 0x01) << 5);
+    // Payload (3 bytes) per PDL2 spec:
+    // 0:1 slot:7 0:1 section:7 0:1 position:7
 
-    // Byte 1: position:7 0:1
-    int byte1 = ((position_ & 0x7F) << 1);
+    // Byte 0: 0:1 slot:7
+    int byte0 = (slot_ & 0x7F);
+
+    // Byte 1: 0:1 section:7
+    int byte1 = (section_ & 0x7F);
+
+    // Byte 2: 0:1 position:7
+    int byte2 = (position_ & 0x7F);
 
     msg.push_back(byte0);
     msg.push_back(byte1);
+    msg.push_back(byte2);
 
     // Footer: checksum + F7
     appendFooter(msg);

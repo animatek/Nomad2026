@@ -6,10 +6,9 @@
  * StorePatch message (cc=0x17, pp=0x41, sc=0x0b)
  * Saves the current patch to permanent synth memory.
  *
- * PDL2 spec (midi.pdl2:507-510):
+ * PDL2 spec (midi.pdl2):
  *   StorePatch :=
- *     slot:2 section:1 0:5
- *     position:7 0:1
+ *     0:1 slot:7 0:1 section:7 0:1 position:7
  */
 class StorePatchMessage : public SysExMessage
 {
