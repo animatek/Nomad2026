@@ -3,6 +3,8 @@
 #include "model/PchFileIO.h"
 #include "ui/MidiSettingsDialog.h"
 #include "protocol/StorePatchMessage.h"
+#include <iostream>
+#include <iomanip>
 
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
@@ -98,7 +100,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             if (connectionManager.isConnected()) {
               patchSynchronizer = std::make_unique<PatchSynchronizer>(
                   *currentPatch, connectionManager);
-              DBG("Patch synchronizer enabled after patch load");
+              std::cout << "[SYNC] Patch synchronizer enabled after patch load from synth" << std::endl;
             }
           }
         });
@@ -325,7 +327,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   if (connectionManager.isConnected()) {
     patchSynchronizer = std::make_unique<PatchSynchronizer>(
         *currentPatch, connectionManager);
-    DBG("Patch synchronizer enabled after file load");
+    std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
 }
 
@@ -363,15 +365,17 @@ void MainComponent::savePatchToSynth() {
   auto sysex = msg.toSysEx(slot);
   connectionManager.sendRawSysEx(sysex);
 
-  DBG("Sent StorePatch: slot=" + juce::String(slot)
-      + " section=" + juce::String(section)
-      + " position=" + juce::String(position));
+  // Debug logging with hex dump
+  std::cout << "[SYNC] Sent StorePatch: "
+      << "slot=" << slot
+      << " section=" << section
+      << " position=" << position
+      << std::endl;
 
-  // Dump raw message for debugging
-  juce::String hexDump;
+  std::cout << "[SYNC]   StorePatch SysEx: ";
   for (auto byte : sysex)
-    hexDump += juce::String::toHexString((int)byte) + " ";
-  DBG("StorePatch SysEx: " + hexDump);
+    std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+  std::cout << std::dec << std::endl;
 
   // Show confirmation
   mainLayout->getStatusBar().setConnectionStatus(
@@ -440,12 +444,12 @@ void MainComponent::onConnectionStatusChanged(
     if (currentPatch && !patchSynchronizer) {
       patchSynchronizer = std::make_unique<PatchSynchronizer>(
           *currentPatch, connectionManager);
-      DBG("Patch synchronizer enabled on connection");
+      std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
   } else {
     // Disable synchronizer on disconnect
     patchSynchronizer.reset();
-    DBG("Patch synchronizer disabled on disconnect");
+    std::cout << "[SYNC] Patch synchronizer disabled on disconnect" << std::endl;
   }
 }
 

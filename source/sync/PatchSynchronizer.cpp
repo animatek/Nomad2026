@@ -3,6 +3,8 @@
 #include "../protocol/DeleteCableMessage.h"
 #include "../protocol/MoveModuleMessage.h"
 #include <juce_core/juce_core.h>
+#include <iostream>
+#include <iomanip>
 
 PatchSynchronizer::PatchSynchronizer(Patch& patch, ConnectionManager& connMgr)
     : patch_(patch), connMgr_(connMgr)
@@ -45,7 +47,7 @@ void PatchSynchronizer::enable()
     registerModuleMoved(patch_.getCommonArea(), 0);
 
     enabled_ = true;
-    DBG("PatchSynchronizer enabled");
+    std::cout << "[SYNC] PatchSynchronizer enabled" << std::endl;
 }
 
 void PatchSynchronizer::disable()
@@ -66,7 +68,7 @@ void PatchSynchronizer::disable()
         m->setModuleMovedCallback(nullptr);
 
     enabled_ = false;
-    DBG("PatchSynchronizer disabled");
+    std::cout << "[SYNC] PatchSynchronizer disabled" << std::endl;
 }
 
 void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* input)
@@ -82,7 +84,7 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
 
     if (!outModule || !inModule)
     {
-        DBG("PatchSynchronizer::onCableAdded - could not find modules");
+        std::cout << "[SYNC] ERROR: onCableAdded - could not find modules" << std::endl;
         return;
     }
 
@@ -105,16 +107,18 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
     connMgr_.sendRawSysEx(sysex);
 
     // Debug logging with hex dump
-    juce::String hexDump;
-    for (auto byte : sysex)
-        hexDump += juce::String::toHexString((int)byte).paddedLeft('0', 2) + " ";
+    std::cout << "[SYNC] Sent CableInsert: "
+        << "section=" << section
+        << " color=" << (int)color
+        << " modules=" << outModIdx << "->" << inModIdx
+        << " types=" << (outIsOutput ? "out" : "in") << "->" << (inIsOutput ? "out" : "in")
+        << " connectors=" << outConnIdx << "->" << inConnIdx
+        << std::endl;
 
-    DBG("Sent CableInsert: section=" + juce::String(section)
-        + " color=" + juce::String((int)color)
-        + " modules=" + juce::String(outModIdx) + "->" + juce::String(inModIdx)
-        + " types=" + juce::String(outIsOutput ? "out" : "in") + "->" + juce::String(inIsOutput ? "out" : "in")
-        + " connectors=" + juce::String(outConnIdx) + "->" + juce::String(inConnIdx));
-    DBG("  SysEx: " + hexDump);
+    std::cout << "[SYNC]   SysEx: ";
+    for (auto byte : sysex)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+    std::cout << std::dec << std::endl;
 }
 
 void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector* input)
@@ -130,7 +134,7 @@ void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector
 
     if (!outModule || !inModule)
     {
-        DBG("PatchSynchronizer::onCableRemoved - could not find modules");
+        std::cout << "[SYNC] ERROR: onCableRemoved - could not find modules" << std::endl;
         return;
     }
 
@@ -153,14 +157,16 @@ void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector
     connMgr_.sendRawSysEx(sysex);
 
     // Debug logging with hex dump
-    juce::String hexDump;
-    for (auto byte : sysex)
-        hexDump += juce::String::toHexString((int)byte).paddedLeft('0', 2) + " ";
+    std::cout << "[SYNC] Sent CableDelete: "
+        << "section=" << section
+        << " modules=" << outModIdx << "->" << inModIdx
+        << " connectors=" << outConnIdx << "->" << inConnIdx
+        << std::endl;
 
-    DBG("Sent CableDelete: section=" + juce::String(section)
-        + " modules=" + juce::String(outModIdx) + "->" + juce::String(inModIdx)
-        + " connectors=" + juce::String(outConnIdx) + "->" + juce::String(inConnIdx));
-    DBG("  SysEx: " + hexDump);
+    std::cout << "[SYNC]   SysEx: ";
+    for (auto byte : sysex)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+    std::cout << std::dec << std::endl;
 }
 
 void PatchSynchronizer::onModuleMoved(int section, Module* module, int oldX, int oldY)
@@ -176,14 +182,16 @@ void PatchSynchronizer::onModuleMoved(int section, Module* module, int oldX, int
     connMgr_.sendRawSysEx(sysex);
 
     // Debug logging with hex dump
-    juce::String hexDump;
-    for (auto byte : sysex)
-        hexDump += juce::String::toHexString((int)byte).paddedLeft('0', 2) + " ";
+    std::cout << "[SYNC] Sent ModuleMove: "
+        << "section=" << section
+        << " module=" << moduleIdx
+        << " pos=(" << pos.x << "," << pos.y << ")"
+        << std::endl;
 
-    DBG("Sent ModuleMove: section=" + juce::String(section)
-        + " module=" + juce::String(moduleIdx)
-        + " pos=(" + juce::String(pos.x) + "," + juce::String(pos.y) + ")");
-    DBG("  SysEx: " + hexDump);
+    std::cout << "[SYNC]   SysEx: ";
+    for (auto byte : sysex)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+    std::cout << std::dec << std::endl;
 }
 
 int PatchSynchronizer::getModuleIndex(const ModuleContainer& container, const Module* m) const
