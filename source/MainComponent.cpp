@@ -1,6 +1,8 @@
 #include "MainComponent.h"
 #include "model/PatchParser.h"
+#include "model/PchFileIO.h"
 #include "ui/MidiSettingsDialog.h"
+#include "protocol/StorePatchMessage.h"
 
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
@@ -88,6 +90,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             mainLayout->getHeaderBar().setPatch(currentPatch.get());
             mainLayout->getStatusBar().setConnectionStatus(
                 "Connected - " + currentPatch->getName(), true);
+
+            // Enable patch synchronization (live editing)
+            if (connectionManager.isConnected()) {
+              patchSynchronizer = std::make_unique<PatchSynchronizer>(
+                  *currentPatch, connectionManager);
+              DBG("Patch synchronizer enabled");
+            }
           }
         });
       });
@@ -202,6 +211,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
 
 void MainComponent::menuItemSelected(int menuItemID, int) {
   switch (menuItemID) {
+  case 1:
+    newPatch();
+    break;
+  case 2:
+    openPatch();
+    break;
+  case 3:
+    savePatch();
+    break;
+  case 4:
+    savePatchAs();
+    break;
   case 10:
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
     break;
@@ -211,9 +232,151 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 31:
     connectionManager.requestPatch(0); // Request from slot 0
     break;
+  case 32:
+    savePatchToSynth();
+    break;
   default:
     break;
   }
+}
+
+void MainComponent::newPatch() {
+  currentPatch = std::make_unique<Patch>();
+  currentPatchFile = juce::File();
+  mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
+  mainLayout->getHeaderBar().setPatch(currentPatch.get());
+  mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
+}
+
+void MainComponent::openPatch() {
+  auto chooser = std::make_shared<juce::FileChooser>(
+      "Open Patch", juce::File(), "*.pch");
+
+  chooser->launchAsync(
+      juce::FileBrowserComponent::openMode |
+          juce::FileBrowserComponent::canSelectFiles,
+      [this, chooser](const juce::FileChooser &fc) {
+        auto result = fc.getResult();
+        if (result.existsAsFile())
+          loadPatchFromFile(result);
+      });
+}
+
+void MainComponent::savePatch() {
+  if (currentPatch == nullptr)
+    return;
+
+  if (currentPatchFile.existsAsFile()) {
+    savePatchToFile(currentPatchFile);
+  } else {
+    savePatchAs();
+  }
+}
+
+void MainComponent::savePatchAs() {
+  if (currentPatch == nullptr)
+    return;
+
+  auto chooser = std::make_shared<juce::FileChooser>(
+      "Save Patch As", juce::File(), "*.pch");
+
+  chooser->launchAsync(
+      juce::FileBrowserComponent::saveMode |
+          juce::FileBrowserComponent::canSelectFiles,
+      [this, chooser](const juce::FileChooser &fc) {
+        auto result = fc.getResult();
+        if (result != juce::File()) {
+          auto file = result.hasFileExtension(".pch")
+                          ? result
+                          : result.withFileExtension("pch");
+          if (savePatchToFile(file))
+            currentPatchFile = file;
+        }
+      });
+}
+
+void MainComponent::loadPatchFromFile(const juce::File &file) {
+  PchFileIO io(moduleDescs);
+  auto patch = io.readFile(file);
+
+  if (patch == nullptr) {
+    mainLayout->getStatusBar().setConnectionStatus(
+        "Failed to load: " + file.getFileName(), false);
+    return;
+  }
+
+  currentPatch = std::move(patch);
+  currentPatchFile = file;
+  mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
+  mainLayout->getHeaderBar().setPatch(currentPatch.get());
+  mainLayout->getStatusBar().setConnectionStatus(
+      "Loaded: " + file.getFileName(), false);
+
+  // Enable patch synchronization if connected
+  if (connectionManager.isConnected()) {
+    patchSynchronizer = std::make_unique<PatchSynchronizer>(
+        *currentPatch, connectionManager);
+    DBG("Patch synchronizer enabled");
+  }
+}
+
+void MainComponent::savePatchToSynth() {
+  if (!connectionManager.isConnected()) {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::WarningIcon,
+        "Not Connected",
+        "Please connect to the Nord Modular first.");
+    return;
+  }
+
+  if (currentPatch == nullptr) {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::WarningIcon,
+        "No Patch",
+        "Please load a patch first.");
+    return;
+  }
+
+  // Send StorePatch message to save current patch to synth flash
+  // For now: save to current slot, bank 0, position 0
+  // TODO: Add dialog to choose destination bank/position
+  int slot = connectionManager.getCurrentSlot();
+  int section = 0;  // 0 = save both common and poly areas
+  int position = 0; // Bank position (0-99)
+
+  StorePatchMessage msg(slot, section, position);
+  auto sysex = msg.toSysEx(slot);
+  connectionManager.sendRawSysEx(sysex);
+
+  DBG("Sent StorePatch to slot " + juce::String(slot) + " position " + juce::String(position));
+
+  // Show confirmation
+  mainLayout->getStatusBar().setConnectionStatus(
+      "Saved to synth slot " + juce::String(slot), true);
+
+  juce::AlertWindow::showMessageBoxAsync(
+      juce::MessageBoxIconType::InfoIcon,
+      "Saved to Synth",
+      "Patch saved to synthesizer slot " + juce::String(slot) +
+      "\n\nThe patch has been written to permanent memory.");
+}
+
+bool MainComponent::savePatchToFile(const juce::File &file) {
+  if (currentPatch == nullptr)
+    return false;
+
+  PchFileIO io(moduleDescs);
+  bool ok = io.writeFile(*currentPatch, file);
+
+  if (ok) {
+    mainLayout->getStatusBar().setConnectionStatus(
+        "Saved: " + file.getFileName(), false);
+  } else {
+    mainLayout->getStatusBar().setConnectionStatus(
+        "Failed to save: " + file.getFileName(), false);
+  }
+
+  return ok;
 }
 
 void MainComponent::showMidiSettingsDialog() {
@@ -247,6 +410,17 @@ void MainComponent::onConnectionStatusChanged(
 
     // Auto-request patch from slot 0 once connected
     connectionManager.requestPatch(0);
+
+    // Enable synchronizer if we have a patch loaded
+    if (currentPatch && !patchSynchronizer) {
+      patchSynchronizer = std::make_unique<PatchSynchronizer>(
+          *currentPatch, connectionManager);
+      DBG("Patch synchronizer enabled on connection");
+    }
+  } else {
+    // Disable synchronizer on disconnect
+    patchSynchronizer.reset();
+    DBG("Patch synchronizer disabled on disconnect");
   }
 }
 

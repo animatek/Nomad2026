@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <array>
+#include <functional>
 
 class Parameter
 {
@@ -59,6 +60,8 @@ struct Connection
 class Module
 {
 public:
+    using ModuleMovedCallback = std::function<void(Module*, int oldX, int oldY)>;
+
     static std::unique_ptr<Module> createFromDescriptor(const ModuleDescriptor& desc);
 
     const ModuleDescriptor* getDescriptor() const { return descriptor; }
@@ -67,7 +70,9 @@ public:
     void setTitle(const juce::String& t) { title = t; }
 
     juce::Point<int> getPosition() const { return position; }
-    void setPosition(juce::Point<int> p) { position = p; }
+    void setPosition(juce::Point<int> p);
+
+    void setModuleMovedCallback(ModuleMovedCallback cb) { onMoved = std::move(cb); }
 
     const std::vector<Parameter>& getParameters() const { return parameters; }
     std::vector<Parameter>& getParameters() { return parameters; }
@@ -94,11 +99,15 @@ private:
     std::vector<Parameter> parameters;
     std::vector<Connector> connectors;
     std::vector<Light> lights;
+    ModuleMovedCallback onMoved;
 };
 
 class ModuleContainer
 {
 public:
+    using CableAddedCallback = std::function<void(Connector* output, Connector* input)>;
+    using CableRemovedCallback = std::function<void(Connector* output, Connector* input)>;
+
     Module* addModule(std::unique_ptr<Module> module);
     void removeModule(Module* module);
 
@@ -106,6 +115,7 @@ public:
 
     void addConnection(Connector* output, Connector* input);
     void removeConnection(Connector* output, Connector* input);
+    void removeConnectionsForConnector(Connector* conn);
 
     Module* getModuleByIndex(int containerIndex);
     const Module* getModuleByIndex(int containerIndex) const;
@@ -113,9 +123,15 @@ public:
     const std::vector<std::unique_ptr<Module>>& getModules() const { return modules; }
     const std::vector<Connection>& getConnections() const { return connections; }
 
+    // Event callbacks
+    void setCableAddedCallback(CableAddedCallback cb) { onCableAdded = std::move(cb); }
+    void setCableRemovedCallback(CableRemovedCallback cb) { onCableRemoved = std::move(cb); }
+
 private:
     std::vector<std::unique_ptr<Module>> modules;
     std::vector<Connection> connections;
+    CableAddedCallback onCableAdded;
+    CableRemovedCallback onCableRemoved;
 };
 
 struct PatchHeader
@@ -130,6 +146,11 @@ struct PatchHeader
     int pedalMode = 0;
     int voices = 1;
     int octaveShift = 0;
+    // Voice retrigger
+    int voiceRetriggerPoly = 1;
+    int voiceRetriggerCommon = 1;
+    // Unknown fields (preserved for round-trip fidelity)
+    int unknown1 = 0, unknown2 = 0, unknown3 = 0, unknown4 = 0;
     // Cable visibility flags
     bool cableVisRed = true;
     bool cableVisBlue = true;
@@ -213,6 +234,9 @@ public:
 
     // Notes
     std::vector<NoteSlot> notes;
+
+    // Free-text patch notes ([Notes] section, not MIDI NoteSlots)
+    juce::String patchNotes;
 
 private:
     juce::String name { "Init Patch" };

@@ -5,7 +5,9 @@
 #include "model/ModuleDescriptions.h"
 #include "model/ThemeData.h"
 #include "model/Patch.h"
+#include "model/PchFileIO.h"
 #include "midi/ConnectionManager.h"
+#include "sync/PatchSynchronizer.h"
 #include "ui/MainLayout.h"
 
 class MainComponent : public juce::Component,
@@ -25,6 +27,14 @@ public:
     ModuleDescriptions& getModuleDescriptions() { return moduleDescs; }
 
 private:
+    void newPatch();
+    void openPatch();
+    void savePatch();
+    void savePatchAs();
+    void savePatchToSynth();
+    void loadPatchFromFile(const juce::File& file);
+    bool savePatchToFile(const juce::File& file);
+
     void showMidiSettingsDialog();
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
@@ -40,6 +50,8 @@ private:
     std::unique_ptr<juce::MenuBarComponent> menuBar;
 
     std::unique_ptr<Patch> currentPatch;
+    juce::File currentPatchFile;
+    std::unique_ptr<PatchSynchronizer> patchSynchronizer;
 
     juce::String lastInputId;
     juce::String lastOutputId;

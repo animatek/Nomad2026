@@ -20,6 +20,7 @@ target_sources(Nomad2026 PRIVATE
     source/model/ModuleDescriptions.cpp
     source/model/Patch.cpp
     source/model/PatchParser.cpp
+    source/model/PchFileIO.cpp
     source/model/ThemeData.cpp
 
     # UI
@@ -39,6 +40,16 @@ target_sources(Nomad2026 PRIVATE
     source/midi/NmProtocol.cpp
     source/midi/MidiDeviceManager.cpp
     source/midi/ConnectionManager.cpp
+
+    # Protocol Messages
+    source/protocol/SysExMessage.cpp
+    source/protocol/NewCableMessage.cpp
+    source/protocol/DeleteCableMessage.cpp
+    source/protocol/MoveModuleMessage.cpp
+    source/protocol/StorePatchMessage.cpp
+
+    # Synchronization
+    source/sync/PatchSynchronizer.cpp
 )
 
 target_include_directories(Nomad2026 PRIVATE source)

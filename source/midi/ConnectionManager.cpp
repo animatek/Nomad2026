@@ -144,6 +144,16 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
     protocol.sendMessage(NmCmd::ParameterChange, currentSlot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
 }
 
+void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
+{
+    if (!isConnected() || !midiDevice)
+        return;
+
+    // Send the raw SysEx bytes directly via the MIDI device
+    // This bypasses the NmProtocol queue system, for use by PatchSynchronizer
+    midiDevice->sendSysEx(sysex);
+}
+
 void ConnectionManager::onAckReceived(const AckMessage& msg)
 {
     DBG("ACK received: pid1=" + juce::String(msg.pid1)

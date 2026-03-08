@@ -34,6 +34,14 @@ Connector* Module::getConnector(int index)
     return nullptr;
 }
 
+void Module::setPosition(juce::Point<int> p)
+{
+    auto oldPos = position;
+    position = p;
+    if (onMoved && (oldPos.x != p.x || oldPos.y != p.y))
+        onMoved(this, oldPos.x, oldPos.y);
+}
+
 // --- ModuleContainer ---
 
 Module* ModuleContainer::addModule(std::unique_ptr<Module> module)
@@ -76,6 +84,8 @@ bool ModuleContainer::canAdd(const ModuleDescriptor& desc) const
 void ModuleContainer::addConnection(Connector* output, Connector* input)
 {
     connections.push_back({ output, input });
+    if (onCableAdded)
+        onCableAdded(output, input);
 }
 
 void ModuleContainer::removeConnection(Connector* output, Connector* input)
@@ -83,6 +93,26 @@ void ModuleContainer::removeConnection(Connector* output, Connector* input)
     connections.erase(
         std::remove_if(connections.begin(), connections.end(),
             [output, input](const Connection& c) { return c.output == output && c.input == input; }),
+        connections.end());
+    if (onCableRemoved)
+        onCableRemoved(output, input);
+}
+
+void ModuleContainer::removeConnectionsForConnector(Connector* conn)
+{
+    // Fire removal events for each connection being removed
+    if (onCableRemoved)
+    {
+        for (auto& c : connections)
+        {
+            if (c.output == conn || c.input == conn)
+                onCableRemoved(c.output, c.input);
+        }
+    }
+
+    connections.erase(
+        std::remove_if(connections.begin(), connections.end(),
+            [conn](const Connection& c) { return c.output == conn || c.input == conn; }),
         connections.end());
 }
 

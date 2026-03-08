@@ -35,6 +35,7 @@ public:
     // Synth commands
     void requestPatch(int slot = 0);
     void sendParameter(int section, int moduleId, int parameterId, int value);
+    void sendRawSysEx(const std::vector<uint8_t>& sysex);
 
     int getCurrentSlot() const;
 
