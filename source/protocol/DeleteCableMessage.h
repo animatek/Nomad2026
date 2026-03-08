@@ -4,10 +4,14 @@
 #include "../model/SignalType.h"
 
 /**
- * DeleteCable message (cc=0x17, sc=0x51)
+ * CableDelete message (cc=0x17, sc=0x51)
  * Removes a cable connection between two module connectors.
  *
- * Uses identical payload structure to NewCable.
+ * PDL2 spec (midi.pdl2):
+ *   CableDelete :=
+ *     0:1 1:6 section:1
+ *     0:1 module1:7 0:1 type1:1 connector1:6
+ *     0:1 module2:7 0:1 type2:1 connector2:6
  */
 class DeleteCableMessage : public SysExMessage
 {

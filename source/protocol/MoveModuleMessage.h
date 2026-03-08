@@ -3,15 +3,12 @@
 #include "SysExMessage.h"
 
 /**
- * MoveModule message (cc=0x17, sc=0x34)
+ * ModuleMove message (cc=0x17, sc=0x34)
  * Updates a module's position in the patch layout.
  *
- * PDL2 spec (midi.pdl2:354-358):
- *   MoveModule :=
- *     0:1 section:1 0:6
- *     0:1 module:7
- *     0:1 xpos:7
- *     0:1 ypos:7
+ * PDL2 spec (midi.pdl2):
+ *   ModuleMove :=
+ *     0:1 section:7 0:1 module:7 0:1 xpos:7 0:1 ypos:7
  */
 class MoveModuleMessage : public SysExMessage
 {

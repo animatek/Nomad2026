@@ -21,9 +21,11 @@ std::vector<uint8_t> MoveModuleMessage::toSysEx(int slot) const
     // Subcommand: MoveModule (0x34)
     msg.push_back(0x34);
 
-    // Payload (4 bytes):
-    // Byte 0: 0:1 section:1 0:6
-    int byte0 = ((section_ & 0x01) << 6);
+    // Payload (4 bytes) per PDL2 spec:
+    // ModuleMove := 0:1 section:7 0:1 module:7 0:1 xpos:7 0:1 ypos:7
+
+    // Byte 0: 0:1 section:7
+    int byte0 = (section_ & 0x7F);
 
     // Byte 1: 0:1 module:7
     int byte1 = (moduleIndex_ & 0x7F);

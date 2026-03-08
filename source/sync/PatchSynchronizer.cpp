@@ -104,9 +104,17 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
     connMgr_.sendRawSysEx(sysex);
 
-    DBG("Sent NewCable: section=" + juce::String(section)
+    // Debug logging with hex dump
+    juce::String hexDump;
+    for (auto byte : sysex)
+        hexDump += juce::String::toHexString((int)byte).paddedLeft('0', 2) + " ";
+
+    DBG("Sent CableInsert: section=" + juce::String(section)
+        + " color=" + juce::String((int)color)
         + " modules=" + juce::String(outModIdx) + "->" + juce::String(inModIdx)
+        + " types=" + juce::String(outIsOutput ? "out" : "in") + "->" + juce::String(inIsOutput ? "out" : "in")
         + " connectors=" + juce::String(outConnIdx) + "->" + juce::String(inConnIdx));
+    DBG("  SysEx: " + hexDump);
 }
 
 void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector* input)
@@ -144,8 +152,15 @@ void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
     connMgr_.sendRawSysEx(sysex);
 
-    DBG("Sent DeleteCable: section=" + juce::String(section)
-        + " modules=" + juce::String(outModIdx) + "->" + juce::String(inModIdx));
+    // Debug logging with hex dump
+    juce::String hexDump;
+    for (auto byte : sysex)
+        hexDump += juce::String::toHexString((int)byte).paddedLeft('0', 2) + " ";
+
+    DBG("Sent CableDelete: section=" + juce::String(section)
+        + " modules=" + juce::String(outModIdx) + "->" + juce::String(inModIdx)
+        + " connectors=" + juce::String(outConnIdx) + "->" + juce::String(inConnIdx));
+    DBG("  SysEx: " + hexDump);
 }
 
 void PatchSynchronizer::onModuleMoved(int section, Module* module, int oldX, int oldY)
@@ -160,9 +175,15 @@ void PatchSynchronizer::onModuleMoved(int section, Module* module, int oldX, int
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
     connMgr_.sendRawSysEx(sysex);
 
-    DBG("Sent MoveModule: section=" + juce::String(section)
+    // Debug logging with hex dump
+    juce::String hexDump;
+    for (auto byte : sysex)
+        hexDump += juce::String::toHexString((int)byte).paddedLeft('0', 2) + " ";
+
+    DBG("Sent ModuleMove: section=" + juce::String(section)
         + " module=" + juce::String(moduleIdx)
         + " pos=(" + juce::String(pos.x) + "," + juce::String(pos.y) + ")");
+    DBG("  SysEx: " + hexDump);
 }
 
 int PatchSynchronizer::getModuleIndex(const ModuleContainer& container, const Module* m) const

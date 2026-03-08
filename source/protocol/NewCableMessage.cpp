@@ -24,26 +24,36 @@ std::vector<uint8_t> NewCableMessage::toSysEx(int slot) const
     // Command: PatchHandling (0x17)
     msg.push_back(0x17);
 
-    // Subcommand: NewCable (0x50)
+    // Subcommand: CableInsert (0x50)
     msg.push_back(0x50);
 
-    // Payload (5 bytes, PDL2 bit-packed):
-    // Byte 0: 0:1 section:1 0:1 color:4 0:1
-    int byte0 = ((section_ & 0x01) << 6) | ((static_cast<int>(color_) & 0x0F) << 1);
+    // Payload (5 bytes) per PDL2 spec:
+    // CableInsert :=
+    //   0:1 1:3 section:1 color:3
+    //   0:1 module1:7 0:1 type1:1 connector1:6
+    //   0:1 module2:7 0:1 type2:1 connector2:6
+
+    // Byte 0: 0:1 1:3 section:1 color:3
+    // Bit 7: 0 (padding)
+    // Bits 6-4: 111 (fixed value)
+    // Bit 3: section
+    // Bits 2-0: color
+    int byte0 = (0x07 << 4) | ((section_ & 0x01) << 3) | (static_cast<int>(color_) & 0x07);
 
     // Byte 1: 0:1 module1:7
     int byte1 = (module1_ & 0x7F);
 
-    // Byte 2: 0:1 type1:2 0:1 connector1:6 (type: 0=input, 1=output)
+    // Byte 2: 0:1 type1:1 connector1:6
+    // type: 0=input, 1=output (1 bit only!)
     int type1 = isOutput1_ ? 1 : 0;
-    int byte2 = ((type1 & 0x03) << 5) | (connector1_ & 0x1F);
+    int byte2 = ((type1 & 0x01) << 6) | (connector1_ & 0x3F);
 
     // Byte 3: 0:1 module2:7
     int byte3 = (module2_ & 0x7F);
 
-    // Byte 4: 0:1 type2:2 0:1 connector2:6
+    // Byte 4: 0:1 type2:1 connector2:6
     int type2 = isOutput2_ ? 1 : 0;
-    int byte4 = ((type2 & 0x03) << 5) | (connector2_ & 0x1F);
+    int byte4 = ((type2 & 0x01) << 6) | (connector2_ & 0x3F);
 
     msg.push_back(byte0);
     msg.push_back(byte1);

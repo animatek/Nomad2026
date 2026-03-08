@@ -4,14 +4,14 @@
 #include "../model/SignalType.h"
 
 /**
- * NewCable message (cc=0x17, sc=0x50)
+ * CableInsert message (cc=0x17, sc=0x50)
  * Adds a cable connection between two module connectors.
  *
- * PDL2 spec (midi.pdl2:382-393):
- *   NewCable :=
- *     0:1 section:1 0:1 color:4 0:1
- *     0:1 module1:7 0:1 type1:2 0:1 connector1:6 0:1
- *     0:1 module2:7 0:1 type2:2 0:1 connector2:6 0:1
+ * PDL2 spec (midi.pdl2):
+ *   CableInsert :=
+ *     0:1 1:3 section:1 color:3
+ *     0:1 module1:7 0:1 type1:1 connector1:6
+ *     0:1 module2:7 0:1 type2:1 connector2:6
  */
 class NewCableMessage : public SysExMessage
 {
