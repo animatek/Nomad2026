@@ -160,6 +160,24 @@ void PatchCanvas::paint(juce::Graphics& g)
 
     paintCables(g, patch->getPolyVoiceArea(), polyAreaOffsetY);
     paintCables(g, patch->getCommonArea(), separatorY);
+
+    // Cable creation preview (rubber-band cable)
+    if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
+    {
+        int yOffset = (dragState.section == 1) ? polyAreaOffsetY : separatorY;
+        auto srcPos = getConnectorPosition(*dragState.module, *dragState.sourceConnector, yOffset);
+
+        juce::Path path;
+        path.startNewSubPath(srcPos.toFloat());
+        float midY = (srcPos.y + cablePreviewEnd.y) * 0.5f;
+        float sag = std::abs(float(srcPos.x - cablePreviewEnd.x)) * 0.15f + 15.0f;
+        path.cubicTo(static_cast<float>(srcPos.x), midY + sag,
+                     static_cast<float>(cablePreviewEnd.x), midY + sag,
+                     static_cast<float>(cablePreviewEnd.x), static_cast<float>(cablePreviewEnd.y));
+
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
+        g.strokePath(path, juce::PathStrokeType(2.5f));
+    }
 }
 
 void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset)
@@ -1174,7 +1192,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 
     // Search both areas
     // Protocol convention: section 1 = poly, section 0 = common
-    struct { const ModuleContainer* container; int section; int yOffset; } areas[] = {
+    struct { ModuleContainer* container; int section; int yOffset; } areas[] = {
         { &patch->getPolyVoiceArea(), 1, polyAreaOffsetY },
         { &patch->getCommonArea(), 0, separatorY }
     };
@@ -1195,6 +1213,35 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 continue;
 
             auto relPos = pos - rect.getPosition();
+
+            // Test connectors FIRST (cable creation / deletion)
+            for (auto& tc : theme->connectors)
+            {
+                juce::Rectangle<int> connRect(tc.x, tc.y, tc.size, tc.size);
+                connRect = connRect.expanded(2);  // tolerance
+                if (connRect.contains(relPos))
+                {
+                    auto* conn = findConnectorByComponentId(m, tc.componentId);
+                    if (conn != nullptr)
+                    {
+                        if (e.mods.isRightButtonDown())
+                        {
+                            // Delete cables on this connector
+                            area.container->removeConnectionsForConnector(conn);
+                            repaint();
+                            return;
+                        }
+                        // Start cable creation
+                        dragState.type = DragState::CableCreate;
+                        dragState.module = &m;
+                        dragState.sourceConnector = conn;
+                        dragState.section = area.section;
+                        cablePreviewEnd = pos;
+                        showCablePreview = true;
+                        return;
+                    }
+                }
+            }
 
             // Test knobs
             for (auto& tk : theme->knobs)
@@ -1268,13 +1315,58 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                     }
                 }
             }
+
+            // Module body fallback → start module drag
+            dragState.type = DragState::ModuleMove;
+            dragState.module = &m;
+            dragState.section = area.section;
+            dragState.startPos = pos;
+            dragState.dragOffsetX = pos.x - rect.getX();
+            dragState.dragOffsetY = pos.y - rect.getY();
+            return;
         }
     }
 }
 
 void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 {
-    if (dragState.type == DragState::None || dragState.parameter == nullptr)
+    if (dragState.type == DragState::None)
+        return;
+
+    auto currentPos = e.getPosition();
+
+    if (dragState.type == DragState::ModuleMove)
+    {
+        int separatorY = patch->getHeader().separatorPosition * gridY;
+        if (separatorY == 0)
+            separatorY = canvasHeight / 2;
+        int yOffset = (dragState.section == 1) ? polyAreaOffsetY : separatorY;
+
+        int newGridX = juce::jmax(0, (currentPos.x - dragState.dragOffsetX + gridX / 2) / gridX);
+        int rawGridY = juce::jmax(0, (currentPos.y - dragState.dragOffsetY - yOffset + gridY / 2) / gridY);
+
+        // Prevent overlap: snap to nearest free Y position in this column
+        auto& container = patch->getContainer(dragState.section);
+        int moduleHeight = dragState.module->getDescriptor()->height;
+        int newGridY = findNearestFreeY(container, dragState.module, newGridX, rawGridY, moduleHeight);
+
+        auto curPos = dragState.module->getPosition();
+        if (newGridX != curPos.x || newGridY != curPos.y)
+        {
+            dragState.module->setPosition({ newGridX, newGridY });
+            repaint();
+        }
+        return;
+    }
+
+    if (dragState.type == DragState::CableCreate)
+    {
+        cablePreviewEnd = currentPos;
+        repaint();
+        return;
+    }
+
+    if (dragState.parameter == nullptr)
         return;
 
     auto* pd = dragState.parameter->getDescriptor();
@@ -1282,7 +1374,6 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
     if (range <= 0)
         return;
 
-    auto currentPos = e.getPosition();
     int newValue = dragState.startValue;
 
     if (dragState.type == DragState::Knob)
@@ -1337,10 +1428,47 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
     }
 }
 
-void PatchCanvas::mouseUp(const juce::MouseEvent&)
+void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 {
-    if (dragState.type == DragState::None || dragState.parameter == nullptr)
+    if (dragState.type == DragState::None)
         return;
+
+    if (dragState.type == DragState::ModuleMove)
+    {
+        dragState = DragState();
+        return;
+    }
+
+    if (dragState.type == DragState::CableCreate)
+    {
+        showCablePreview = false;
+        auto hit = findConnectorAt(e.getPosition());
+        if (hit.connector != nullptr && hit.connector != dragState.sourceConnector
+            && hit.section == dragState.section)
+        {
+            auto* src = dragState.sourceConnector;
+            auto* dst = hit.connector;
+            bool srcOut = src->getDescriptor()->isOutput;
+            bool dstOut = dst->getDescriptor()->isOutput;
+            auto& container = patch->getContainer(dragState.section);
+
+            // Connect output→input, auto-swap if needed
+            if (srcOut && !dstOut)
+                container.addConnection(src, dst);
+            else if (!srcOut && dstOut)
+                container.addConnection(dst, src);
+            // output→output or input→input: silently ignored
+        }
+        repaint();
+        dragState = DragState();
+        return;
+    }
+
+    if (dragState.parameter == nullptr)
+    {
+        dragState = DragState();
+        return;
+    }
 
     // Send final value to synth (only for knobs/sliders, buttons already sent on mouseDown)
     // Skip if the value was already sent during drag
@@ -1356,6 +1484,95 @@ void PatchCanvas::mouseUp(const juce::MouseEvent&)
 
     // Clear drag state
     dragState = DragState();
+}
+
+bool PatchCanvas::isPositionFree(const ModuleContainer& container, const Module* exclude, int gx, int gy, int height) const
+{
+    for (auto& m : container.getModules())
+    {
+        if (m.get() == exclude)
+            continue;
+        auto pos = m->getPosition();
+        if (pos.x != gx)
+            continue;
+        int mh = m->getDescriptor()->height;
+        // Y ranges overlap if gy < pos.y + mh AND pos.y < gy + height
+        if (gy < pos.y + mh && pos.y < gy + height)
+            return false;
+    }
+    return true;
+}
+
+int PatchCanvas::findNearestFreeY(const ModuleContainer& container, const Module* exclude, int gx, int targetY, int height) const
+{
+    if (isPositionFree(container, exclude, gx, targetY, height))
+        return targetY;
+
+    // Search above and below alternately, return closest free slot
+    for (int offset = 1; offset < 256; offset++)
+    {
+        int above = targetY - offset;
+        if (above >= 0 && isPositionFree(container, exclude, gx, above, height))
+            return above;
+        int below = targetY + offset;
+        if (isPositionFree(container, exclude, gx, below, height))
+            return below;
+    }
+    return targetY; // fallback — should not happen
+}
+
+Connector* PatchCanvas::findConnectorByComponentId(Module& m, const juce::String& componentId)
+{
+    for (auto& c : m.getConnectors())
+    {
+        if (c.getDescriptor()->componentId == componentId)
+            return &c;
+    }
+    return nullptr;
+}
+
+PatchCanvas::ConnectorHit PatchCanvas::findConnectorAt(juce::Point<int> pos)
+{
+    if (patch == nullptr || themeData == nullptr)
+        return {};
+
+    int separatorY = patch->getHeader().separatorPosition * gridY;
+    if (separatorY == 0)
+        separatorY = canvasHeight / 2;
+
+    struct { ModuleContainer* container; int section; int yOffset; } areas[] = {
+        { &patch->getPolyVoiceArea(), 1, polyAreaOffsetY },
+        { &patch->getCommonArea(), 0, separatorY }
+    };
+
+    for (auto& area : areas)
+    {
+        for (auto& modulePtr : area.container->getModules())
+        {
+            auto& m = *modulePtr;
+            auto rect = getModuleBounds(m, area.yOffset);
+            if (!rect.contains(pos))
+                continue;
+
+            auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
+            if (theme == nullptr)
+                continue;
+
+            auto relPos = pos - rect.getPosition();
+            for (auto& tc : theme->connectors)
+            {
+                juce::Rectangle<int> connRect(tc.x, tc.y, tc.size, tc.size);
+                connRect = connRect.expanded(2);
+                if (connRect.contains(relPos))
+                {
+                    auto* conn = findConnectorByComponentId(m, tc.componentId);
+                    if (conn != nullptr)
+                        return { &m, conn, area.section };
+                }
+            }
+        }
+    }
+    return {};
 }
 
 bool PatchCanvas::isDragging(int section, int moduleId, int parameterId) const

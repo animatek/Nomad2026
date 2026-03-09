@@ -62,17 +62,32 @@ private:
     // Dragging state
     struct DragState
     {
-        enum Type { None, Knob, Slider, Button } type = None;
+        enum Type { None, Knob, Slider, Button, ModuleMove, CableCreate } type = None;
         Module* module = nullptr;
         Parameter* parameter = nullptr;
+        Connector* sourceConnector = nullptr;  // CableCreate: source connector
         int section = 0;  // 0=common, 1=poly (PDL2/Java convention)
         juce::Point<int> startPos;
         int startValue = 0;
         int lastSentValue = -1;  // Track last value sent to avoid duplicates
         juce::int64 lastSendTime = 0;  // Rate limiting for real-time sends
+        int dragOffsetX = 0, dragOffsetY = 0;  // ModuleMove: pixel offset from module origin
     };
     DragState dragState;
     ParameterChangeCallback parameterChangeCallback;
+
+    // Cable creation preview
+    juce::Point<int> cablePreviewEnd;
+    bool showCablePreview = false;
+
+    // Connector hit-testing helpers
+    struct ConnectorHit { Module* module = nullptr; Connector* connector = nullptr; int section = 0; };
+    ConnectorHit findConnectorAt(juce::Point<int> pos);
+    Connector* findConnectorByComponentId(Module& m, const juce::String& componentId);
+
+    // Module overlap prevention
+    bool isPositionFree(const ModuleContainer& container, const Module* exclude, int gx, int gy, int height) const;
+    int findNearestFreeY(const ModuleContainer& container, const Module* exclude, int gx, int targetY, int height) const;
 
     static constexpr int paramSendIntervalMs = 50;  // Min interval between param sends during drag
 

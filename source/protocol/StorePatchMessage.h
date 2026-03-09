@@ -14,9 +14,9 @@ class StorePatchMessage : public SysExMessage
 {
 public:
     /**
-     * @param slot Device slot (0-3)
-     * @param section Voice area (0=common, 1=poly)
-     * @param position Bank position (0-99 for user banks)
+     * @param slot Device slot (0-3) — which RAM slot to save FROM
+     * @param section Bank index (0-8) — maps to display banks 1xx-9xx
+     * @param position Position within bank (0-98)
      */
     StorePatchMessage(int slot, int section, int position);
 

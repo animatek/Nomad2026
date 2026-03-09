@@ -1,4 +1,5 @@
 #include "InspectorPanel.h"
+#include <iostream>
 
 InspectorPanel::InspectorPanel()
 {
@@ -27,27 +28,35 @@ void InspectorPanel::paint(juce::Graphics& g)
 void InspectorPanel::resized()
 {
     auto bounds = getLocalBounds();
+    std::cout << "[INSPECTOR] resized: bounds=" << bounds.getWidth() << "x" << bounds.getHeight()
+              << " isLoading=" << isLoading << " hasRoot=" << (rootItem != nullptr) << std::endl;
 
     if (isLoading || !rootItem)
     {
         statusLabel.setBounds(bounds);
+        statusLabel.setVisible(true);
         treeView->setVisible(false);
     }
     else
     {
         statusLabel.setVisible(false);
         treeView->setBounds(bounds);
+        treeView->setVisible(true);
     }
 }
 
 void InspectorPanel::setPatchList(const std::vector<std::string>& names)
 {
-    setLoadingState(false);
+    std::cout << "[INSPECTOR] setPatchList called with " << names.size() << " entries" << std::endl;
     rebuildTree(names);
+    setLoadingState(false);
+    resized();  // Force re-layout now that rootItem exists
+    std::cout << "[INSPECTOR] Tree rebuilt and visible" << std::endl;
 }
 
 void InspectorPanel::setLoadingState(bool loading)
 {
+    std::cout << "[INSPECTOR] setLoadingState: loading=" << loading << std::endl;
     isLoading = loading;
 
     if (loading)
@@ -59,14 +68,18 @@ void InspectorPanel::setLoadingState(bool loading)
     else
     {
         statusLabel.setVisible(false);
-        treeView->setVisible(true);
+        if (rootItem)
+            treeView->setVisible(true);
     }
 
     resized();
+    repaint();
 }
 
 void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
 {
+    std::cout << "[INSPECTOR] rebuildTree starting, names.size()=" << names.size() << std::endl;
+
     // Create root item
     rootItem = std::make_unique<PatchTreeItem>("Synth Patches");
 
@@ -104,10 +117,18 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
         }
 
         rootItem->addSubItem(bankItem);
+        std::cout << "[INSPECTOR]   Added bank " << displaySection << " with 99 patches" << std::endl;
     }
+
+    std::cout << "[INSPECTOR] Setting root item in tree view, rootItem=" << (void*)rootItem.get() << std::endl;
+    std::cout << "[INSPECTOR] Root item has " << rootItem->getNumSubItems() << " sub-items" << std::endl;
 
     treeView->setRootItem(rootItem.get());
     treeView->setRootItemVisible(false);  // Don't show "Synth Patches" root
+
+    std::cout << "[INSPECTOR] TreeView visible=" << treeView->isVisible()
+              << " bounds=" << treeView->getBounds().toString().toStdString() << std::endl;
+    std::cout << "[INSPECTOR] rebuildTree complete" << std::endl;
 }
 
 // --- PatchTreeItem implementation ---

@@ -29,10 +29,11 @@ protected:
     static uint8_t calculateChecksum(const std::vector<uint8_t>& bytes);
 
     /**
-     * Helper: Create SysEx header [F0 33 <slot|06>]
-     * The header byte embeds slot (bits 0-1) and command class 0x06.
+     * Helper: Create SysEx header [F0 33 (cc<<2|slot) 06]
+     * The header byte embeds cc (5 bits) and slot (2 bits).
+     * Followed by the DEVICE byte (0x06).
      */
-    static void appendHeader(std::vector<uint8_t>& msg, int slot);
+    static void appendHeader(std::vector<uint8_t>& msg, int cc, int slot);
 
     /**
      * Helper: Append checksum and F7 terminator.

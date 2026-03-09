@@ -8,12 +8,14 @@ uint8_t SysExMessage::calculateChecksum(const std::vector<uint8_t>& bytes)
     return static_cast<uint8_t>(sum % 128);
 }
 
-void SysExMessage::appendHeader(std::vector<uint8_t>& msg, int slot)
+void SysExMessage::appendHeader(std::vector<uint8_t>& msg, int cc, int slot)
 {
     msg.push_back(0xF0);
     msg.push_back(0x33);
-    // Embed slot (bits 0-1) with command class 0x06 (bits 2-7)
-    msg.push_back(((slot & 0x03) << 0) | (0x06 << 2));
+    // Header byte: 0:1 cc:5 slot:2 (same encoding as SysExCodec::encodeHeader)
+    msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (slot & 0x03)));
+    // DEVICE byte (Nord Modular identifier)
+    msg.push_back(0x06);
 }
 
 void SysExMessage::appendFooter(std::vector<uint8_t>& msg)

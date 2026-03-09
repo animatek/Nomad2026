@@ -11,11 +11,8 @@ std::vector<uint8_t> StorePatchMessage::toSysEx(int slot) const
 {
     std::vector<uint8_t> msg;
 
-    // Header: F0 33 <slot|06>
-    appendHeader(msg, slot);
-
-    // Command: PatchHandling (0x17)
-    msg.push_back(0x17);
+    // Header: F0 33 [(0x17<<2)|slot] 06
+    appendHeader(msg, 0x17, slot);
 
     // Subcommand prefix: pp=0x41
     msg.push_back(0x41);

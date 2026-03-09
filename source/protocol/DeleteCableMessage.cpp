@@ -1,9 +1,10 @@
 #include "DeleteCableMessage.h"
 
-DeleteCableMessage::DeleteCableMessage(int section, SignalType color,
+DeleteCableMessage::DeleteCableMessage(int pid, int section, SignalType color,
                                        int module1, bool isOutput1, int connector1,
                                        int module2, bool isOutput2, int connector2)
-    : section_(section)
+    : pid_(pid)
+    , section_(section)
     , color_(color)
     , module1_(module1)
     , module2_(module2)
@@ -18,14 +19,12 @@ std::vector<uint8_t> DeleteCableMessage::toSysEx(int slot) const
 {
     std::vector<uint8_t> msg;
 
-    // Header: F0 33 <slot|06>
-    appendHeader(msg, slot);
+    // Header: F0 33 [(0x17<<2)|slot] 06
+    appendHeader(msg, 0x17, slot);
 
-    // Command: PatchHandling (0x17)
-    msg.push_back(0x17);
-
-    // Subcommand: CableDelete (0x51)
-    msg.push_back(0x51);
+    // PatchModification prefix: 0:1 pid:7 0:1 sc:7
+    msg.push_back(static_cast<uint8_t>(pid_ & 0x7F));
+    msg.push_back(0x51);  // sc = CableDelete
 
     // Payload (5 bytes) per PDL2 spec:
     // CableDelete :=
@@ -34,30 +33,23 @@ std::vector<uint8_t> DeleteCableMessage::toSysEx(int slot) const
     //   0:1 module2:7 0:1 type2:1 connector2:6
 
     // Byte 0: 0:1 1:6 section:1
-    // Bit 7: 0 (padding)
-    // Bits 6-1: 111111 (fixed value - all 1s)
-    // Bit 0: section
-    int byte0 = (0x3F << 1) | (section_ & 0x01);
+    // PDL2 "1:6" = value 1 in 6 bits = 000001, NOT 111111
+    int byte0 = (0x01 << 1) | (section_ & 0x01);
+    msg.push_back(static_cast<uint8_t>(byte0));
 
     // Byte 1: 0:1 module1:7
-    int byte1 = (module1_ & 0x7F);
+    msg.push_back(static_cast<uint8_t>(module1_ & 0x7F));
 
     // Byte 2: 0:1 type1:1 connector1:6
     int type1 = isOutput1_ ? 1 : 0;
-    int byte2 = ((type1 & 0x01) << 6) | (connector1_ & 0x3F);
+    msg.push_back(static_cast<uint8_t>(((type1 & 0x01) << 6) | (connector1_ & 0x3F)));
 
     // Byte 3: 0:1 module2:7
-    int byte3 = (module2_ & 0x7F);
+    msg.push_back(static_cast<uint8_t>(module2_ & 0x7F));
 
     // Byte 4: 0:1 type2:1 connector2:6
     int type2 = isOutput2_ ? 1 : 0;
-    int byte4 = ((type2 & 0x01) << 6) | (connector2_ & 0x3F);
-
-    msg.push_back(byte0);
-    msg.push_back(byte1);
-    msg.push_back(byte2);
-    msg.push_back(byte3);
-    msg.push_back(byte4);
+    msg.push_back(static_cast<uint8_t>(((type2 & 0x01) << 6) | (connector2_ & 0x3F)));
 
     // Footer: checksum + F7
     appendFooter(msg);

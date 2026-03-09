@@ -181,6 +181,8 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
 
 void ConnectionManager::requestPatchList()
 {
+    std::cout << "[PATCHLIST] requestPatchList called, connected=" << isConnected() << std::endl;
+
     if (!isConnected())
         return;
 
@@ -194,6 +196,7 @@ void ConnectionManager::requestPatchList()
     patchListPosition = 0;
     patchListGeneration++;  // Invalidate old timeouts
 
+    std::cout << "[PATCHLIST] Starting request: section=0 position=0" << std::endl;
     DBG("Requesting patch list from synth (891 patches)...");
 
     // Send first request: section 0, position 0
@@ -201,6 +204,12 @@ void ConnectionManager::requestPatchList()
     msg.section = patchListSection;
     msg.position = patchListPosition;
     auto payload = msg.encode();
+
+    std::cout << "[PATCHLIST] Payload (hex): ";
+    for (auto byte : payload)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+    std::cout << std::dec << std::endl;
+
     protocol.sendMessage(NmCmd::PatchHandling, 0, payload, /*expectsReply=*/true, /*addChecksum=*/true);
 
     // Start timeout
@@ -209,6 +218,7 @@ void ConnectionManager::requestPatchList()
     {
         if (generation == patchListGeneration && fetchingPatchList)
         {
+            std::cout << "[PATCHLIST] TIMEOUT - delivering partial results" << std::endl;
             DBG("Patch list timeout - delivering partial results");
             fetchingPatchList = false;
             patchListLoaded = true;
@@ -220,13 +230,28 @@ void ConnectionManager::requestPatchList()
 
 void ConnectionManager::onPatchListReceived(const AckMessage& msg)
 {
+    std::cout << "[PATCHLIST] onPatchListReceived called, fetchingPatchList=" << fetchingPatchList << std::endl;
+
     if (!fetchingPatchList)
+    {
+        std::cout << "[PATCHLIST] Ignoring - not fetching" << std::endl;
         return;
+    }
+
+    std::cout << "[PATCHLIST] ACK payload size: " << msg.payload.size() << std::endl;
+    std::cout << "[PATCHLIST] ACK payload (hex): ";
+    for (size_t i = 0; i < std::min(msg.payload.size(), size_t(20)); ++i)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)msg.payload[i] << " ";
+    std::cout << std::dec << std::endl;
 
     // Parse the PatchListResponse from the ACK payload
     auto response = PatchListResponseMessage::decode(
         msg.payload.data(), msg.payload.size(),
         patchListSection, patchListPosition);
+
+    std::cout << "[PATCHLIST] Parsed " << response.entries.size() << " entries" << std::endl;
+    std::cout << "[PATCHLIST] nextSection=" << response.nextSection
+              << " nextPosition=" << response.nextPosition << std::endl;
 
     // Store entries in the flat array
     for (const auto& entry : response.entries)
@@ -235,6 +260,9 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
         if (index >= 0 && index < static_cast<int>(patchListNames.size()))
         {
             patchListNames[static_cast<size_t>(index)] = entry.name.empty() ? "" : entry.name;
+            std::cout << "[PATCHLIST]   Entry: section=" << entry.section
+                      << " pos=" << entry.position
+                      << " name=\"" << entry.name << "\"" << std::endl;
         }
     }
 
@@ -245,6 +273,7 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     // Check if we're done
     if (response.nextSection < 0)
     {
+        std::cout << "[PATCHLIST] COMPLETE! Total entries in array: " << patchListNames.size() << std::endl;
         DBG("Patch list complete!");
         fetchingPatchList = false;
         patchListLoaded = true;
@@ -256,6 +285,9 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     // Continue with next request
     patchListSection = response.nextSection;
     patchListPosition = response.nextPosition;
+
+    std::cout << "[PATCHLIST] Requesting next: section=" << patchListSection
+              << " position=" << patchListPosition << std::endl;
 
     GetPatchListMessage nextMsg;
     nextMsg.section = patchListSection;

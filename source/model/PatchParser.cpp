@@ -127,11 +127,11 @@ void PatchParser::parseHeader(BitStream& bs, Patch& patch)
     h.cableVisGray     = bs.readBits(1) != 0;
     h.cableVisGreen    = bs.readBits(1) != 0;
     h.cableVisPurple   = bs.readBits(1) != 0;
-    h.cableVisWhite    = bs.readBits(1) != 0;
-    /*cretrigger*/       bs.readBits(1);
-    /*pretrigger*/       bs.readBits(1);
-    /*unknown3*/         bs.readBits(4);
-    /*unknown4*/         bs.readBits(3);
+    h.cableVisWhite         = bs.readBits(1) != 0;
+    h.voiceRetriggerCommon  = static_cast<int>(bs.readBits(1));
+    h.voiceRetriggerPoly    = static_cast<int>(bs.readBits(1));
+    h.unknown3              = static_cast<int>(bs.readBits(4));
+    h.unknown4              = static_cast<int>(bs.readBits(3));
 
     DBG("  Header: voices=" + juce::String(h.voices)
         + " keys=" + juce::String(h.keyRangeMin) + "-" + juce::String(h.keyRangeMax)

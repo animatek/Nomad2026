@@ -99,20 +99,22 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
     SignalType color = output->getDescriptor()->signalType;
 
     // Create and send message
-    NewCableMessage msg(section, color,
-                       outModIdx, outIsOutput, outConnIdx,
-                       inModIdx, inIsOutput, inConnIdx);
+    // Protocol convention (from Java reference): destination (input) first, source (output) second
+    int pid = connMgr_.getCurrentPatchId();
+    NewCableMessage msg(pid, section, color,
+                       inModIdx, inIsOutput, inConnIdx,
+                       outModIdx, outIsOutput, outConnIdx);
 
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
     connMgr_.sendRawSysEx(sysex);
 
     // Debug logging with hex dump
     std::cout << "[SYNC] Sent CableInsert: "
-        << "section=" << section
+        << "slot=" << connMgr_.getCurrentSlot()
+        << " section=" << section
         << " color=" << (int)color
-        << " modules=" << outModIdx << "->" << inModIdx
-        << " types=" << (outIsOutput ? "out" : "in") << "->" << (inIsOutput ? "out" : "in")
-        << " connectors=" << outConnIdx << "->" << inConnIdx
+        << " dst=" << inModIdx << "(" << (inIsOutput ? "out" : "in") << ":" << inConnIdx << ")"
+        << " src=" << outModIdx << "(" << (outIsOutput ? "out" : "in") << ":" << outConnIdx << ")"
         << std::endl;
 
     std::cout << "[SYNC]   SysEx: ";
@@ -149,18 +151,21 @@ void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector
     SignalType color = output->getDescriptor()->signalType;
 
     // Create and send message
-    DeleteCableMessage msg(section, color,
-                          outModIdx, outIsOutput, outConnIdx,
-                          inModIdx, inIsOutput, inConnIdx);
+    // Protocol convention (from Java reference): destination (input) first, source (output) second
+    int pid = connMgr_.getCurrentPatchId();
+    DeleteCableMessage msg(pid, section, color,
+                          inModIdx, inIsOutput, inConnIdx,
+                          outModIdx, outIsOutput, outConnIdx);
 
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
     connMgr_.sendRawSysEx(sysex);
 
     // Debug logging with hex dump
     std::cout << "[SYNC] Sent CableDelete: "
-        << "section=" << section
-        << " modules=" << outModIdx << "->" << inModIdx
-        << " connectors=" << outConnIdx << "->" << inConnIdx
+        << "slot=" << connMgr_.getCurrentSlot()
+        << " section=" << section
+        << " dst=" << inModIdx << "(" << (inIsOutput ? "out" : "in") << ":" << inConnIdx << ")"
+        << " src=" << outModIdx << "(" << (outIsOutput ? "out" : "in") << ":" << outConnIdx << ")"
         << std::endl;
 
     std::cout << "[SYNC]   SysEx: ";
@@ -177,13 +182,15 @@ void PatchSynchronizer::onModuleMoved(int section, Module* module, int oldX, int
     int moduleIdx = module->getContainerIndex();
     auto pos = module->getPosition();
 
-    MoveModuleMessage msg(section, moduleIdx, pos.x, pos.y);
+    int pid = connMgr_.getCurrentPatchId();
+    MoveModuleMessage msg(pid, section, moduleIdx, pos.x, pos.y);
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
     connMgr_.sendRawSysEx(sysex);
 
     // Debug logging with hex dump
     std::cout << "[SYNC] Sent ModuleMove: "
-        << "section=" << section
+        << "slot=" << connMgr_.getCurrentSlot()
+        << " section=" << section
         << " module=" << moduleIdx
         << " pos=(" << pos.x << "," << pos.y << ")"
         << std::endl;
