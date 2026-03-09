@@ -122,6 +122,31 @@ int ConnectionManager::getCurrentSlot() const
     return currentSlot;
 }
 
+void ConnectionManager::loadPatchFromBank(int section, int position, int targetSlot)
+{
+    if (!isConnected())
+        return;
+
+    int slot = (targetSlot >= 0) ? targetSlot : currentSlot;
+
+    std::cout << "[LOAD] Loading patch from bank: section=" << section
+              << " position=" << position << " to slot=" << slot << std::endl;
+
+    LoadPatchMessage msg;
+    msg.slot = slot;
+    msg.section = section;
+    msg.position = position;
+    auto payload = msg.encode();
+    protocol.sendMessage(NmCmd::PatchHandling, slot, payload, /*expectsReply=*/true, /*addChecksum=*/true);
+
+    // After loading, request the patch data to update UI
+    // Give the synth a moment to load it
+    juce::Timer::callAfterDelay(200, [this, slot]()
+    {
+        requestPatch(slot);
+    });
+}
+
 void ConnectionManager::sendParameter(int section, int moduleId, int parameterId, int value)
 {
     if (!isConnected())

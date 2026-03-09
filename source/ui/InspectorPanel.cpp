@@ -9,6 +9,33 @@ InspectorPanel::InspectorPanel()
     statusLabel.setFont(juce::Font(juce::FontOptions(14.0f)));
     addAndMakeVisible(statusLabel);
 
+    // Search label
+    searchLabel.setText("Search:", juce::dontSendNotification);
+    searchLabel.setColour(juce::Label::textColourId, juce::Colour(0xffcccccc));
+    searchLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    addAndMakeVisible(searchLabel);
+
+    // Search box
+    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff2a2a4a));
+    searchBox.setColour(juce::TextEditor::textColourId, juce::Colour(0xffcccccc));
+    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff3a3a5a));
+    searchBox.setFont(juce::Font(juce::FontOptions(12.0f)));
+    searchBox.onTextChange = [this]() { onSearchTextChanged(); };
+    addAndMakeVisible(searchBox);
+
+    // Hide empty button
+    hideEmptyButton.setButtonText("Hide Empty");
+    hideEmptyButton.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffcccccc));
+    hideEmptyButton.onClick = [this]() { onHideEmptyToggled(); };
+    addAndMakeVisible(hideEmptyButton);
+
+    // Refresh button
+    refreshButton.setButtonText("Refresh");
+    refreshButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff3a3a5a));
+    refreshButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffcccccc));
+    refreshButton.onClick = [this]() { onRefreshClicked(); };
+    addAndMakeVisible(refreshButton);
+
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
     treeView->setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff1e1e3a));
@@ -36,22 +63,76 @@ void InspectorPanel::resized()
         statusLabel.setBounds(bounds);
         statusLabel.setVisible(true);
         treeView->setVisible(false);
+        searchLabel.setVisible(false);
+        searchBox.setVisible(false);
+        hideEmptyButton.setVisible(false);
+        refreshButton.setVisible(false);
     }
     else
     {
         statusLabel.setVisible(false);
-        treeView->setBounds(bounds);
+
+        // Header area with search and filters
+        auto headerArea = bounds.removeFromTop(70);
+        headerArea.reduce(8, 8);
+
+        // First row: Search
+        auto searchRow = headerArea.removeFromTop(24);
+        searchLabel.setBounds(searchRow.removeFromLeft(50));
+        searchBox.setBounds(searchRow.withTrimmedLeft(4));
+
+        headerArea.removeFromTop(4);  // Spacing
+
+        // Second row: Hide empty + Refresh
+        auto filterRow = headerArea.removeFromTop(24);
+        hideEmptyButton.setBounds(filterRow.removeFromLeft(100));
+        filterRow.removeFromLeft(8);  // Spacing
+        refreshButton.setBounds(filterRow.removeFromLeft(80));
+
+        // TreeView gets remaining space
+        treeView->setBounds(bounds.withTrimmedTop(4));
         treeView->setVisible(true);
+        searchLabel.setVisible(true);
+        searchBox.setVisible(true);
+        hideEmptyButton.setVisible(true);
+        refreshButton.setVisible(true);
     }
 }
 
 void InspectorPanel::setPatchList(const std::vector<std::string>& names)
 {
     std::cout << "[INSPECTOR] setPatchList called with " << names.size() << " entries" << std::endl;
-    rebuildTree(names);
+    cachedPatchList = names;  // Cache the list
+    applyFilters();  // Build tree with current filters
     setLoadingState(false);
     resized();  // Force re-layout now that rootItem exists
     std::cout << "[INSPECTOR] Tree rebuilt and visible" << std::endl;
+}
+
+void InspectorPanel::applyFilters()
+{
+    if (cachedPatchList.empty())
+        return;
+
+    rebuildTree(cachedPatchList);
+}
+
+void InspectorPanel::onSearchTextChanged()
+{
+    currentSearchText = searchBox.getText().toLowerCase();
+    applyFilters();
+}
+
+void InspectorPanel::onHideEmptyToggled()
+{
+    hideEmptySlots = hideEmptyButton.getToggleState();
+    applyFilters();
+}
+
+void InspectorPanel::onRefreshClicked()
+{
+    if (onRefreshRequested)
+        onRefreshRequested();
 }
 
 void InspectorPanel::setLoadingState(bool loading)
@@ -86,6 +167,8 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
     // Expected: 891 entries (9 banks × 99 positions)
     // names[section * 99 + position]
 
+    bool hasSearchFilter = currentSearchText.isNotEmpty();
+
     for (int section = 0; section < 9; ++section)
     {
         // Create bank node (e.g., "Bank 1 (101-199)")
@@ -95,6 +178,7 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
                               + "-" + juce::String(displaySection * 100 + 99) + ")";
 
         auto* bankItem = new PatchTreeItem(bankName, section, -1);
+        int patchesAdded = 0;
 
         // Add patches within this bank
         for (int position = 0; position < 99; ++position)
@@ -103,21 +187,41 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
             if (index >= static_cast<int>(names.size()))
                 break;
 
+            juce::String patchName = names[static_cast<size_t>(index)];
+            bool isEmpty = patchName.isEmpty();
+
+            // Apply filters
+            if (hideEmptySlots && isEmpty)
+                continue;
+
+            if (hasSearchFilter)
+            {
+                juce::String searchTarget = patchName.toLowerCase();
+                if (!searchTarget.contains(currentSearchText))
+                    continue;
+            }
+
             // Display location (e.g., "101: PatchName" or "101: --")
             int displayLocation = displaySection * 100 + position + 1;
-            juce::String patchName = names[static_cast<size_t>(index)];
-            if (patchName.isEmpty())
-                patchName = "--";
-
+            juce::String displayName = isEmpty ? "--" : patchName;
             juce::String itemName = juce::String(displayLocation).paddedLeft('0', 3)
-                                  + ": " + patchName;
+                                  + ": " + displayName;
 
-            auto* patchItem = new PatchTreeItem(itemName, section, position);
+            auto* patchItem = new PatchTreeItem(itemName, section, position, this);
             bankItem->addSubItem(patchItem);
+            patchesAdded++;
         }
 
-        rootItem->addSubItem(bankItem);
-        std::cout << "[INSPECTOR]   Added bank " << displaySection << " with 99 patches" << std::endl;
+        // Only add bank if it has visible patches
+        if (patchesAdded > 0)
+        {
+            rootItem->addSubItem(bankItem);
+            std::cout << "[INSPECTOR]   Added bank " << displaySection << " with " << patchesAdded << " patches" << std::endl;
+        }
+        else
+        {
+            delete bankItem;  // No patches passed filter, delete the bank node
+        }
     }
 
     std::cout << "[INSPECTOR] Setting root item in tree view, rootItem=" << (void*)rootItem.get() << std::endl;
@@ -133,8 +237,8 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
 
 // --- PatchTreeItem implementation ---
 
-InspectorPanel::PatchTreeItem::PatchTreeItem(const juce::String& name, int sec, int pos)
-    : itemName(name), section(sec), position(pos)
+InspectorPanel::PatchTreeItem::PatchTreeItem(const juce::String& name, int sec, int pos, InspectorPanel* parent)
+    : itemName(name), section(sec), position(pos), panel(parent)
 {
 }
 
@@ -163,12 +267,21 @@ void InspectorPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, int 
     g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
 }
 
-void InspectorPanel::PatchTreeItem::itemClicked(const juce::MouseEvent& e)
+void InspectorPanel::PatchTreeItem::itemClicked(const juce::MouseEvent&)
 {
-    // TODO: On double-click, load this patch
-    // For now, just toggle open/close for banks
+    // Single-click: toggle open/close for banks
     if (section >= 0 && position == -1)
     {
         setOpen(!isOpen());
+    }
+}
+
+void InspectorPanel::PatchTreeItem::itemDoubleClicked(const juce::MouseEvent&)
+{
+    // Double-click on a patch (not a bank): load it
+    if (section >= 0 && position >= 0 && panel && panel->onPatchDoubleClicked)
+    {
+        std::cout << "[INSPECTOR] Double-clicked patch: section=" << section << " position=" << position << std::endl;
+        panel->onPatchDoubleClicked(section, position);
     }
 }

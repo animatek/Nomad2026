@@ -34,6 +34,7 @@ public:
 
     // Synth commands
     void requestPatch(int slot = 0);
+    void loadPatchFromBank(int section, int position, int targetSlot = -1);  // -1 = use current slot
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendRawSysEx(const std::vector<uint8_t>& sysex);
 

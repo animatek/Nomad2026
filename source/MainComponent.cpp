@@ -83,6 +83,18 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     });
   });
 
+  // Wire patch browser callbacks
+  mainLayout->getInspector().onPatchDoubleClicked = [this](int section, int position) {
+    std::cout << "[MAIN] Loading patch from browser: section=" << section << " pos=" << position << std::endl;
+    connectionManager.loadPatchFromBank(section, position);
+  };
+
+  mainLayout->getInspector().onRefreshRequested = [this]() {
+    std::cout << "[MAIN] Refresh requested" << std::endl;
+    mainLayout->getInspector().setLoadingState(true);
+    connectionManager.requestPatchList();
+  };
+
   connectionManager.setPatchDataCallback(
       [this](const std::vector<std::vector<uint8_t>> &sections) {
         DBG("Patch data received: " + juce::String(sections.size()) +

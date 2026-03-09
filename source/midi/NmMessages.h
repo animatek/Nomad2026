@@ -93,6 +93,17 @@ struct RequestPatchMessage
     std::vector<uint8_t> encode() const;
 };
 
+// LoadPatch: load a patch from bank to slot (cc=0x17)
+// PDL2: pp=0x41, ssc=0x0a, slot:7 section:7 position:7
+struct LoadPatchMessage
+{
+    int slot = 0;      // Target slot (0-3)
+    int section = 0;   // Bank section (0-8)
+    int position = 0;  // Position within bank (0-98)
+
+    std::vector<uint8_t> encode() const;
+};
+
 // GetPatch: sent via PatchHandling (cc=0x17) using PatchModification format
 // PDL2: pid:7 sc:7 [payload:7] checksum
 // Requests a specific patch section from the synth after receiving ACK with patchId

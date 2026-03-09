@@ -178,6 +178,21 @@ std::vector<uint8_t> RequestPatchMessage::encode() const
     };
 }
 
+// --- LoadPatchMessage ---
+// PDL2: PatchHandling -> PatchCommand(pp=0x41) -> LoadPatch(ssc=0x0a, slot:7, section:7, position:7)
+// Sent with cc=0x17, has checksum
+
+std::vector<uint8_t> LoadPatchMessage::encode() const
+{
+    return {
+        0x41,   // pp = PatchManagerCommand
+        0x0a,   // ssc = LoadPatch
+        static_cast<uint8_t>(slot & 0x7F),
+        static_cast<uint8_t>(section & 0x7F),
+        static_cast<uint8_t>(position & 0x7F)
+    };
+}
+
 // --- GetPatchMessage ---
 // PDL2: PatchModification := 0:1 pid:7 0:1 sc:7 [GetPatchPartExtra: 0:1 payload:7] checksum
 // Sent with cc=0x17, uses PatchModification branch (not PatchCommand)
