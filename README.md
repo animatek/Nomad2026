@@ -35,17 +35,26 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] Cable visibility toggles (click colored circles to hide/show cables by signal type)
 - [x] Morph knobs with per-morph colors (red, green, blue, yellow — matching original editor)
 - [x] Correct patch name and module name parsing (null-terminated PDL2 strings)
+- [x] Patch file I/O (.pch load/save) with PchFileIO
+- [x] Real-time patch synchronization (PatchSynchronizer: cables, modules, parameters sync to synth)
+- [x] Protocol messages: NewCable, DeleteCable, MoveModule, StorePatch, GetPatchList, LoadPatch
+- [x] **Synth Patch Browser** (right panel):
+  - Interactive hierarchical tree (9 banks, 99 patches each = 891 total)
+  - Real-time search filter by patch name
+  - "Hide Empty" toggle to show only patches (not empty slots)
+  - Refresh button to reload from synth
+  - Double-click any patch to load it into current slot
+  - Auto-loads patch list on connection
 
 ### In Progress
-- [ ] Verify input/output connector visuals (distinguish inputs vs outputs)
-- [ ] Polish individual module rendering (compare each with original editor)
+- [ ] Visual indicator for currently loaded patch in browser
+- [ ] Context menu (right-click): Rename, Delete, Copy, Move patches
 
 ### Next Up
-- [ ] Patch file I/O (.pch load/save)
+- [ ] Integrate patch browser with "Save to Synth" dialog
 - [ ] Drag & drop modules on canvas
 - [ ] Cable creation/deletion by clicking connectors
-- [ ] Multi-slot support (slots 1-4, currently slot 0 only)
-- [ ] Bank/patch management
+- [ ] Multi-slot support (slots 1-4, currently hardcoded to slot 0)
 
 ## Roadmap
 
