@@ -161,7 +161,11 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
 {
     std::cout << "[INSPECTOR] rebuildTree starting, names.size()=" << names.size() << std::endl;
 
-    // Create root item
+    // IMPORTANT: Clear old tree first to avoid double-free
+    treeView->setRootItem(nullptr);
+    rootItem.reset();
+
+    // Create new root item
     rootItem = std::make_unique<PatchTreeItem>("Synth Patches");
 
     // Expected: 891 entries (9 banks × 99 positions)
@@ -220,7 +224,9 @@ void InspectorPanel::rebuildTree(const std::vector<std::string>& names)
         }
         else
         {
-            delete bankItem;  // No patches passed filter, delete the bank node
+            // Don't add to tree - just let it be deleted automatically
+            // JUCE will clean it up since it wasn't added anywhere
+            delete bankItem;
         }
     }
 
