@@ -82,6 +82,11 @@ AckMessage AckMessage::decode(const uint8_t* data, size_t length)
     msg.pid1 = data[0];
     msg.type = data[1];
     msg.pid2 = data[2];
+
+    // Store full payload for extended ACK types
+    if (length > 3)
+        msg.payload.assign(data + 3, data + length);
+
     return msg;
 }
 
@@ -239,6 +244,154 @@ PatchPacketMessage PatchPacketMessage::decode(int cc, const uint8_t* payload, si
     // Data between header and checksum (last byte)
     if (length > 2)
         msg.patchData.assign(payload + 1, payload + length - 1);
+
+    return msg;
+}
+
+
+// --- GetPatchListMessage ---
+// PDL2: PatchHandling -> PatchCommand(pp=0x41) -> PatchManagerCommand(ssc=0x14)
+//       -> GetPatchList(section:7, position:7)
+// Sent with cc=0x17, has checksum
+
+std::vector<uint8_t> GetPatchListMessage::encode() const
+{
+    return {
+        0x41,                                           // pp = PatchManagerCommand
+        0x14,                                           // ssc = GetPatchList
+        static_cast<uint8_t>(section & 0x7F),
+        static_cast<uint8_t>(position & 0x7F)
+    };
+}
+
+// --- PatchListResponseMessage ---
+// Decoded from ACK payload (bytes after pid1/type/pid2, before checksum).
+// Format: unknown1:8 unknown2:8 unknown3:8 [?StringList] endmarker:7
+// StringList: [?ListCmd] String [?StringList]
+// ListCmd: code:7 + subdata depending on code
+// String: null-terminated, up to 16 chars
+
+PatchListResponseMessage PatchListResponseMessage::decode(const uint8_t* data, size_t length,
+                                                          int requestSection, int requestPosition)
+{
+    PatchListResponseMessage msg;
+    if (length < 4)  // 3 unknown bytes + endmarker minimum
+        return msg;
+
+    // Skip 3 unknown bytes (typically 6, 22, 1)
+    size_t pos = 3;
+
+    int section = requestSection;
+    int position = requestPosition;
+
+    // Read the endmarker — it's the last byte before the checksum.
+    // But the checksum was already stripped by SysEx::decode, so the last byte
+    // in data IS the checksum. The endmarker is the byte before it.
+    // Actually — the ACK payload includes checksum as last byte.
+    // We need to figure out where endmarker sits.
+    //
+    // Layout: [unknown1][unknown2][unknown3] [StringList...] [0:1 endmarker:7] [checksum]
+    // The checksum is the LAST byte of the payload. The endmarker is just before it.
+    // But wait — AckMessage::decode already stripped pid1/type/pid2, so `data` starts
+    // at the PatchListResponse content. The checksum byte is included in the raw
+    // ACK payload though, as the last byte (SysEx::decode strips F0/33/header/06 and F7,
+    // but NOT the checksum within the payload).
+    //
+    // So: data[length-1] = checksum, data[length-2] = endmarker (with 0:1 prefix bit)
+    size_t endmarkerIdx = length - 2;  // before checksum
+    int endmarker = data[endmarkerIdx] & 0x7F;
+
+    // Parse StringList entries between pos and endmarkerIdx
+    while (pos < endmarkerIdx)
+    {
+        // Peek at the next byte to check for ListCmd
+        uint8_t nextByte = data[pos] & 0x7F;
+
+        if (nextByte == 0x01)  // NextPosition
+        {
+            pos++;  // consume code
+            if (pos < endmarkerIdx)
+            {
+                position = data[pos] & 0x7F;
+                pos++;
+            }
+        }
+        else if (nextByte == 0x02)  // EmptyPosition
+        {
+            pos++;  // consume code
+            position++;
+            // String still follows per PDL2 grammar — fall through to read it
+        }
+        else if (nextByte == 0x03)  // NextSection
+        {
+            pos++;  // consume code
+            if (pos + 1 < endmarkerIdx)
+            {
+                section = data[pos] & 0x7F;
+                pos++;
+                position = data[pos] & 0x7F;
+                pos++;
+            }
+        }
+        else if (nextByte == 0x05)  // RepeatedSection (after overwrite)
+        {
+            pos++;  // consume code
+            if (pos + 2 < endmarkerIdx)
+            {
+                pos++;  // skip unknown byte
+                section = data[pos] & 0x7F;
+                pos++;
+                position = data[pos] & 0x7F;
+                pos++;
+            }
+        }
+
+        // Read null-terminated string (up to 16 chars)
+        if (pos >= endmarkerIdx)
+            break;
+
+        std::string name;
+        while (pos < endmarkerIdx && data[pos] != 0x00)
+        {
+            name += static_cast<char>(data[pos]);
+            pos++;
+        }
+        if (pos < endmarkerIdx)
+            pos++;  // skip null terminator
+
+        PatchListEntry entry;
+        entry.section = section;
+        entry.position = position;
+        entry.name = std::move(name);
+        msg.entries.push_back(std::move(entry));
+
+        position++;
+    }
+
+    // Calculate next section/position for continuation
+    if (endmarker == 4)
+    {
+        msg.nextSection = -1;
+        msg.nextPosition = -1;
+    }
+    else
+    {
+        if (position >= 99)
+        {
+            position = 0;
+            section++;
+        }
+        if (section >= 9)
+        {
+            msg.nextSection = -1;
+            msg.nextPosition = -1;
+        }
+        else
+        {
+            msg.nextSection = section;
+            msg.nextPosition = position;
+        }
+    }
 
     return msg;
 }

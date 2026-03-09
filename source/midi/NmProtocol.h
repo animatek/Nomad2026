@@ -21,6 +21,7 @@ public:
         virtual void onIAmReceived(const IAmMessage&) {}
         virtual void onParameterChanged(const ParameterChangeMessage&) {}
         virtual void onAckReceived(const AckMessage&) {}
+        virtual void onPatchListReceived(const AckMessage&) {}  // ACK with type=0x13/0x15
         virtual void onPatchReceived(const PatchMessage&) {}
         virtual void onNMInfoReceived(const NMInfoMessage&) {}
         virtual void onPatchPacketReceived(const PatchPacketMessage&) {}

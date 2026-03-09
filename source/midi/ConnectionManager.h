@@ -38,6 +38,7 @@ public:
     void sendRawSysEx(const std::vector<uint8_t>& sysex);
 
     int getCurrentSlot() const;
+    int getCurrentPatchId() const { return currentPatchId; }
 
     // Device enumeration (delegates to MidiDeviceManager)
     static juce::Array<juce::MidiDeviceInfo> getAvailableInputDevices();
@@ -57,6 +58,13 @@ public:
     using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
     void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
 
+    // Patch list management
+    using PatchListCallback = std::function<void(const std::vector<std::string>& names)>;
+    void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
+    void requestPatchList();  // Start loading all 891 patch names from synth
+    const std::vector<std::string>& getPatchList() const { return patchListNames; }
+    bool isPatchListLoaded() const { return patchListLoaded; }
+
     NmProtocol& getProtocol() { return protocol; }
 
 private:
@@ -64,6 +72,7 @@ private:
     void onIAmReceived(const IAmMessage& msg) override;
     void onParameterChanged(const ParameterChangeMessage& msg) override;
     void onAckReceived(const AckMessage& msg) override;
+    void onPatchListReceived(const AckMessage& msg) override;
     void onNMInfoReceived(const NMInfoMessage& msg) override;
     void onPatchPacketReceived(const PatchPacketMessage& msg) override;
     void onError(const ErrorMessage& msg) override;
@@ -71,6 +80,7 @@ private:
     void setStatus(State state, const juce::String& message);
     void startHandshakeTimeout();
     void cancelHandshakeTimeout();
+    void startSlotDetectionFallback();
     void sendGetPatchMessages(int patchId, int slot);
     void startPatchTimeout();
     void startSectionStaleTimeout();
@@ -100,6 +110,20 @@ private:
     static constexpr int patchTimeoutMs = 8000;   // Hard timeout: 8 seconds max for entire patch
     static constexpr int sectionStaleMs = 2000;   // Stale timeout: 2 seconds since last section received
     int patchTimeoutGeneration = 0;  // Incremented on each new request to invalidate old timeouts
+
+    // Slot detection: synth sends SlotActivated after handshake
+    bool slotDetected = false;
+    int slotDetectGeneration = 0;  // Invalidate fallback timer when slot is detected
+
+    // Patch list retrieval state
+    bool fetchingPatchList = false;
+    bool patchListLoaded = false;
+    int patchListSection = 0;      // Current section (0-8) being requested
+    int patchListPosition = 0;     // Current position (0-98) being requested
+    int patchListGeneration = 0;   // Invalidate old timeouts
+    std::vector<std::string> patchListNames;  // 891 entries (9 banks × 99 positions)
+    PatchListCallback patchListCallback;
+    static constexpr int patchListTimeoutMs = 10000;  // 10 seconds total timeout
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ConnectionManager)
 };

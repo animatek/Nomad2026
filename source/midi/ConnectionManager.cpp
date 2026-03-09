@@ -1,4 +1,5 @@
 #include "ConnectionManager.h"
+#include <iostream>
 
 ConnectionManager::ConnectionManager()
 {
@@ -43,6 +44,8 @@ void ConnectionManager::disconnect()
 {
     cancelHandshakeTimeout();
     collectingSections = false;
+    slotDetected = false;
+    slotDetectGeneration++;
 
     if (midiDevice)
     {
@@ -77,6 +80,10 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
                   "Connected: Nord Modular v" +
                   juce::String(msg.versionHigh) + "." +
                   juce::String(msg.versionLow));
+
+        // Start fallback timer: if synth doesn't send SlotActivated within 3s,
+        // default to slot 0
+        startSlotDetectionFallback();
     }
 }
 
@@ -172,6 +179,91 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     }
 }
 
+void ConnectionManager::requestPatchList()
+{
+    if (!isConnected())
+        return;
+
+    // Initialize patch list to 891 empty entries (9 banks × 99 positions)
+    patchListNames.clear();
+    patchListNames.resize(9 * 99, "");  // All initially empty
+
+    fetchingPatchList = true;
+    patchListLoaded = false;
+    patchListSection = 0;
+    patchListPosition = 0;
+    patchListGeneration++;  // Invalidate old timeouts
+
+    DBG("Requesting patch list from synth (891 patches)...");
+
+    // Send first request: section 0, position 0
+    GetPatchListMessage msg;
+    msg.section = patchListSection;
+    msg.position = patchListPosition;
+    auto payload = msg.encode();
+    protocol.sendMessage(NmCmd::PatchHandling, 0, payload, /*expectsReply=*/true, /*addChecksum=*/true);
+
+    // Start timeout
+    int generation = patchListGeneration;
+    juce::Timer::callAfterDelay(patchListTimeoutMs, [this, generation]()
+    {
+        if (generation == patchListGeneration && fetchingPatchList)
+        {
+            DBG("Patch list timeout - delivering partial results");
+            fetchingPatchList = false;
+            patchListLoaded = true;
+            if (patchListCallback)
+                patchListCallback(patchListNames);
+        }
+    });
+}
+
+void ConnectionManager::onPatchListReceived(const AckMessage& msg)
+{
+    if (!fetchingPatchList)
+        return;
+
+    // Parse the PatchListResponse from the ACK payload
+    auto response = PatchListResponseMessage::decode(
+        msg.payload.data(), msg.payload.size(),
+        patchListSection, patchListPosition);
+
+    // Store entries in the flat array
+    for (const auto& entry : response.entries)
+    {
+        int index = entry.section * 99 + entry.position;
+        if (index >= 0 && index < static_cast<int>(patchListNames.size()))
+        {
+            patchListNames[static_cast<size_t>(index)] = entry.name.empty() ? "" : entry.name;
+        }
+    }
+
+    DBG("Patch list: received " + juce::String(response.entries.size())
+        + " entries from section " + juce::String(patchListSection)
+        + " position " + juce::String(patchListPosition));
+
+    // Check if we're done
+    if (response.nextSection < 0)
+    {
+        DBG("Patch list complete!");
+        fetchingPatchList = false;
+        patchListLoaded = true;
+        if (patchListCallback)
+            patchListCallback(patchListNames);
+        return;
+    }
+
+    // Continue with next request
+    patchListSection = response.nextSection;
+    patchListPosition = response.nextPosition;
+
+    GetPatchListMessage nextMsg;
+    nextMsg.section = patchListSection;
+    nextMsg.position = patchListPosition;
+    auto payload = nextMsg.encode();
+    protocol.sendMessage(NmCmd::PatchHandling, 0, payload, /*expectsReply=*/true, /*addChecksum=*/true);
+}
+
 void ConnectionManager::sendGetPatchMessages(int patchId, int slot)
 {
     auto msgs = GetPatchMessage::forAllSections(patchId);
@@ -256,6 +348,9 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     {
         DBG("New patch in slot " + juce::String(msg.newPatchSlot) + " pid=" + juce::String(msg.newPatchPid));
 
+        slotDetected = true;
+        slotDetectGeneration++;  // Cancel any pending fallback timer
+
         // Auto-request the new patch data from the synth
         // Don't interrupt an in-progress collection
         if (isConnected() && !waitingForPatchAck && !collectingSections && msg.newPatchSlot >= 0)
@@ -276,8 +371,22 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             + " (pid=" + juce::String(msg.pid) + ")");
     }
 
-    // Silently handle high-frequency messages (Lights, Meters, SlotsSelected, SlotActivated)
-    // sc=0x39 (Lights), sc=0x3a (Meters), sc=0x07 (SlotsSelected), sc=0x09 (SlotActivated)
+    if (msg.sc == 0x09 && !msg.data.empty())  // SlotActivated
+    {
+        int activeSlot = msg.data[0] & 0x03;
+        std::cout << "[SLOT] Active slot changed to " << activeSlot << std::endl;
+
+        currentSlot = activeSlot;
+        slotDetected = true;
+        slotDetectGeneration++;  // Cancel any pending fallback timer
+
+        // Auto-load patch from the active slot (unless already loading)
+        if (isConnected() && !waitingForPatchAck && !collectingSections)
+            requestPatch(activeSlot);
+    }
+
+    // Silently handle high-frequency messages (Lights, Meters, SlotsSelected)
+    // sc=0x39 (Lights), sc=0x3a (Meters), sc=0x07 (SlotsSelected)
 }
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
@@ -345,4 +454,20 @@ void ConnectionManager::cancelHandshakeTimeout()
 {
     // The callAfterDelay lambda checks state, so transitioning out of
     // Connecting effectively cancels it.
+}
+
+void ConnectionManager::startSlotDetectionFallback()
+{
+    int generation = slotDetectGeneration;
+
+    juce::Timer::callAfterDelay(3000, [this, generation]()
+    {
+        // Only fire if no SlotActivated/NewPatchInSlot arrived and we're still connected
+        if (generation == slotDetectGeneration && !slotDetected && isConnected()
+            && !waitingForPatchAck && !collectingSections)
+        {
+            std::cout << "[SLOT] No SlotActivated received — defaulting to slot 0" << std::endl;
+            requestPatch(0);
+        }
+    });
 }

@@ -2,6 +2,7 @@
 
 #include <juce_core/juce_core.h>
 #include <vector>
+#include <string>
 #include <cstdint>
 
 // Message command IDs (cc field in SysEx header)
@@ -45,6 +46,7 @@ struct AckMessage
     int pid1 = 0;
     int type = 0;
     int pid2 = 0;
+    std::vector<uint8_t> payload;  // Full payload for extended ACK types (0x13, 0x15, etc.)
 
     static AckMessage decode(const uint8_t* data, size_t length);
 };
@@ -128,4 +130,34 @@ struct PatchPacketMessage
     std::vector<uint8_t> patchData;
 
     static PatchPacketMessage decode(int cc, const uint8_t* payload, size_t length);
+};
+
+// GetPatchList: request patch names from synth flash memory
+// PDL2: PatchHandling(cc=0x17) -> PatchCommand(pp=0x41) -> GetPatchList(ssc=0x14)
+struct GetPatchListMessage
+{
+    int section = 0;   // Bank index (0-8)
+    int position = 0;  // Position within bank (0-98)
+
+    std::vector<uint8_t> encode() const;
+};
+
+// PatchListEntry: one patch name with its location
+struct PatchListEntry
+{
+    int section = 0;   // Bank index (0-8)
+    int position = 0;  // Position within bank (0-98)
+    std::string name;
+};
+
+// PatchListResponse: comes inside ACK message (type=0x13 or 0x15)
+// PDL2: unknown[3] + StringList chain + endmarker
+struct PatchListResponseMessage
+{
+    std::vector<PatchListEntry> entries;
+    int nextSection = -1;   // -1 = done, else section for next request
+    int nextPosition = -1;  // Position for next request
+
+    static PatchListResponseMessage decode(const uint8_t* data, size_t length,
+                                            int requestSection, int requestPosition);
 };

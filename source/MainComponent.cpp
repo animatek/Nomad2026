@@ -76,6 +76,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         [this, total]() { mainLayout->getStatusBar().setVoiceCount(total); });
   });
 
+  // Wire patch list updates to inspector panel
+  connectionManager.setPatchListCallback([this](const std::vector<std::string>& names) {
+    juce::MessageManager::callAsync([this, names]() {
+      mainLayout->getInspector().setPatchList(names);
+    });
+  });
+
   connectionManager.setPatchDataCallback(
       [this](const std::vector<std::vector<uint8_t>> &sections) {
         DBG("Patch data received: " + juce::String(sections.size()) +
@@ -235,7 +242,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     showMidiSettingsDialog();
     break;
   case 31:
-    connectionManager.requestPatch(0); // Request from slot 0
+    connectionManager.requestPatch(connectionManager.getCurrentSlot());
     break;
   case 32:
     savePatchToSynth();
@@ -348,46 +355,62 @@ void MainComponent::savePatchToSynth() {
     return;
   }
 
-  // Send StorePatch message to save current patch to synth flash
-  //
-  // NOTE: The meaning of these parameters is not fully documented:
-  //   - slot: Synth slot (0-3) where the patch is currently loaded
-  //   - section: 0 = save both poly and common areas (best guess)
-  //   - position: Bank position (0-99) - WARNING: This will overwrite!
-  //
-  // TODO: Add dialog to choose destination bank/position instead of
-  //       hardcoding position=0
-  int slot = connectionManager.getCurrentSlot();
-  int section = 0;   // 0 = save both areas (unverified)
-  int position = 0;  // Bank position - OVERWRITES position 0!
+  // StorePatch saves the current RAM slot to permanent flash memory.
+  // Protocol: slot (0-3), section (0-8 = bankIndex), position (0-98).
+  // Display locations 101-999 map to: section = (loc/100)-1, position = (loc%100)-1.
+  auto* dialog = new juce::AlertWindow("Send Patch to Synth",
+      "Save current patch to synth flash memory:",
+      juce::MessageBoxIconType::QuestionIcon);
 
-  StorePatchMessage msg(slot, section, position);
-  auto sysex = msg.toSysEx(slot);
-  connectionManager.sendRawSysEx(sysex);
+  // Slot ComboBox (A-D)
+  dialog->addComboBox("slot", {"A (Slot 1)", "B (Slot 2)", "C (Slot 3)", "D (Slot 4)"}, "Slot:");
+  dialog->getComboBoxComponent("slot")->setSelectedItemIndex(
+      connectionManager.getCurrentSlot(), juce::dontSendNotification);
 
-  // Debug logging with hex dump
-  std::cout << "[SYNC] Sent StorePatch: "
-      << "slot=" << slot
-      << " section=" << section
-      << " position=" << position
-      << std::endl;
+  // Bank location ComboBox (101-999, skipping x00)
+  juce::StringArray locationItems;
+  for (int bank = 1; bank <= 9; ++bank)
+    for (int pos = 1; pos <= 99; ++pos)
+      locationItems.add(juce::String(bank * 100 + pos));
+  dialog->addComboBox("location", locationItems, "Location:");
 
-  std::cout << "[SYNC]   StorePatch SysEx: ";
-  for (auto byte : sysex)
-    std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
-  std::cout << std::dec << std::endl;
+  dialog->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+  dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
 
-  // Show confirmation
-  mainLayout->getStatusBar().setConnectionStatus(
-      "Saved to synth slot " + juce::String(slot), true);
+  dialog->enterModalState(true, juce::ModalCallbackFunction::create(
+      [this, dialog](int result) {
+        int slot = dialog->getComboBoxComponent("slot")->getSelectedItemIndex();
+        int locationIdx = dialog->getComboBoxComponent("location")->getSelectedItemIndex();
+        delete dialog;
 
-  juce::AlertWindow::showMessageBoxAsync(
-      juce::MessageBoxIconType::InfoIcon,
-      "Saved to Synth",
-      juce::String("Patch saved to synthesizer:\n") +
-      "Slot: " + juce::String(slot) + "\n" +
-      "Bank position: " + juce::String(position) + "\n\n" +
-      "The patch has been written to permanent memory.");
+        if (result == 0)
+          return;
+
+        // Convert flat index back to section/position
+        // Index 0=101, 1=102, ..., 98=199, 99=201, etc.
+        // Protocol uses bankIndex 0-8 (Java: dstLocation.getBank())
+        int section = locationIdx / 99;       // Protocol section: 0-8
+        int pos = locationIdx % 99;           // Protocol position: 0-98
+        int location = (section + 1) * 100 + pos + 1;  // Display: 101-999
+
+        StorePatchMessage msg(slot, section, pos);
+        auto sysex = msg.toSysEx(slot);
+        connectionManager.sendRawSysEx(sysex);
+
+        std::cout << "[STORE] Sent StorePatch: slot=" << slot
+            << " section=" << section << " pos=" << pos
+            << " (location " << location << ")" << std::endl;
+
+        std::cout << "[STORE]   SysEx: ";
+        for (auto byte : sysex)
+          std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+        std::cout << std::dec << std::endl;
+
+        const char* slotNames[] = {"A", "B", "C", "D"};
+        mainLayout->getStatusBar().setConnectionStatus(
+            "Saved slot " + juce::String(slotNames[slot]) + " to " + juce::String(location), true);
+      }),
+      true);
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {
@@ -437,8 +460,8 @@ void MainComponent::onConnectionStatusChanged(
     // Save settings on successful connection
     saveMidiSettings(lastInputId, lastOutputId);
 
-    // Auto-request patch from slot 0 once connected
-    connectionManager.requestPatch(0);
+    // Patch loading is triggered by SlotActivated (sc=0x09) from synth,
+    // with a fallback timer in ConnectionManager if no slot message arrives.
 
     // Enable synchronizer if we have a patch loaded
     if (currentPatch && !patchSynchronizer) {
@@ -446,6 +469,10 @@ void MainComponent::onConnectionStatusChanged(
           *currentPatch, connectionManager);
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
+
+    // Request patch list from synth to populate the browser
+    mainLayout->getInspector().setLoadingState(true);
+    connectionManager.requestPatchList();
   } else {
     // Disable synchronizer on disconnect
     patchSynchronizer.reset();

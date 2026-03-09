@@ -109,7 +109,16 @@ void NmProtocol::dispatchMessage(const SysEx::DecodedMessage& msg)
         case NmCmd::ACK:
         {
             auto ack = AckMessage::decode(msg.payload.data(), msg.payload.size());
-            listeners.call([&](Listener& l) { l.onAckReceived(ack); });
+
+            // Check if this is a PatchListResponse (type 0x13 or 0x15)
+            if (ack.type == 0x13 || ack.type == 0x15)
+            {
+                listeners.call([&](Listener& l) { l.onPatchListReceived(ack); });
+            }
+            else
+            {
+                listeners.call([&](Listener& l) { l.onAckReceived(ack); });
+            }
             break;
         }
         case NmCmd::PatchHandling:
