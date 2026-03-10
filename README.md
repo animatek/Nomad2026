@@ -158,7 +158,7 @@ This section outlines all planned features to achieve feature parity with the or
 ## Building
 
 ```bash
-# Configure
+# Configure (Debug mode recommended for development)
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
 # Build
@@ -167,6 +167,8 @@ cmake --build build -j$(nproc)
 # Run
 ./build/Nomad2026_artefacts/Debug/Nomad2026
 ```
+
+**Note:** Currently using Debug builds during active development. Some features (like URL opening in Help/About menus) require Debug mode to work correctly on all platforms.
 
 Requires JUCE (included in `JUCE/` directory) and a C++17 compiler.
 

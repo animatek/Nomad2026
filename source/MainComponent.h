@@ -41,6 +41,7 @@ private:
     void onConnectionStatusChanged(const ConnectionManager::Status& status);
     void attemptAutoConnect();
     void saveMidiSettings(const juce::String& inputId, const juce::String& outputId);
+    void openURL(const juce::String& url);
 
     juce::ApplicationProperties& appProperties;
     ModuleDescriptions moduleDescs;

@@ -388,18 +388,37 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 3) // Help
   {
-    menu.addItem(40, "Nord Modular Forum");
-    menu.addItem(41, "Nord Modular Facebook Group");
-    menu.addItem(42, "Nord Modular Patches Archive");
+    menu.addItem(40, "Nord Modular Forum", true);
+    menu.addItem(41, "Nord Modular Facebook Group", true);
+    menu.addItem(42, "Nord Modular Patches Archive", true);
   }
   else if (menuIndex == 4) // About
   {
-    menu.addItem(50, "Support the Project (Patreon)");
-    menu.addItem(51, "Source Code (GitHub)");
-    menu.addItem(52, "Website");
+    menu.addItem(50, "Support the Project (Patreon)", true);
+    menu.addItem(51, "Source Code (GitHub)", true);
+    menu.addItem(52, "Website", true);
   }
 
   return menu;
+}
+
+void MainComponent::openURL(const juce::String& url) {
+  // Try JUCE's built-in method first
+  if (juce::URL(url).launchInDefaultBrowser())
+    return;
+
+  // Fallback: use platform-specific commands
+#if JUCE_LINUX
+  juce::String command = "xdg-open \"" + url + "\" &";
+#elif JUCE_MAC
+  juce::String command = "open \"" + url + "\"";
+#elif JUCE_WINDOWS
+  juce::String command = "start \"\" \"" + url + "\"";
+#else
+  return;  // Unknown platform
+#endif
+
+  system(command.toRawUTF8());
 }
 
 void MainComponent::menuItemSelected(int menuItemID, int) {
@@ -431,24 +450,24 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 
   // Help menu
   case 40:  // Nord Modular Forum
-    juce::URL("https://electro-music.com/forum/forum-43.html").launchInDefaultBrowser();
+    openURL("https://electro-music.com/forum/forum-43.html");
     break;
   case 41:  // Facebook Group
-    juce::URL("https://www.facebook.com/groups/218654441592104").launchInDefaultBrowser();
+    openURL("https://www.facebook.com/groups/218654441592104");
     break;
   case 42:  // Patches Archive
-    juce::URL("https://electro-music.com/nm_classic/").launchInDefaultBrowser();
+    openURL("https://electro-music.com/nm_classic/");
     break;
 
   // About menu
   case 50:  // Patreon
-    juce::URL("https://www.patreon.com/collection/2038913").launchInDefaultBrowser();
+    openURL("https://www.patreon.com/collection/2038913");
     break;
   case 51:  // GitHub
-    juce::URL("https://github.com/animatek/Nomad2026/").launchInDefaultBrowser();
+    openURL("https://github.com/animatek/Nomad2026/");
     break;
   case 52:  // Website
-    juce::URL("https://animatek.net/").launchInDefaultBrowser();
+    openURL("https://animatek.net/");
     break;
 
   default:
