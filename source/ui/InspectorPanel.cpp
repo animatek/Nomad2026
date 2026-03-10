@@ -273,8 +273,15 @@ void InspectorPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, int 
     g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
 }
 
-void InspectorPanel::PatchTreeItem::itemClicked(const juce::MouseEvent&)
+void InspectorPanel::PatchTreeItem::itemClicked(const juce::MouseEvent& e)
 {
+    // Right-click: show context menu for patches (not banks)
+    if (e.mods.isPopupMenu() && section >= 0 && position >= 0)
+    {
+        showContextMenu();
+        return;
+    }
+
     // Single-click: toggle open/close for banks
     if (section >= 0 && position == -1)
     {
@@ -290,4 +297,43 @@ void InspectorPanel::PatchTreeItem::itemDoubleClicked(const juce::MouseEvent&)
         std::cout << "[INSPECTOR] Double-clicked patch: section=" << section << " position=" << position << std::endl;
         panel->onPatchDoubleClicked(section, position);
     }
+}
+
+void InspectorPanel::PatchTreeItem::showContextMenu()
+{
+    if (!panel)
+        return;
+
+    juce::PopupMenu menu;
+    menu.addItem(1, "Delete (clear)");
+    menu.addSeparator();
+    menu.addItem(2, "Copy to...");
+    menu.addItem(3, "Move to...");
+
+    menu.showMenuAsync(juce::PopupMenu::Options(),
+        [this](int result) {
+            if (!panel)
+                return;
+
+            switch (result)
+            {
+                case 1:  // Delete
+                    if (panel->onPatchDelete)
+                        panel->onPatchDelete(section, position);
+                    break;
+
+                case 2:  // Copy
+                    if (panel->onPatchCopy)
+                        panel->onPatchCopy(section, position);
+                    break;
+
+                case 3:  // Move
+                    if (panel->onPatchMove)
+                        panel->onPatchMove(section, position);
+                    break;
+
+                default:
+                    break;
+            }
+        });
 }

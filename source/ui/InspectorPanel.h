@@ -19,6 +19,10 @@ public:
     // Callbacks
     std::function<void(int section, int position)> onPatchDoubleClicked;
     std::function<void()> onRefreshRequested;
+    std::function<void(int section, int position)> onPatchRename;
+    std::function<void(int section, int position)> onPatchDelete;
+    std::function<void(int section, int position)> onPatchCopy;
+    std::function<void(int section, int position)> onPatchMove;
 
 private:
     class PatchTreeItem : public juce::TreeViewItem
@@ -30,6 +34,8 @@ private:
         void paintItem(juce::Graphics& g, int width, int height) override;
         void itemClicked(const juce::MouseEvent& e) override;
         void itemDoubleClicked(const juce::MouseEvent& e) override;
+
+        void showContextMenu();
 
     private:
         juce::String itemName;

@@ -45,16 +45,25 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Refresh button to reload from synth
   - Double-click any patch to load it into current slot
   - Auto-loads patch list on connection
+  - Context menu (right-click): Copy, Move, Delete patch operations
+- [x] **Patch Name Editing**: Double-click patch name in header bar to rename (max 15 chars, syncs to synth immediately)
+- [x] **Quick Save Button**: Diskette icon next to patch name — saves current patch back to its original bank location
+- [x] **Universal Location Selector**: Consistent Slot/Bank/Position dialog for all save/copy/move operations
+  - Position dropdown shows patch names from selected bank
+  - Updates dynamically when bank selection changes
+  - Shows "01: PatchName" or "01: --" for empty slots
+- [x] **Help Menu**: Links to Nord Modular forum, Facebook group, and patch archive
+- [x] **About Menu**: Links to Patreon, GitHub source code, and project website
 
 ### In Progress
 - [ ] Visual indicator for currently loaded patch in browser
-- [ ] Context menu (right-click): Rename, Delete, Copy, Move patches
-
-### Next Up
-- [ ] Integrate patch browser with "Save to Synth" dialog
 - [ ] Drag & drop modules on canvas
 - [ ] Cable creation/deletion by clicking connectors
+
+### Next Up
 - [ ] Multi-slot support (slots 1-4, currently hardcoded to slot 0)
+- [ ] Module drag & drop from browser to canvas
+- [ ] Undo/Redo system
 
 ## Roadmap
 

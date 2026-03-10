@@ -20,6 +20,7 @@ target_sources(Nomad2026 PRIVATE
     source/model/ModuleDescriptions.cpp
     source/model/Patch.cpp
     source/model/PatchParser.cpp
+    source/model/PatchSerializer.cpp
     source/model/PchFileIO.cpp
     source/model/ThemeData.cpp
 
@@ -30,8 +31,7 @@ target_sources(Nomad2026 PRIVATE
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
-
-    # UI
+    source/ui/PatchLocationDialog.cpp
     source/ui/MidiSettingsDialog.cpp
 
     # MIDI/SysEx
@@ -47,6 +47,7 @@ target_sources(Nomad2026 PRIVATE
     source/protocol/DeleteCableMessage.cpp
     source/protocol/MoveModuleMessage.cpp
     source/protocol/StorePatchMessage.cpp
+    source/protocol/SetPatchTitleMessage.cpp
 
     # Synchronization
     source/sync/PatchSynchronizer.cpp

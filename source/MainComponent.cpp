@@ -2,6 +2,7 @@
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
 #include "ui/MidiSettingsDialog.h"
+#include "ui/PatchLocationDialog.h"
 #include "protocol/StorePatchMessage.h"
 #include <iostream>
 #include <iomanip>
@@ -87,12 +88,127 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getInspector().onPatchDoubleClicked = [this](int section, int position) {
     std::cout << "[MAIN] Loading patch from browser: section=" << section << " pos=" << position << std::endl;
     connectionManager.loadPatchFromBank(section, position);
+
+    // Track this location for quick save
+    mainLayout->getHeaderBar().setCurrentLocation(section, position);
   };
 
   mainLayout->getInspector().onRefreshRequested = [this]() {
     std::cout << "[MAIN] Refresh requested" << std::endl;
     mainLayout->getInspector().setLoadingState(true);
     connectionManager.requestPatchList();
+  };
+
+  mainLayout->getInspector().onPatchDelete = [this](int section, int position) {
+    int displayLocation = (section + 1) * 100 + position + 1;
+    const auto& patchList = connectionManager.getPatchList();
+    int index = section * 99 + position;
+    juce::String patchName = (index < static_cast<int>(patchList.size()) && !patchList[index].empty())
+                              ? patchList[index] : "--";
+
+    auto* dialog = new juce::AlertWindow("Delete Patch",
+        "Are you sure you want to delete patch at location " + juce::String(displayLocation) +
+        "?\n\n\"" + patchName + "\"\n\nThis will clear the slot.",
+        juce::MessageBoxIconType::WarningIcon);
+
+    dialog->addButton("Delete", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, section, position](int result) {
+          if (result == 0)
+            return;
+
+          std::cout << "[MAIN] Delete patch: section=" << section << " pos=" << position << std::endl;
+
+          // Attempt delete (currently not implemented - requires patch serialization)
+          connectionManager.deletePatchInBank(section, position);
+
+          juce::AlertWindow::showMessageBoxAsync(
+              juce::MessageBoxIconType::WarningIcon,
+              "Not Implemented",
+              "Patch delete requires patch serialization which is not yet implemented.\n\n"
+              "To clear a patch slot, you can:\n"
+              "1. Create a new empty patch in the editor\n"
+              "2. Use 'Save to Synth' to save it to the desired location");
+        }));
+  };
+
+  mainLayout->getInspector().onPatchCopy = [this](int section, int position) {
+    int displayLocation = (section + 1) * 100 + position + 1;
+    const auto& patchList = connectionManager.getPatchList();
+    int srcIndex = section * 99 + position;
+    juce::String srcPatchName = (srcIndex < static_cast<int>(patchList.size()) && !patchList[srcIndex].empty())
+                                 ? patchList[srcIndex] : "--";
+
+    auto* locationDialog = new PatchLocationDialog(patchList, false, 0);  // No slot selector
+
+    locationDialog->setCallback([this, section, position]
+                                (const PatchLocationDialog::Result& result) {
+      if (!result.confirmed)
+        return;
+
+      std::cout << "[MAIN] Copy patch: from section=" << section << " pos=" << position
+                << " to section=" << result.section << " pos=" << result.position << std::endl;
+
+      // Perform the copy operation
+      connectionManager.copyPatchInBank(section, position, result.section, result.position);
+
+      // Show success message
+      juce::AlertWindow::showMessageBoxAsync(
+          juce::MessageBoxIconType::InfoIcon,
+          "Copy Complete",
+          "Patch copied successfully!\n\nRefresh the patch browser to see the changes.");
+    });
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(locationDialog);
+    options.dialogTitle = "Copy Patch from " + juce::String(displayLocation) + ": " + srcPatchName;
+    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    options.launchAsync();
+  };
+
+  mainLayout->getInspector().onPatchMove = [this](int section, int position) {
+    int displayLocation = (section + 1) * 100 + position + 1;
+    const auto& patchList = connectionManager.getPatchList();
+    int srcIndex = section * 99 + position;
+    juce::String srcPatchName = (srcIndex < static_cast<int>(patchList.size()) && !patchList[srcIndex].empty())
+                                 ? patchList[srcIndex] : "--";
+
+    auto* locationDialog = new PatchLocationDialog(patchList, false, 0);  // No slot selector
+
+    locationDialog->setCallback([this, section, position]
+                                (const PatchLocationDialog::Result& result) {
+      if (!result.confirmed)
+        return;
+
+      std::cout << "[MAIN] Move patch: from section=" << section << " pos=" << position
+                << " to section=" << result.section << " pos=" << result.position << std::endl;
+
+      // Perform the move operation (currently just copies, doesn't delete source)
+      connectionManager.movePatchInBank(section, position, result.section, result.position);
+
+      // Show partial implementation notice
+      juce::AlertWindow::showMessageBoxAsync(
+          juce::MessageBoxIconType::InfoIcon,
+          "Move Complete (Partial)",
+          "Patch copied to destination successfully!\n\n"
+          "NOTE: Source patch was NOT deleted (requires patch serialization).\n"
+          "You can manually delete it later.\n\n"
+          "Refresh the patch browser to see the changes.");
+    });
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(locationDialog);
+    options.dialogTitle = "Move Patch from " + juce::String(displayLocation) + ": " + srcPatchName;
+    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    options.launchAsync();
   };
 
   connectionManager.setPatchDataCallback(
@@ -137,6 +253,47 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getHeaderBar().setMorphChangeCallback(
       [this](int morphIndex, int value) {
         connectionManager.sendParameter(2, 1, morphIndex, value);
+      });
+
+  // Wire patch name changes to send to synth
+  mainLayout->getHeaderBar().setNameChangeCallback(
+      [this](const juce::String& newName) {
+        std::cout << "[MAIN] Patch name changed to: " << newName.toStdString() << std::endl;
+        connectionManager.sendPatchTitle(newName);
+      });
+
+  // Wire quick save button
+  mainLayout->getHeaderBar().setQuickSaveCallback(
+      [this]() {
+        std::cout << "[MAIN] Quick save triggered" << std::endl;
+        // Get current location from header bar
+        auto& headerBar = mainLayout->getHeaderBar();
+        int section = headerBar.currentSection;
+        int position = headerBar.currentPosition;
+
+        if (section < 0 || position < 0)
+        {
+          juce::AlertWindow::showMessageBoxAsync(
+              juce::MessageBoxIconType::WarningIcon,
+              "Quick Save",
+              "No save location set. Load a patch from the browser first.");
+          return;
+        }
+
+        // Save patch to synth at the tracked location
+        int displayLocation = (section + 1) * 100 + position + 1;
+        int slot = connectionManager.getCurrentSlot();
+
+        StorePatchMessage msg(slot, section, position);
+        auto sysex = msg.toSysEx(slot);
+        connectionManager.sendRawSysEx(sysex);
+
+        std::cout << "[MAIN] Quick saved to location " << displayLocation << std::endl;
+
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::MessageBoxIconType::InfoIcon,
+            "Quick Save",
+            "Patch saved to location " + juce::String(displayLocation) + " ✓");
       });
 
   // Wire cable visibility toggles to repaint the canvas
@@ -202,7 +359,7 @@ void MainComponent::resized() {
 }
 
 juce::StringArray MainComponent::getMenuBarNames() {
-  return {"File", "Edit", "Device"};
+  return {"File", "Edit", "Device", "Help", "About"};
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
@@ -228,6 +385,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     bool connected = connectionManager.isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
     menu.addItem(32, "Send Patch to Synth", connected);
+  }
+  else if (menuIndex == 3) // Help
+  {
+    menu.addItem(40, "Nord Modular Forum");
+    menu.addItem(41, "Nord Modular Facebook Group");
+    menu.addItem(42, "Nord Modular Patches Archive");
+  }
+  else if (menuIndex == 4) // About
+  {
+    menu.addItem(50, "Support the Project (Patreon)");
+    menu.addItem(51, "Source Code (GitHub)");
+    menu.addItem(52, "Website");
   }
 
   return menu;
@@ -259,6 +428,29 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 32:
     savePatchToSynth();
     break;
+
+  // Help menu
+  case 40:  // Nord Modular Forum
+    juce::URL("https://electro-music.com/forum/forum-43.html").launchInDefaultBrowser();
+    break;
+  case 41:  // Facebook Group
+    juce::URL("https://www.facebook.com/groups/218654441592104").launchInDefaultBrowser();
+    break;
+  case 42:  // Patches Archive
+    juce::URL("https://electro-music.com/nm_classic/").launchInDefaultBrowser();
+    break;
+
+  // About menu
+  case 50:  // Patreon
+    juce::URL("https://www.patreon.com/collection/2038913").launchInDefaultBrowser();
+    break;
+  case 51:  // GitHub
+    juce::URL("https://github.com/animatek/Nomad2026/").launchInDefaultBrowser();
+    break;
+  case 52:  // Website
+    juce::URL("https://animatek.net/").launchInDefaultBrowser();
+    break;
+
   default:
     break;
   }
@@ -272,6 +464,7 @@ void MainComponent::newPatch() {
   currentPatchFile = juce::File();
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch.get());
+  mainLayout->getHeaderBar().clearCurrentLocation();  // Clear quick save location
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
 }
 
@@ -367,62 +560,50 @@ void MainComponent::savePatchToSynth() {
     return;
   }
 
-  // StorePatch saves the current RAM slot to permanent flash memory.
-  // Protocol: slot (0-3), section (0-8 = bankIndex), position (0-98).
-  // Display locations 101-999 map to: section = (loc/100)-1, position = (loc%100)-1.
-  auto* dialog = new juce::AlertWindow("Send Patch to Synth",
-      "Save current patch to synth flash memory:",
-      juce::MessageBoxIconType::QuestionIcon);
+  // Check if patch list is loaded - if not, trigger request
+  if (!connectionManager.isPatchListLoaded()) {
+    mainLayout->getInspector().setLoadingState(true);
+    connectionManager.requestPatchList();
 
-  // Slot ComboBox (A-D)
-  dialog->addComboBox("slot", {"A (Slot 1)", "B (Slot 2)", "C (Slot 3)", "D (Slot 4)"}, "Slot:");
-  dialog->getComboBoxComponent("slot")->setSelectedItemIndex(
-      connectionManager.getCurrentSlot(), juce::dontSendNotification);
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::InfoIcon,
+        "Loading Patch List",
+        "Patch names are being loaded from synth. Please try again in a moment.");
+    return;
+  }
 
-  // Bank location ComboBox (101-999, skipping x00)
-  juce::StringArray locationItems;
-  for (int bank = 1; bank <= 9; ++bank)
-    for (int pos = 1; pos <= 99; ++pos)
-      locationItems.add(juce::String(bank * 100 + pos));
-  dialog->addComboBox("location", locationItems, "Location:");
+  // Show location selector dialog
+  auto* locationDialog = new PatchLocationDialog(connectionManager.getPatchList(),
+                                                  true,  // Show slot selector
+                                                  connectionManager.getCurrentSlot());
 
-  dialog->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
-  dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+  locationDialog->setCallback([this](const PatchLocationDialog::Result& result) {
+    if (!result.confirmed)
+      return;
 
-  dialog->enterModalState(true, juce::ModalCallbackFunction::create(
-      [this, dialog](int result) {
-        int slot = dialog->getComboBoxComponent("slot")->getSelectedItemIndex();
-        int locationIdx = dialog->getComboBoxComponent("location")->getSelectedItemIndex();
-        delete dialog;
+    int location = (result.section + 1) * 100 + result.position + 1;  // Display: 101-999
 
-        if (result == 0)
-          return;
+    StorePatchMessage msg(result.slot, result.section, result.position);
+    auto sysex = msg.toSysEx(result.slot);
+    connectionManager.sendRawSysEx(sysex);
 
-        // Convert flat index back to section/position
-        // Index 0=101, 1=102, ..., 98=199, 99=201, etc.
-        // Protocol uses bankIndex 0-8 (Java: dstLocation.getBank())
-        int section = locationIdx / 99;       // Protocol section: 0-8
-        int pos = locationIdx % 99;           // Protocol position: 0-98
-        int location = (section + 1) * 100 + pos + 1;  // Display: 101-999
+    std::cout << "[STORE] Sent StorePatch: slot=" << result.slot
+        << " section=" << result.section << " pos=" << result.position
+        << " (location " << location << ")" << std::endl;
 
-        StorePatchMessage msg(slot, section, pos);
-        auto sysex = msg.toSysEx(slot);
-        connectionManager.sendRawSysEx(sysex);
+    const char* slotNames[] = {"A", "B", "C", "D"};
+    mainLayout->getStatusBar().setConnectionStatus(
+        "Saved slot " + juce::String(slotNames[result.slot]) + " to " + juce::String(location), true);
+  });
 
-        std::cout << "[STORE] Sent StorePatch: slot=" << slot
-            << " section=" << section << " pos=" << pos
-            << " (location " << location << ")" << std::endl;
-
-        std::cout << "[STORE]   SysEx: ";
-        for (auto byte : sysex)
-          std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
-        std::cout << std::dec << std::endl;
-
-        const char* slotNames[] = {"A", "B", "C", "D"};
-        mainLayout->getStatusBar().setConnectionStatus(
-            "Saved slot " + juce::String(slotNames[slot]) + " to " + juce::String(location), true);
-      }),
-      true);
+  juce::DialogWindow::LaunchOptions options;
+  options.content.setOwned(locationDialog);
+  options.dialogTitle = "Send Patch to Synth";
+  options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+  options.escapeKeyTriggersCloseButton = true;
+  options.useNativeTitleBar = true;
+  options.resizable = false;
+  options.launchAsync();
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {

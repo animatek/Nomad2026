@@ -17,16 +17,25 @@ public:
     using MorphChangeCallback = std::function<void(int morphIndex, int value)>;
     using VoiceChangeCallback = std::function<void(int voices)>;
     using CableVisibilityCallback = std::function<void()>;
+    using NameChangeCallback = std::function<void(const juce::String& newName)>;
+    using QuickSaveCallback = std::function<void()>;
 
     void setMorphChangeCallback(MorphChangeCallback cb) { morphChangeCallback = std::move(cb); }
     void setVoiceChangeCallback(VoiceChangeCallback cb) { voiceChangeCallback = std::move(cb); }
     void setCableVisibilityCallback(CableVisibilityCallback cb) { cableVisCallback = std::move(cb); }
+    void setNameChangeCallback(NameChangeCallback cb) { nameChangeCallback = std::move(cb); }
+    void setQuickSaveCallback(QuickSaveCallback cb) { quickSaveCallback = std::move(cb); }
+
+    // Set the current bank/position for quick save button
+    void setCurrentLocation(int section, int position);
+    void clearCurrentLocation();
 
     void paint(juce::Graphics& g) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
     void drawMorphKnob(juce::Graphics& g, float cx, float cy, float size,
@@ -39,6 +48,8 @@ private:
 
     int getCableToggleAt(juce::Point<int> pos) const;
     juce::Rectangle<float> getCableToggleBounds(int i) const;
+
+    juce::Rectangle<int> getPatchNameBounds() const;
 
     enum class ArrowHit { None, Up, Down };
     ArrowHit getVoiceArrowAt(juce::Point<int> pos) const;
@@ -63,6 +74,19 @@ private:
     MorphChangeCallback morphChangeCallback;
     VoiceChangeCallback voiceChangeCallback;
     CableVisibilityCallback cableVisCallback;
+    NameChangeCallback nameChangeCallback;
+    QuickSaveCallback quickSaveCallback;
+
+    std::unique_ptr<juce::Label> patchNameEditor;
+    std::unique_ptr<juce::DrawableButton> quickSaveButton;
+
+    void createDisketteIcon();
+
+public:
+    int currentSection = -1;  // -1 = no location set (public for quick save access)
+    int currentPosition = -1;
+
+private:
 
     // Cached section X positions (computed in resized)
     int patchSecX_ = 0;

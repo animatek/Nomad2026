@@ -26,7 +26,8 @@ namespace
     constexpr int sepGap = 14;
     constexpr int patchLblW = 44;
     constexpr int patchNameW = 150;
-    constexpr int patchSecW = patchLblW + patchNameW + 4;
+    constexpr int saveBtnW = 28;  // Quick save button width
+    constexpr int patchSecW = patchLblW + patchNameW + saveBtnW + 8;  // +8 for spacing
     constexpr int voicesLblW = 50;
     constexpr int voicesValW = 32;
     constexpr int arrowBtnW = 16;
@@ -36,11 +37,108 @@ namespace
     constexpr int loadSecW = loadLblW + loadBarTotalW;
 }
 
-PatchHeaderBar::PatchHeaderBar() {}
+PatchHeaderBar::PatchHeaderBar()
+{
+    // Create patch name editor (initially hidden)
+    patchNameEditor = std::make_unique<juce::Label>("PatchName", "");
+    patchNameEditor->setEditable(true);
+    patchNameEditor->setColour(juce::Label::backgroundColourId, juce::Colour(0xff252545));
+    patchNameEditor->setColour(juce::Label::textColourId, juce::Colours::white);
+    patchNameEditor->setColour(juce::Label::outlineColourId, juce::Colour(0xff444466));
+    patchNameEditor->setFont(juce::FontOptions(12.0f));
+    patchNameEditor->setJustificationType(juce::Justification::centredLeft);
+
+    // CRITICAL: Limit input to 15 characters (16+ hangs the synth!)
+    patchNameEditor->onEditorShow = [this]()
+    {
+        if (auto* editor = patchNameEditor->getCurrentTextEditor())
+            editor->setInputRestrictions(15);  // Hard limit to 15 characters
+    };
+
+    patchNameEditor->onTextChange = [this]()
+    {
+        if (patch && nameChangeCallback)
+        {
+            juce::String newName = patchNameEditor->getText().substring(0, 15);  // CRITICAL: Max 15 chars (16+ hangs synth!)
+            patch->setName(newName);
+            nameChangeCallback(newName);
+        }
+    };
+    patchNameEditor->onEditorHide = [this]()
+    {
+        repaint();  // Redraw after editing
+    };
+    addAndMakeVisible(patchNameEditor.get());
+    patchNameEditor->setVisible(false);  // Hidden by default
+
+    // Create quick save button (diskette icon)
+    quickSaveButton = std::make_unique<juce::DrawableButton>("QuickSave", juce::DrawableButton::ImageFitted);
+    quickSaveButton->setTooltip("Quick Save - Save to current bank location");
+    quickSaveButton->setClickingTogglesState(false);
+    quickSaveButton->onClick = [this]()
+    {
+        if (quickSaveCallback && currentSection >= 0 && currentPosition >= 0)
+            quickSaveCallback();
+    };
+
+    // Set diskette icon
+    createDisketteIcon();
+
+    addAndMakeVisible(quickSaveButton.get());
+}
+
+void PatchHeaderBar::createDisketteIcon()
+{
+    // Create SVG diskette icon path
+    juce::Path diskettePath;
+
+    // Diskette outline (simplified classic floppy disk shape)
+    diskettePath.addRoundedRectangle(2, 0, 20, 24, 1.0f);  // Main body
+    diskettePath.addRectangle(2, 0, 20, 6);  // Top label area
+    diskettePath.addRectangle(6, 8, 12, 10);  // Center metal shutter
+    diskettePath.addRectangle(16, 2, 4, 2);  // Write protect notch
+
+    // Normal state
+    auto normalImage = std::make_unique<juce::DrawablePath>();
+    normalImage->setPath(diskettePath);
+    normalImage->setFill(juce::Colours::white.withAlpha(0.9f));
+    normalImage->setStrokeFill(juce::Colour(0xff444466));
+    normalImage->setStrokeThickness(1.0f);
+
+    // Disabled state (grayed out)
+    auto disabledImage = std::make_unique<juce::DrawablePath>();
+    disabledImage->setPath(diskettePath);
+    disabledImage->setFill(juce::Colour(0xff555555));
+    disabledImage->setStrokeFill(juce::Colour(0xff333333));
+    disabledImage->setStrokeThickness(1.0f);
+
+    quickSaveButton->setImages(normalImage.get(), nullptr, nullptr, disabledImage.get());
+}
+
+void PatchHeaderBar::setCurrentLocation(int section, int position)
+{
+    currentSection = section;
+    currentPosition = position;
+
+    // Update tooltip with location
+    int displayLocation = (section + 1) * 100 + position + 1;
+    quickSaveButton->setTooltip("Quick Save to location " + juce::String(displayLocation));
+    quickSaveButton->setEnabled(true);
+}
+
+void PatchHeaderBar::clearCurrentLocation()
+{
+    currentSection = -1;
+    currentPosition = -1;
+    quickSaveButton->setTooltip("Quick Save - No location set");
+    quickSaveButton->setEnabled(false);
+}
 
 void PatchHeaderBar::setPatch(Patch* p)
 {
     patch = p;
+    if (patchNameEditor->isVisible())
+        patchNameEditor->setVisible(false);
     repaint();
 }
 
@@ -52,6 +150,25 @@ void PatchHeaderBar::resized()
     loadSecX_ = x;      x += loadSecW + sepGap;
     morphSecX_ = x;     x += 4 * (morphKnobSize + morphKnobSpacing) + sepGap;
     cableSecX_ = x;
+
+    // Position patch name editor
+    if (patchNameEditor)
+        patchNameEditor->setBounds(getPatchNameBounds());
+
+    // Position quick save button (next to patch name)
+    if (quickSaveButton)
+    {
+        int btnSize = saveBtnW;
+        int btnX = patchSecX_ + patchLblW + patchNameW + 4;
+        int btnY = (getHeight() - btnSize) / 2;
+        quickSaveButton->setBounds(btnX, btnY, btnSize, btnSize);
+    }
+}
+
+juce::Rectangle<int> PatchHeaderBar::getPatchNameBounds() const
+{
+    int x = patchSecX_ + patchLblW;
+    return juce::Rectangle<int>(x, 6, patchNameW, getHeight() - 12);
 }
 
 // --- Layout helpers ---
@@ -233,16 +350,20 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     g.drawText("Patch:", x, 0, patchLblW, h, juce::Justification::centredLeft);
     x += patchLblW;
 
-    auto nameRect = juce::Rectangle<int>(x, 6, patchNameW, h - 12);
-    g.setColour(juce::Colour(0xff252545));
-    g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
-    g.setColour(juce::Colour(0xff444466));
-    g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
+    // Only draw name if editor is not visible
+    if (!patchNameEditor || !patchNameEditor->isVisible())
+    {
+        auto nameRect = juce::Rectangle<int>(x, 6, patchNameW, h - 12);
+        g.setColour(juce::Colour(0xff252545));
+        g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
+        g.setColour(juce::Colour(0xff444466));
+        g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
 
-    juce::String patchName = patch ? patch->getName() : "No Patch";
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(12.0f));
-    g.drawText(patchName, nameRect.reduced(6, 0), juce::Justification::centredLeft, true);
+        juce::String patchName = patch ? patch->getName() : "No Patch";
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(12.0f));
+        g.drawText(patchName, nameRect.reduced(6, 0), juce::Justification::centredLeft, true);
+    }
 
     // --- Voices ---
     x = voicesSecX_;
@@ -394,4 +515,20 @@ void PatchHeaderBar::mouseUp(const juce::MouseEvent&)
             morphChangeCallback(dragState.morphIndex, finalVal);
     }
     dragState = DragState();
+}
+
+void PatchHeaderBar::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    if (!patch)
+        return;
+
+    // Check if double-click is on patch name area
+    auto nameRect = getPatchNameBounds();
+    if (nameRect.contains(e.getPosition()))
+    {
+        // Show editor and start editing
+        patchNameEditor->setText(patch->getName(), juce::dontSendNotification);
+        patchNameEditor->setVisible(true);
+        patchNameEditor->showEditor();
+    }
 }

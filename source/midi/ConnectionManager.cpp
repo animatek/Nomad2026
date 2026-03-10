@@ -1,4 +1,6 @@
 #include "ConnectionManager.h"
+#include "../protocol/StorePatchMessage.h"
+#include "../protocol/SetPatchTitleMessage.h"
 #include <iostream>
 
 ConnectionManager::ConnectionManager()
@@ -174,6 +176,23 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
     // Parameter messages use cc=0x13, have checksum, no reply expected
     // IMPORTANT: Use currentSlot, not 0!
     protocol.sendMessage(NmCmd::ParameterChange, currentSlot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
+}
+
+void ConnectionManager::sendPatchTitle(const juce::String& title)
+{
+    if (!isConnected())
+    {
+        DBG("sendPatchTitle: NOT CONNECTED");
+        return;
+    }
+
+    SetPatchTitleMessage msg(currentSlot, currentPatchId, title);
+    auto sysex = msg.toSysEx(currentSlot);
+    sendRawSysEx(sysex);
+
+    DBG("sendPatchTitle: slot=" + juce::String(currentSlot)
+        + " pid=" + juce::String(currentPatchId)
+        + " title=\"" + title + "\"");
 }
 
 void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
@@ -527,4 +546,64 @@ void ConnectionManager::startSlotDetectionFallback()
             requestPatch(0);
         }
     });
+}
+
+void ConnectionManager::copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition)
+{
+    if (!isConnected())
+        return;
+
+    std::cout << "[COPY] Copying patch from (" << srcSection << "," << srcPosition
+              << ") to (" << dstSection << "," << dstPosition << ")" << std::endl;
+
+    // Use slot 3 as temporary slot for copy operation
+    constexpr int tempSlot = 3;
+
+    // Step 1: Load source patch to temp slot
+    loadPatchFromBank(srcSection, srcPosition, tempSlot);
+
+    // Step 2: After a brief delay, store from temp slot to destination
+    // The delay allows the synth to load the patch into the slot
+    juce::Timer::callAfterDelay(500, [this, tempSlot, dstSection, dstPosition]()
+    {
+        if (!isConnected())
+            return;
+
+        std::cout << "[COPY] Storing from slot " << tempSlot << " to bank ("
+                  << dstSection << "," << dstPosition << ")" << std::endl;
+
+        // Create and send StorePatch message
+        auto msg = std::make_unique<StorePatchMessage>(tempSlot, dstSection, dstPosition);
+        auto sysex = msg->toSysEx(tempSlot);
+        sendRawSysEx(sysex);
+
+        std::cout << "[COPY] Copy complete!" << std::endl;
+    });
+}
+
+void ConnectionManager::movePatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition)
+{
+    // Move = Copy + Delete source
+    // For now, just do the copy. Delete requires creating an empty patch which needs serialization.
+    copyPatchInBank(srcSection, srcPosition, dstSection, dstPosition);
+
+    std::cout << "[MOVE] Copy complete. NOTE: Source patch not deleted (requires serialization)" << std::endl;
+}
+
+void ConnectionManager::deletePatchInBank(int section, int position)
+{
+    // Delete by creating an empty patch and storing it to the location
+    std::cout << "[DELETE] Deleting patch at bank " << section << " position " << position << std::endl;
+
+    // TODO: Implement by:
+    // 1. Creating an empty/init Patch object
+    // 2. Serializing it with PatchSerializer
+    // 3. Somehow loading it to a temp slot (requires AddModule/AddCable commands)
+    // 4. Storing to the target location
+    //
+    // For now, this is not implemented because the protocol doesn't have a "SetPatch"
+    // command - it only has AddModule, AddCable, etc. which would require implementing
+    // ~10 different message types.
+
+    std::cout << "[DELETE] Not implemented - protocol limitation" << std::endl;
 }

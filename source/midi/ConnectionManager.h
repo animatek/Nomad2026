@@ -36,7 +36,13 @@ public:
     void requestPatch(int slot = 0);
     void loadPatchFromBank(int section, int position, int targetSlot = -1);  // -1 = use current slot
     void sendParameter(int section, int moduleId, int parameterId, int value);
+    void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
     void sendRawSysEx(const std::vector<uint8_t>& sysex);
+
+    // Bank operations (high-level)
+    void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition);
+    void movePatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition);
+    void deletePatchInBank(int section, int position);
 
     int getCurrentSlot() const;
     int getCurrentPatchId() const { return currentPatchId; }
