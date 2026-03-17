@@ -1,4 +1,5 @@
 #include "Patch.h"
+#include "ModuleDescriptions.h"
 
 // --- Module ---
 
@@ -48,11 +49,20 @@ Module* ModuleContainer::addModule(std::unique_ptr<Module> module)
 {
     auto* ptr = module.get();
     modules.push_back(std::move(module));
+
+    // Trigger callback if set
+    if (onModuleAdded)
+        onModuleAdded(ptr);
+
     return ptr;
 }
 
 void ModuleContainer::removeModule(Module* module)
 {
+    // Call callback BEFORE removing (so it can access module data)
+    if (onModuleRemoved)
+        onModuleRemoved(module);
+
     // Remove connections involving this module's connectors
     for (auto& conn : module->getConnectors())
     {
@@ -135,3 +145,42 @@ const Module* ModuleContainer::getModuleByIndex(int containerIndex) const
 // --- Patch ---
 
 Patch::Patch() = default;
+
+Module* Patch::createModule(int section, int typeId, int gridX, int gridY,
+                             const juce::String& moduleName, const ModuleDescriptions& descs)
+{
+    // Get module descriptor
+    auto* descriptor = descs.getModuleByIndex(typeId);
+    if (descriptor == nullptr)
+        return nullptr;
+
+    // Check if module can be added to this section
+    auto& container = getContainer(section);
+    if (!container.canAdd(*descriptor))
+        return nullptr;
+
+    // Generate unique container index (find max existing + 1)
+    int maxIndex = -1;
+    for (auto& m : container.getModules())
+    {
+        int idx = m->getContainerIndex();
+        if (idx > maxIndex)
+            maxIndex = idx;
+    }
+    int newIndex = maxIndex + 1;
+
+    // Create module from descriptor
+    auto module = Module::createFromDescriptor(*descriptor);
+    if (module == nullptr)
+        return nullptr;
+
+    // Configure module
+    module->setContainerIndex(newIndex);
+    module->setPosition({ gridX, gridY });
+    module->setTitle(moduleName.isNotEmpty() ? moduleName : descriptor->name);
+
+    // Add to container
+    Module* modulePtr = container.addModule(std::move(module));
+
+    return modulePtr;
+}

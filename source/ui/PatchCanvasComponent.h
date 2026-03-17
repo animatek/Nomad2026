@@ -5,21 +5,34 @@
 #include "../model/ModuleDescriptions.h"
 #include "../model/ThemeData.h"
 
-class PatchCanvas : public juce::Component
+class PatchCanvas : public juce::Component,
+                     public juce::DragAndDropTarget
 {
 public:
+    // Callback types
+    using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
+    using ModuleDropCallback = std::function<void(int typeId, int section, int gridX, int gridY, const juce::String& name)>;
+
     PatchCanvas();
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
 
-    // Callback for parameter changes
-    using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
+    // Callbacks
     void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
+    void setModuleDropCallback(ModuleDropCallback cb) { moduleDropCallback = std::move(cb); }
+
+    // DragAndDropTarget interface
+    bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override;
+    void itemDragEnter(const SourceDetails& dragSourceDetails) override;
+    void itemDragMove(const SourceDetails& dragSourceDetails) override;
+    void itemDragExit(const SourceDetails& dragSourceDetails) override;
+    void itemDropped(const SourceDetails& dragSourceDetails) override;
 
     // Check if a specific parameter is currently being dragged by the user
     bool isDragging(int section, int moduleId, int parameterId) const;
@@ -75,10 +88,22 @@ private:
     };
     DragState dragState;
     ParameterChangeCallback parameterChangeCallback;
+    ModuleDropCallback moduleDropCallback;
+
+    // Module drop preview
+    bool showModuleDropPreview = false;
+    int dropPreviewTypeId = 0;
+    int dropPreviewSection = 0;
+    int dropPreviewGridX = 0;
+    int dropPreviewGridY = 0;
 
     // Cable creation preview
     juce::Point<int> cablePreviewEnd;
     bool showCablePreview = false;
+
+    // Module selection
+    Module* selectedModule = nullptr;
+    int selectedSection = -1;  // -1=none, 0=common, 1=poly
 
     // Connector hit-testing helpers
     struct ConnectorHit { Module* module = nullptr; Connector* connector = nullptr; int section = 0; };
@@ -106,6 +131,11 @@ public:
     void setParameterChangeCallback(PatchCanvas::ParameterChangeCallback cb)
     {
         canvas.setParameterChangeCallback(std::move(cb));
+    }
+
+    void setModuleDropCallback(PatchCanvas::ModuleDropCallback cb)
+    {
+        canvas.setModuleDropCallback(std::move(cb));
     }
 
     void repaintCanvas() { canvas.repaint(); }

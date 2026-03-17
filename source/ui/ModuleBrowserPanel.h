@@ -3,7 +3,8 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/ModuleDescriptions.h"
 
-class ModuleBrowserPanel : public juce::Component
+class ModuleBrowserPanel : public juce::Component,
+                            public juce::DragAndDropContainer
 {
 public:
     ModuleBrowserPanel();
@@ -39,6 +40,11 @@ private:
         bool mightContainSubItems() override { return false; }
         juce::String getUniqueName() const override { return descriptor->name; }
         void paintItem(juce::Graphics& g, int width, int height) override;
+
+        // Enable drag & drop - return ModuleDescriptor pointer as drag description
+        juce::var getDragSourceDescription() override;
+
+        const ModuleDescriptor* getDescriptor() const { return descriptor; }
 
     private:
         const ModuleDescriptor* descriptor;

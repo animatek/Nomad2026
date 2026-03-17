@@ -39,6 +39,18 @@ void ModuleBrowserPanel::ModuleItem::paintItem(juce::Graphics& g, int width, int
     }
 }
 
+juce::var ModuleBrowserPanel::ModuleItem::getDragSourceDescription()
+{
+    // Return a var containing the ModuleDescriptor pointer encoded as int64
+    // The drop target will decode this to identify which module was dragged
+    auto desc = new juce::DynamicObject();
+    desc->setProperty("type", "module");
+    desc->setProperty("descriptorPtr", reinterpret_cast<juce::int64>(descriptor));
+    desc->setProperty("typeId", descriptor->index);
+    desc->setProperty("name", descriptor->name);
+    return juce::var(desc);
+}
+
 // --- ModuleBrowserPanel ---
 
 ModuleBrowserPanel::ModuleBrowserPanel()

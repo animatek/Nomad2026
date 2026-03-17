@@ -247,6 +247,35 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         connectionManager.sendParameter(section, moduleId, parameterId, value);
       });
 
+  // Wire module drops from browser to patch model
+  mainLayout->getCanvas().setModuleDropCallback(
+      [this](int typeId, int section, int gridX, int gridY, const juce::String& name) {
+        if (!currentPatch)
+        {
+          std::cout << "[MAIN] ERROR: Cannot add module - no current patch" << std::endl;
+          return;
+        }
+
+        std::cout << "[MAIN] Module dropped: typeId=" << typeId
+          << " section=" << section << " pos=(" << gridX << "," << gridY << ")"
+          << " name=" << name << std::endl;
+
+        // Create module in patch (will trigger synchronizer to send to synth)
+        auto* module = currentPatch->createModule(section, typeId, gridX, gridY, name, moduleDescs);
+        if (module)
+        {
+            // Repaint canvas to show new module
+          mainLayout->getCanvas().repaintCanvas();
+          std::cout << "[MAIN] Module created successfully" << std::endl;
+        }
+        else
+        {
+          std::cout << "[MAIN] ERROR: Failed to create module (type " << typeId << ")" << std::endl;
+          mainLayout->getStatusBar().setConnectionStatus(
+            "Failed to add module - check synth memory/limits", true);
+        }
+      });
+
   // Wire morph knob changes from header bar to synth
   // Morphs use section=2 (morph section), module=1 (morph module),
   // parameter=0-3
@@ -284,16 +313,17 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         int displayLocation = (section + 1) * 100 + position + 1;
         int slot = connectionManager.getCurrentSlot();
 
+        // Show "Saving..." message
+        mainLayout->getStatusBar().showMessage("Quick saving to location " + juce::String(displayLocation) + "...", 0);
+
         StorePatchMessage msg(slot, section, position);
         auto sysex = msg.toSysEx(slot);
         connectionManager.sendRawSysEx(sysex);
 
         std::cout << "[MAIN] Quick saved to location " << displayLocation << std::endl;
 
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::MessageBoxIconType::InfoIcon,
-            "Quick Save",
-            "Patch saved to location " + juce::String(displayLocation) + " ✓");
+        // Show success message (auto-hide after 3 seconds)
+        mainLayout->getStatusBar().showMessage("Quick saved to location " + juce::String(displayLocation), 3000);
       });
 
   // Wire cable visibility toggles to repaint the canvas
@@ -485,6 +515,12 @@ void MainComponent::newPatch() {
   mainLayout->getHeaderBar().setPatch(currentPatch.get());
   mainLayout->getHeaderBar().clearCurrentLocation();  // Clear quick save location
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
+
+  // Re-enable synchronizer so live edits (add/delete modules, cables) are sent to synth
+  if (connectionManager.isConnected()) {
+    patchSynchronizer = std::make_unique<PatchSynchronizer>(*currentPatch, connectionManager);
+    std::cout << "[SYNC] Patch synchronizer enabled for new patch" << std::endl;
+  }
 }
 
 void MainComponent::openPatch() {
@@ -539,8 +575,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   auto patch = io.readFile(file);
 
   if (patch == nullptr) {
-    mainLayout->getStatusBar().setConnectionStatus(
-        "Failed to load: " + file.getFileName(), false);
+    mainLayout->getStatusBar().showMessage("ERROR:Failed to load: " + file.getFileName(), 5000);
     return;
   }
 
@@ -551,8 +586,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   currentPatchFile = file;
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch.get());
-  mainLayout->getStatusBar().setConnectionStatus(
-      "Loaded: " + file.getFileName(), false);
+  mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
 
   // Enable patch synchronization if connected
   if (connectionManager.isConnected()) {
@@ -579,28 +613,34 @@ void MainComponent::savePatchToSynth() {
     return;
   }
 
-  // Check if patch list is loaded - if not, trigger request
-  if (!connectionManager.isPatchListLoaded()) {
-    mainLayout->getInspector().setLoadingState(true);
-    connectionManager.requestPatchList();
+  int slot = connectionManager.getCurrentSlot();
 
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::MessageBoxIconType::InfoIcon,
-        "Loading Patch List",
-        "Patch names are being loaded from synth. Please try again in a moment.");
-    return;
-  }
+  // Step 1: Upload the patch to the synth's current working slot.
+  // This replaces whatever the synth has in RAM with our editor patch.
+  mainLayout->getStatusBar().showMessage("Uploading patch to synth...", 0);
+  connectionManager.uploadPatch(slot, *currentPatch);
 
-  // Show location selector dialog
+  const char* slotNames[] = {"A", "B", "C", "D"};
+  mainLayout->getStatusBar().showMessage(
+      juce::String("Patch uploaded to slot ") + slotNames[slot]
+      + " — use Store to Bank to save permanently", 5000);
+
+  // Step 2: Optionally store to bank (requires patch list).
+  // Only show the dialog if the patch list is already loaded.
+  if (!connectionManager.isPatchListLoaded())
+    return;  // Upload done; user can store to bank later
+
   auto* locationDialog = new PatchLocationDialog(connectionManager.getPatchList(),
                                                   true,  // Show slot selector
-                                                  connectionManager.getCurrentSlot());
+                                                  slot);
 
   locationDialog->setCallback([this](const PatchLocationDialog::Result& result) {
     if (!result.confirmed)
       return;
 
     int location = (result.section + 1) * 100 + result.position + 1;  // Display: 101-999
+
+    mainLayout->getStatusBar().showMessage("Storing to bank location " + juce::String(location) + "...", 0);
 
     StorePatchMessage msg(result.slot, result.section, result.position);
     auto sysex = msg.toSysEx(result.slot);
@@ -610,14 +650,14 @@ void MainComponent::savePatchToSynth() {
         << " section=" << result.section << " pos=" << result.position
         << " (location " << location << ")" << std::endl;
 
-    const char* slotNames[] = {"A", "B", "C", "D"};
-    mainLayout->getStatusBar().setConnectionStatus(
-        "Saved slot " + juce::String(slotNames[result.slot]) + " to " + juce::String(location), true);
+    const char* storeSlotNames[] = {"A", "B", "C", "D"};
+    mainLayout->getStatusBar().showMessage(
+        "Stored slot " + juce::String(storeSlotNames[result.slot]) + " to bank location " + juce::String(location), 3000);
   });
 
   juce::DialogWindow::LaunchOptions options;
   options.content.setOwned(locationDialog);
-  options.dialogTitle = "Send Patch to Synth";
+  options.dialogTitle = "Store Patch to Bank";
   options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
   options.escapeKeyTriggersCloseButton = true;
   options.useNativeTitleBar = true;
@@ -633,11 +673,9 @@ bool MainComponent::savePatchToFile(const juce::File &file) {
   bool ok = io.writeFile(*currentPatch, file);
 
   if (ok) {
-    mainLayout->getStatusBar().setConnectionStatus(
-        "Saved: " + file.getFileName(), false);
+    mainLayout->getStatusBar().showMessage("Saved: " + file.getFileName(), 3000);
   } else {
-    mainLayout->getStatusBar().setConnectionStatus(
-        "Failed to save: " + file.getFileName(), false);
+    mainLayout->getStatusBar().showMessage("ERROR:Failed to save: " + file.getFileName(), 5000);
   }
 
   return ok;

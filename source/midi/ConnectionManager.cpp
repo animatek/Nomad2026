@@ -1,7 +1,10 @@
 #include "ConnectionManager.h"
 #include "../protocol/StorePatchMessage.h"
 #include "../protocol/SetPatchTitleMessage.h"
+#include "../model/PatchSerializer.h"
+#include "../model/Patch.h"
 #include <iostream>
+#include <iomanip>
 
 ConnectionManager::ConnectionManager()
 {
@@ -147,6 +150,69 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     {
         requestPatch(slot);
     });
+}
+
+void ConnectionManager::uploadPatch(int slot, const Patch& patch)
+{
+    if (!isConnected())
+        return;
+
+    // Serialize the patch into individual PDL2 sections (Java upload order, 16 sections)
+    PatchSerializer serializer;
+    auto sections = serializer.serializeForUpload(patch);
+
+    int nSections = static_cast<int>(sections.size());
+
+    std::cout << "[UPLOAD] Uploading patch \"" << patch.getName().toStdString()
+              << "\" to slot " << slot << " (" << nSections << " sections)" << std::endl;
+
+    // Build and send one SysEx message per section.
+    // Format: F0 33 [(cc<<2)|slot] 06 [cmd/pid] [section_data...] checksum F7
+    //   cc = 0x1c | (isFirst?1:0) | (isLast?2:0)
+    //   cmd/pid byte = 0:1 command:1 pid:6
+    //     command = 1 (bulk upload, not incremental)
+    //     pid = sectionsEnded (= sectionIndex + 1)
+    //   section_data = 7-bit MIDI encoded PDL2 section bytes
+    for (int i = 0; i < nSections; ++i)
+    {
+        bool isFirst = (i == 0);
+        bool isLast  = (i == nSections - 1);
+        int  cc      = 0x1c | (isFirst ? 1 : 0) | (isLast ? 2 : 0);
+        int  sectionsEnded = i + 1;
+
+        // payload[0]: 0:1 command:1 pid:6
+        //   MSB=0, command=1 (bulk upload), pid=sectionsEnded
+        uint8_t cmdPidByte = static_cast<uint8_t>(0x40 | (sectionsEnded & 0x3F));
+
+        std::vector<uint8_t> msg;
+        msg.push_back(0xF0);
+        msg.push_back(0x33);
+        msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (slot & 0x03)));
+        msg.push_back(0x06);
+        msg.push_back(cmdPidByte);
+        msg.insert(msg.end(), sections[static_cast<size_t>(i)].begin(),
+                              sections[static_cast<size_t>(i)].end());
+        // Checksum: sum of all bytes (F0 through last payload byte) % 128
+        uint32_t sum = 0;
+        for (auto b : msg)
+            sum += b;
+        msg.push_back(static_cast<uint8_t>(sum % 128));
+        msg.push_back(0xF7);
+
+        // Log first 12 bytes for debugging
+        std::cout << "[UPLOAD]   section " << i
+                  << " size=" << msg.size() << " bytes:";
+        for (size_t k = 0; k < std::min(msg.size(), size_t(12)); ++k)
+            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int)msg[k];
+        std::cout << std::dec << " ..." << std::endl;
+
+        sendRawSysEx(msg);
+
+        // 30ms delay between sections — prevents MIDI buffer overflow in synth
+        juce::Thread::sleep(30);
+    }
+
+    std::cout << "[UPLOAD] Done. Sent " << nSections << " sections." << std::endl;
 }
 
 void ConnectionManager::sendParameter(int section, int moduleId, int parameterId, int value)

@@ -10,6 +10,8 @@ public:
     void setConnectionStatus(const juce::String& status, bool connected = false);
     void setVoiceCount(int count);
     void setDspLoad(float percent);
+    void showMessage(const juce::String& message, int durationMs = 3000);
+    void clearMessage();
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -18,9 +20,20 @@ private:
     juce::Label connectionLabel;
     juce::Label voiceLabel;
     juce::Label dspLabel;
+    juce::Label messageLabel;  // Temporary status messages
 
     bool isConnected = false;
     juce::Rectangle<float> ledBounds;
+
+    // Auto-hide timer for messages
+    class MessageTimer : public juce::Timer
+    {
+    public:
+        explicit MessageTimer(StatusBar& sb) : statusBar(sb) {}
+        void timerCallback() override { statusBar.clearMessage(); }
+    private:
+        StatusBar& statusBar;
+    } messageTimer { *this };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StatusBar)
 };

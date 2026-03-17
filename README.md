@@ -54,6 +54,11 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Shows "01: PatchName" or "01: --" for empty slots
 - [x] **Help Menu**: Links to Nord Modular forum, Facebook group, and patch archive
 - [x] **About Menu**: Links to Patreon, GitHub source code, and project website
+- [x] **Send Patch to Synth** (Device menu): Full 16-section SysEx upload of editor patch to synth working slot
+  - Serializes patch to PDL2 binary (modules, cables, parameters, morphs, knobs, controls, names, notes)
+  - Variable-width parameter encoding derived from module descriptors
+  - Optional "Store to Bank" dialog after upload
+- [x] **New Patch** (File menu): Creates empty Init Patch in editor
 
 ### In Progress
 - [ ] Visual indicator for currently loaded patch in browser
@@ -70,19 +75,20 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 This section outlines all planned features to achieve feature parity with the original Nomad editor. Features are organized by category.
 
 ### File Operations
-- [ ] **New Patch** (Ctrl+N) - Create new empty patch
-- [ ] **Open Patch** (Ctrl+O) - Load .pch file from disk
+- [x] **New Patch** (Ctrl+N) - Create new empty patch
+- [x] **Open Patch** (Ctrl+O) - Load .pch file from disk
 - [ ] **Close Patch** (Ctrl+W) - Close current patch
 - [ ] **Close All Patches** - Close all open patches
-- [ ] **Save Patch** (Ctrl+S) - Save current patch to disk
-- [ ] **Save Patch As** - Save patch with new filename
+- [x] **Save Patch** (Ctrl+S) - Save current patch to disk
+- [x] **Save Patch As** - Save patch with new filename
 - [ ] **Save All Patches** - Save all modified patches
-- [ ] **Quit Application** (Ctrl+Q) - Exit Nomad2026
+- [x] **Quit Application** (Ctrl+Q) - Exit Nomad2026
 
 ### Patch Management
 - [ ] **Patch Settings Dialog** (Ctrl+P) - Edit patch metadata and configuration
-- [ ] **Download Patch to Slot** - Send patch from editor to synth slot (A/B/C/D)
-- [ ] **Save Patch in Synth** - Store patch in synth's internal memory
+- [x] **Send Patch to Slot** - Upload editor patch to synth working slot (full 16-section PDL2 upload)
+- [x] **Save Patch in Synth** - Store uploaded patch to a bank location
+- [x] **New Patch** - Create a new empty patch in the editor
 - [ ] **Multi-Slot Support** - Support all 4 slots (A, B, C, D) instead of just slot 0
 
 ### Synth Communication

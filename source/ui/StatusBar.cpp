@@ -13,6 +13,13 @@ StatusBar::StatusBar()
     setupLabel(connectionLabel, "Disconnected");
     setupLabel(voiceLabel, "Voices: 0");
     setupLabel(dspLabel, "DSP: 0%");
+
+    // Message label (centered, initially hidden)
+    messageLabel.setJustificationType(juce::Justification::centred);
+    messageLabel.setColour(juce::Label::textColourId, juce::Colour(0xffffaa44)); // Orange
+    messageLabel.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
+    addAndMakeVisible(messageLabel);
+    messageLabel.setVisible(false);
 }
 
 void StatusBar::setConnectionStatus(const juce::String& status, bool connected)
@@ -37,6 +44,23 @@ void StatusBar::setVoiceCount(int count)
 void StatusBar::setDspLoad(float percent)
 {
     dspLabel.setText("DSP: " + juce::String(percent, 1) + "%", juce::dontSendNotification);
+}
+
+void StatusBar::showMessage(const juce::String& message, int durationMs)
+{
+    messageLabel.setText(message, juce::dontSendNotification);
+    messageLabel.setVisible(true);
+
+    // Auto-hide after duration
+    if (durationMs > 0)
+        messageTimer.startTimer(durationMs);
+}
+
+void StatusBar::clearMessage()
+{
+    messageTimer.stopTimer();
+    messageLabel.setVisible(false);
+    messageLabel.setText("", juce::dontSendNotification);
 }
 
 void StatusBar::paint(juce::Graphics& g)
@@ -83,4 +107,7 @@ void StatusBar::resized()
     // Right-aligned labels
     dspLabel.setBounds(area.removeFromRight(100));
     voiceLabel.setBounds(area.removeFromRight(100));
+
+    // Message label in the center (takes remaining space)
+    messageLabel.setBounds(area);
 }

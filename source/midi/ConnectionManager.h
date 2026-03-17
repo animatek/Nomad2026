@@ -4,6 +4,8 @@
 #include "MidiDeviceManager.h"
 #include <functional>
 
+class Patch;
+
 class ConnectionManager : public NmProtocol::Listener
 {
 public:
@@ -35,6 +37,7 @@ public:
     // Synth commands
     void requestPatch(int slot = 0);
     void loadPatchFromBank(int section, int position, int targetSlot = -1);  // -1 = use current slot
+    void uploadPatch(int slot, const Patch& patch);  // Upload full patch to synth working slot
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
     void sendRawSysEx(const std::vector<uint8_t>& sysex);

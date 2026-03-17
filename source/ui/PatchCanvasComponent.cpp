@@ -7,6 +7,7 @@
 PatchCanvas::PatchCanvas()
 {
     setSize(canvasWidth, canvasHeight);
+    setWantsKeyboardFocus(true);  // Enable keyboard input for Delete key
 }
 
 void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td)
@@ -178,6 +179,35 @@ void PatchCanvas::paint(juce::Graphics& g)
         g.setColour(juce::Colours::white.withAlpha(0.5f));
         g.strokePath(path, juce::PathStrokeType(2.5f));
     }
+
+    // Module drop preview (ghost outline)
+    if (showModuleDropPreview && moduleDescs != nullptr)
+    {
+        auto* descriptor = moduleDescs->getModuleByIndex(dropPreviewTypeId);
+        if (descriptor != nullptr)
+        {
+            int yOffset = (dropPreviewSection == 1) ? polyAreaOffsetY
+                                                     : (patch ? patch->getHeader().separatorPosition * gridY : canvasHeight / 2);
+            int x = dropPreviewGridX * gridX;
+            int y = yOffset + dropPreviewGridY * gridY;
+            int width = gridX;
+            int height = descriptor->height * gridY;
+
+            juce::Rectangle<int> previewBounds(x, y, width, height);
+
+            // Draw semi-transparent module outline
+            g.setColour(juce::Colours::cyan.withAlpha(0.3f));
+            g.fillRoundedRectangle(previewBounds.toFloat(), 3.0f);
+
+            g.setColour(juce::Colours::cyan.withAlpha(0.8f));
+            g.drawRoundedRectangle(previewBounds.toFloat(), 3.0f, 2.0f);
+
+            // Module name
+            g.setColour(juce::Colours::white.withAlpha(0.8f));
+            g.setFont(juce::FontOptions(10.0f));
+            g.drawText(descriptor->fullname, previewBounds.reduced(4, 4), juce::Justification::centred, true);
+        }
+    }
 }
 
 void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset)
@@ -199,6 +229,13 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
             paintModuleThemed(g, m, rect, *theme);
         else
             paintModuleFallback(g, m, rect);
+
+        // Draw selection border if this module is selected
+        if (&m == selectedModule)
+        {
+            g.setColour(juce::Colours::yellow);
+            g.drawRect(rect, 2);
+        }
     }
 }
 
@@ -1316,13 +1353,16 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 }
             }
 
-            // Module body fallback → start module drag
+            // Module body fallback → select and start module drag
+            selectedModule = &m;
+            selectedSection = area.section;
             dragState.type = DragState::ModuleMove;
             dragState.module = &m;
             dragState.section = area.section;
             dragState.startPos = pos;
             dragState.dragOffsetX = pos.x - rect.getX();
             dragState.dragOffsetY = pos.y - rect.getY();
+            repaint();  // Repaint to show selection
             return;
         }
     }
@@ -1486,6 +1526,24 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
     dragState = DragState();
 }
 
+bool PatchCanvas::keyPressed(const juce::KeyPress& key)
+{
+    // Delete key removes selected module
+    if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
+    {
+        if (selectedModule != nullptr && selectedSection >= 0 && patch != nullptr)
+        {
+            auto& container = patch->getContainer(selectedSection);
+            container.removeModule(selectedModule);
+            selectedModule = nullptr;
+            selectedSection = -1;
+            repaint();
+            return true;
+        }
+    }
+    return false;
+}
+
 bool PatchCanvas::isPositionFree(const ModuleContainer& container, const Module* exclude, int gx, int gy, int height) const
 {
     for (auto& m : container.getModules())
@@ -1583,6 +1641,121 @@ bool PatchCanvas::isDragging(int section, int moduleId, int parameterId) const
     return dragState.section == section
         && dragState.module->getContainerIndex() == moduleId
         && dragState.parameter->getDescriptor()->index == parameterId;
+}
+
+// --- DragAndDropTarget implementation ---
+
+bool PatchCanvas::isInterestedInDragSource(const SourceDetails& dragSourceDetails)
+{
+    // Accept module drags from ModuleBrowserPanel
+    auto description = dragSourceDetails.description;
+    if (!description.isObject())
+        return false;
+
+    auto* obj = description.getDynamicObject();
+    if (obj == nullptr)
+        return false;
+
+    return obj->getProperty("type").toString() == "module";
+}
+
+void PatchCanvas::itemDragEnter(const SourceDetails& dragSourceDetails)
+{
+    if (!patch || !moduleDescs)
+        return;
+
+    auto* obj = dragSourceDetails.description.getDynamicObject();
+    if (obj == nullptr)
+        return;
+
+    dropPreviewTypeId = obj->getProperty("typeId");
+    showModuleDropPreview = true;
+    repaint();
+}
+
+void PatchCanvas::itemDragMove(const SourceDetails& dragSourceDetails)
+{
+    if (!showModuleDropPreview || !patch || !moduleDescs)
+        return;
+
+    // Convert mouse position to grid coordinates
+    auto mousePos = dragSourceDetails.localPosition;
+    int separatorY = patch->getHeader().separatorPosition * gridY;
+    if (separatorY == 0)
+        separatorY = canvasHeight / 2;
+
+    // Determine section based on Y position
+    if (mousePos.y < separatorY)
+    {
+        // Poly area
+        dropPreviewSection = 1;
+        dropPreviewGridX = mousePos.x / gridX;
+        dropPreviewGridY = (mousePos.y - polyAreaOffsetY) / gridY;
+    }
+    else
+    {
+        // Common area
+        dropPreviewSection = 0;
+        dropPreviewGridX = mousePos.x / gridX;
+        dropPreviewGridY = (mousePos.y - separatorY) / gridY;
+    }
+
+    // Clamp to valid ranges
+    dropPreviewGridX = juce::jlimit(0, 39, dropPreviewGridX);
+    dropPreviewGridY = juce::jlimit(0, 127, dropPreviewGridY);
+
+    repaint();
+}
+
+void PatchCanvas::itemDragExit(const SourceDetails& /*dragSourceDetails*/)
+{
+    showModuleDropPreview = false;
+    repaint();
+}
+
+void PatchCanvas::itemDropped(const SourceDetails& dragSourceDetails)
+{
+    showModuleDropPreview = false;
+
+    if (!patch || !moduleDescs)
+        return;
+
+    auto* obj = dragSourceDetails.description.getDynamicObject();
+    if (obj == nullptr)
+        return;
+
+    int typeId = obj->getProperty("typeId");
+    juce::String moduleName = obj->getProperty("name").toString();
+
+    // Convert mouse position to grid coordinates (same as itemDragMove)
+    auto mousePos = dragSourceDetails.localPosition;
+    int separatorY = patch->getHeader().separatorPosition * gridY;
+    if (separatorY == 0)
+        separatorY = canvasHeight / 2;
+
+    int section, dropX, dropY;
+    if (mousePos.y < separatorY)
+    {
+        section = 1;  // Poly
+        dropX = mousePos.x / PatchCanvas::gridX;
+        dropY = (mousePos.y - polyAreaOffsetY) / PatchCanvas::gridY;
+    }
+    else
+    {
+        section = 0;  // Common
+        dropX = mousePos.x / PatchCanvas::gridX;
+        dropY = (mousePos.y - separatorY) / PatchCanvas::gridY;
+    }
+
+    // Clamp to valid ranges
+    dropX = juce::jlimit(0, 39, dropX);
+    dropY = juce::jlimit(0, 127, dropY);
+
+    // Trigger callback if set
+    if (moduleDropCallback)
+        moduleDropCallback(typeId, section, dropX, dropY, moduleName);
+
+    repaint();
 }
 
 // --- PatchCanvasComponent (viewport wrapper) ---

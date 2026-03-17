@@ -107,6 +107,8 @@ class ModuleContainer
 public:
     using CableAddedCallback = std::function<void(Connector* output, Connector* input)>;
     using CableRemovedCallback = std::function<void(Connector* output, Connector* input)>;
+    using ModuleAddedCallback = std::function<void(Module* module)>;
+    using ModuleRemovedCallback = std::function<void(Module* module)>;
 
     Module* addModule(std::unique_ptr<Module> module);
     void removeModule(Module* module);
@@ -126,12 +128,16 @@ public:
     // Event callbacks
     void setCableAddedCallback(CableAddedCallback cb) { onCableAdded = std::move(cb); }
     void setCableRemovedCallback(CableRemovedCallback cb) { onCableRemoved = std::move(cb); }
+    void setModuleAddedCallback(ModuleAddedCallback cb) { onModuleAdded = std::move(cb); }
+    void setModuleRemovedCallback(ModuleRemovedCallback cb) { onModuleRemoved = std::move(cb); }
 
 private:
     std::vector<std::unique_ptr<Module>> modules;
     std::vector<Connection> connections;
     CableAddedCallback onCableAdded;
     CableRemovedCallback onCableRemoved;
+    ModuleAddedCallback onModuleAdded;
+    ModuleRemovedCallback onModuleRemoved;
 };
 
 struct PatchHeader
@@ -214,6 +220,12 @@ public:
 
     // PDL2/Java convention: section 0 = common, section 1 = poly
     ModuleContainer& getContainer(int section) { return section == 1 ? polyVoiceArea : commonArea; }
+    const ModuleContainer& getContainer(int section) const { return section == 1 ? polyVoiceArea : commonArea; }
+
+    // Create a new module and add it to the specified section
+    // Returns pointer to the created module, or nullptr if failed
+    Module* createModule(int section, int typeId, int gridX, int gridY,
+                         const juce::String& moduleName, const class ModuleDescriptions& descs);
 
     // Morph map
     std::array<int, 4> morphValues = { 0, 0, 0, 0 };

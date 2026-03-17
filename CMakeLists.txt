@@ -46,6 +46,9 @@ target_sources(Nomad2026 PRIVATE
     source/protocol/NewCableMessage.cpp
     source/protocol/DeleteCableMessage.cpp
     source/protocol/MoveModuleMessage.cpp
+    source/protocol/NewModuleMessage.cpp
+    source/protocol/DeleteModuleMessage.cpp
+    source/protocol/ParameterEncoder.cpp
     source/protocol/StorePatchMessage.cpp
     source/protocol/SetPatchTitleMessage.cpp
 

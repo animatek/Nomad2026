@@ -27,6 +27,8 @@ private:
     void onCableAdded(int section, Connector* output, Connector* input);
     void onCableRemoved(int section, Connector* output, Connector* input);
     void onModuleMoved(int section, Module* module, int oldX, int oldY);
+    void onModuleAdded(int section, Module* module);
+    void onModuleRemoved(int section, Module* module);
 
     // Helper: find module's container index
     int getModuleIndex(const ModuleContainer& container, const Module* m) const;

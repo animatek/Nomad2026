@@ -2,6 +2,8 @@
 #include "../protocol/NewCableMessage.h"
 #include "../protocol/DeleteCableMessage.h"
 #include "../protocol/MoveModuleMessage.h"
+#include "../protocol/NewModuleMessage.h"
+#include "../protocol/DeleteModuleMessage.h"
 #include <juce_core/juce_core.h>
 #include <iostream>
 #include <iomanip>
@@ -33,6 +35,18 @@ void PatchSynchronizer::enable()
     patch_.getCommonArea().setCableRemovedCallback(
         [this](Connector* out, Connector* in) { onCableRemoved(0, out, in); });
 
+    // Register module added callbacks
+    patch_.getPolyVoiceArea().setModuleAddedCallback(
+        [this](Module* m) { onModuleAdded(1, m); });
+    patch_.getCommonArea().setModuleAddedCallback(
+        [this](Module* m) { onModuleAdded(0, m); });
+
+    // Register module removed callbacks
+    patch_.getPolyVoiceArea().setModuleRemovedCallback(
+        [this](Module* m) { onModuleRemoved(1, m); });
+    patch_.getCommonArea().setModuleRemovedCallback(
+        [this](Module* m) { onModuleRemoved(0, m); });
+
     // Register module moved callbacks for all modules
     auto registerModuleMoved = [this](ModuleContainer& container, int section) {
         for (auto& modPtr : container.getModules())
@@ -60,6 +74,10 @@ void PatchSynchronizer::disable()
     patch_.getPolyVoiceArea().setCableRemovedCallback(nullptr);
     patch_.getCommonArea().setCableAddedCallback(nullptr);
     patch_.getCommonArea().setCableRemovedCallback(nullptr);
+    patch_.getPolyVoiceArea().setModuleAddedCallback(nullptr);
+    patch_.getCommonArea().setModuleAddedCallback(nullptr);
+    patch_.getPolyVoiceArea().setModuleRemovedCallback(nullptr);
+    patch_.getCommonArea().setModuleRemovedCallback(nullptr);
 
     // Clear module callbacks
     for (auto& m : patch_.getPolyVoiceArea().getModules())
@@ -222,4 +240,95 @@ Module* PatchSynchronizer::findModuleForConnector(const ModuleContainer& contain
         }
     }
     return nullptr;
+}
+
+void PatchSynchronizer::onModuleAdded(int section, Module* module)
+{
+    if (!enabled_ || !connMgr_.isConnected())
+        return;
+
+    auto* descriptor = module->getDescriptor();
+    if (!descriptor)
+    {
+        std::cout << "[SYNC] ERROR: onModuleAdded - module has no descriptor" << std::endl;
+        return;
+    }
+
+    int pid = connMgr_.getCurrentPatchId();
+    int typeId = descriptor->index;
+    int moduleIndex = module->getContainerIndex();
+    auto pos = module->getPosition();
+    juce::String name = module->getTitle();
+
+    // Build parameter values array (all parameters at their current values)
+    std::vector<int> paramValues;
+    for (auto& param : module->getParameters())
+    {
+        // Only include "parameter" class (not morph or custom)
+        if (param.getDescriptor()->paramClass == "parameter")
+            paramValues.push_back(param.getValue());
+    }
+
+    // Custom values (empty for most modules)
+    std::vector<int> customValues;
+
+    // Build and send NewModuleMessage
+    NewModuleMessageProto msg(pid, typeId, section, moduleIndex,
+                              pos.x, pos.y, name.toStdString(),
+                              paramValues, customValues);
+
+    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    connMgr_.sendRawSysEx(sysex);
+
+    // Register moved callback so future moves are synced to the synth
+    module->setModuleMovedCallback([this, section](Module* m, int oldX, int oldY) {
+        onModuleMoved(section, m, oldX, oldY);
+    });
+
+    std::cout << "[SYNC] NewModule sent:"
+        << " slot=" << connMgr_.getCurrentSlot()
+        << " section=" << section
+        << " type=" << typeId << " (" << descriptor->name << ")"
+        << " index=" << moduleIndex
+        << " pos=(" << pos.x << "," << pos.y << ")"
+        << " params=" << paramValues.size()
+        << std::endl;
+
+    std::cout << "[SYNC]   SysEx: ";
+    for (auto byte : sysex)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+    std::cout << std::dec << std::endl;
+}
+
+void PatchSynchronizer::onModuleRemoved(int section, Module* module)
+{
+    if (!enabled_ || !connMgr_.isConnected())
+        return;
+
+    auto* descriptor = module->getDescriptor();
+    if (!descriptor)
+    {
+        std::cout << "[SYNC] ERROR: onModuleRemoved - module has no descriptor" << std::endl;
+        return;
+    }
+
+    int pid = connMgr_.getCurrentPatchId();
+    int moduleIndex = module->getContainerIndex();
+
+    // Build and send DeleteModuleMessage
+    DeleteModuleMessage msg(pid, section, moduleIndex);
+    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    connMgr_.sendRawSysEx(sysex);
+
+    std::cout << "[SYNC] DeleteModule sent:"
+        << " slot=" << connMgr_.getCurrentSlot()
+        << " section=" << section
+        << " index=" << moduleIndex
+        << " (was " << descriptor->name << ")"
+        << std::endl;
+
+    std::cout << "[SYNC]   SysEx: ";
+    for (auto byte : sysex)
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)byte << " ";
+    std::cout << std::dec << std::endl;
 }

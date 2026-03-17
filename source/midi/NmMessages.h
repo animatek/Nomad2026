@@ -172,3 +172,21 @@ struct PatchListResponseMessage
     static PatchListResponseMessage decode(const uint8_t* data, size_t length,
                                             int requestSection, int requestPosition);
 };
+
+// NewModule: add a new module to the synth's current patch
+// PDL2: Uses cc=0x1f (PatchPacket with both first+last bits), command=0
+// Payload contains 5 PDL2 sections: SingleModule(48), CableDump(82), ParameterDump(77), CustomDump(91), NameDump(90)
+struct NewModuleMessage
+{
+    int pid = 0;           // Patch ID from ACK
+    int typeId = 0;        // Module type ID (3-113)
+    int section = 0;       // 0 = common, 1 = poly
+    int index = 0;         // Module index (unique within section)
+    int xpos = 0;          // Grid X position
+    int ypos = 0;          // Grid Y position
+    std::string name;      // Module name (max 16 chars)
+    std::vector<int> parameterValues;  // Parameter values (default values from descriptor)
+    std::vector<int> customValues;     // Custom values (usually empty)
+
+    std::vector<uint8_t> encode() const;
+};

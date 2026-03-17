@@ -1,4 +1,5 @@
 #include "NmMessages.h"
+#include "../model/BitStreamWriter.h"
 
 // --- IAmMessage ---
 // PDL2: IAm := 0:1 sender:7 0:1 versionHigh:7 0:1 versionLow:7
@@ -409,4 +410,89 @@ PatchListResponseMessage PatchListResponseMessage::decode(const uint8_t* data, s
     }
 
     return msg;
+}
+
+// --- NewModuleMessage ---
+// PDL2: cc=0x1f (PatchPacket with both first+last bits), command=0, pid in payload
+// Constructs 5 PDL2 sections: SingleModule, CableDump, ParameterDump, CustomDump, NameDump
+// Each section is independently encoded and concatenated.
+
+std::vector<uint8_t> NewModuleMessage::encode() const
+{
+    std::vector<uint8_t> result;
+    BitStreamWriter bsw;
+
+    // --- Section 1: SingleModule (type 48) ---
+    // Format: type:8 Module(type:7 index:7 xpos:7 ypos:7)
+    bsw.writeBits(48, 8);
+    bsw.writeBits(typeId, 7);
+    bsw.writeBits(index, 7);
+    bsw.writeBits(xpos, 7);
+    bsw.writeBits(ypos, 7);
+    bsw.alignToByte();  // PDL2 "Section % 8" rule
+
+    // --- Section 2: CableDump (type 82) ---
+    // Format: type:8 section:1 ncables:15 [ncables*Cable]
+    bsw.writeBits(82, 8);
+    bsw.writeBits(section, 1);
+    bsw.writeBits(0, 15);  // ncables = 0 (no cables for new module)
+    bsw.alignToByte();
+
+    // --- Section 3: ParameterDump (type 77) ---
+    // Format: type:8 section:1 nmodules:7 [nmodules*Parameter]
+    // Parameter := index:7 type:7 [type-specific param values]
+    bsw.writeBits(77, 8);
+    bsw.writeBits(section, 1);
+    if (!parameterValues.empty())
+    {
+        bsw.writeBits(1, 7);  // nmodules = 1
+        bsw.writeBits(index, 7);
+        bsw.writeBits(typeId, 7);
+        for (int val : parameterValues)
+            bsw.writeBits(val, 7);
+    }
+    else
+    {
+        bsw.writeBits(0, 7);  // nmodules = 0 (no parameters)
+    }
+    bsw.alignToByte();
+
+    // --- Section 4: CustomDump (type 91) ---
+    // Format: type:8 section:1 nmodules:7 [nmodules*CustomModule]
+    // CustomModule := index:7 nparams:8 [nparams*CustomValue:7]
+    bsw.writeBits(91, 8);
+    bsw.writeBits(section, 1);
+    if (!customValues.empty())
+    {
+        bsw.writeBits(1, 7);  // nmodules = 1
+        bsw.writeBits(index, 7);
+        bsw.writeBits(static_cast<int>(customValues.size()), 8);
+        for (int val : customValues)
+            bsw.writeBits(val, 7);
+    }
+    else
+    {
+        bsw.writeBits(0, 7);  // nmodules = 0 (no custom values)
+    }
+    bsw.alignToByte();
+
+    // --- Section 5: NameDump (type 90) ---
+    // Format: type:8 section:1 nmodules:7 [nmodules*ModuleName]
+    // ModuleName := index:8 String(16*chars:8/0)
+    bsw.writeBits(90, 8);
+    bsw.writeBits(section, 1);
+    bsw.writeBits(1, 7);  // nmodules = 1
+    bsw.writeBits(index, 8);
+    bsw.writeString16(name);
+    bsw.alignToByte();
+
+    // Convert bitstream to 7-bit MIDI bytes
+    auto patchData = bsw.toMidiBytes();
+
+    // Build final message: pid:7 data:7*
+    // (command=0 is implicit in PatchPacket, not sent in payload)
+    result.push_back(static_cast<uint8_t>(pid & 0x7F));
+    result.insert(result.end(), patchData.begin(), patchData.end());
+
+    return result;
 }
