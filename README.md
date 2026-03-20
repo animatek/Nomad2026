@@ -57,18 +57,32 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Send Patch to Synth** (Device menu): Full 16-section SysEx upload of editor patch to synth working slot
   - Serializes patch to PDL2 binary (modules, cables, parameters, morphs, knobs, controls, names, notes)
   - Variable-width parameter encoding derived from module descriptors
+  - Sequential section upload (one section at a time, waits for ACK before sending next — matches Java protocol)
   - Optional "Store to Bank" dialog after upload
 - [x] **New Patch** (File menu): Creates empty Init Patch in editor
+- [x] **Split Poly/Common Canvas**: Two independent scrollable panels (Poly top, Common bottom), each 128 rows tall
+- [x] **Slot Tabs (1-4)**: Tab bar at top of main layout for the 4 synth slots
+- [x] **Multi-module selection**:
+  - Rubber-band drag on empty canvas area to select multiple modules
+  - Shift+click to add/remove modules from selection
+  - Visual highlight: yellow border + semi-transparent overlay on selected modules
+- [x] **Multi-module move**: Drag selected group maintaining relative positions
+- [x] **Copy/Paste modules** (Ctrl+C / Ctrl+V): Copies modules with their parameters and internal cables
+- [x] **Duplicate** (context menu): Duplicate selection with or without internal cables
+- [x] **QuickAdd popup**: Press Space or double-click empty canvas → searchable module list, Enter/click to add
+- [x] **Parameter context menu** (right-click knob/slider/button): Assign/remove Morph Group (1-4)
+- [x] **MorphAssignmentMessage**: New protocol message — assigns a parameter to a morph group
+- [x] **MorphRangeChangeMessage**: New protocol message — changes morph range/direction for a parameter
+- [x] **Inspector morph integration**: onMorphGroupChanged / onMorphRangeChanged callbacks sync changes live to synth
 
 ### In Progress
 - [ ] Visual indicator for currently loaded patch in browser
-- [ ] Drag & drop modules on canvas
-- [ ] Cable creation/deletion by clicking connectors
+- [ ] Module drag & drop from browser to canvas
 
 ### Next Up
-- [ ] Multi-slot support (slots 1-4, currently hardcoded to slot 0)
-- [ ] Module drag & drop from browser to canvas
+- [ ] Multi-slot support (load/save per slot using slot tabs)
 - [ ] Undo/Redo system
+- [ ] Cable creation/deletion by clicking connectors
 
 ## Roadmap
 
@@ -142,12 +156,15 @@ This section outlines all planned features to achieve feature parity with the or
 
 ### Module Canvas Editing
 - [ ] **Drag & Drop Modules** - Add modules from browser to canvas by dragging
-- [ ] **Move Modules** - Reposition modules on canvas
-- [ ] **Delete Modules** - Remove modules from patch
+- [x] **Move Modules** - Reposition modules on canvas (single and multi-move)
+- [x] **Delete Modules** - Remove modules from patch (Delete key or context menu)
 - [ ] **Cable Creation** - Click connectors to create cables
 - [ ] **Cable Deletion** - Click/right-click cables to delete
-- [ ] **Module Copy/Paste** - Duplicate module configurations
-- [ ] **Selection Tool** - Select multiple modules/cables for batch operations
+- [x] **Module Copy/Paste** - Ctrl+C / Ctrl+V with parameter values and internal cables
+- [x] **Duplicate** - Duplicate selected modules with or without cables (context menu)
+- [x] **Selection Tool** - Rubber-band + Shift+click multi-selection
+- [x] **QuickAdd** - Space / double-click to add modules by name search
+- [x] **Parameter Context Menu** - Right-click params to assign/remove morph group
 
 ### Help System
 - [ ] **Help Contents** - Integrated help documentation

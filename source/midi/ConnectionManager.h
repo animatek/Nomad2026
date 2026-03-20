@@ -68,6 +68,14 @@ public:
     using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
     void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
 
+    // Called when synth sends an error notification (sc=0x7e)
+    using SynthErrorCallback = std::function<void(int errorCode)>;
+    void setSynthErrorCallback(SynthErrorCallback cb) { synthErrorCallback = std::move(cb); }
+
+    // Called when synth ACKs an uploadPatch() — safe to send StorePatch now
+    using UploadCompleteCallback = std::function<void()>;
+    void setUploadCompleteCallback(UploadCompleteCallback cb) { uploadCompleteCallback = std::move(cb); }
+
     // Patch list management
     using PatchListCallback = std::function<void(const std::vector<std::string>& names)>;
     void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
@@ -103,10 +111,19 @@ private:
     VoiceCountCallback voiceCountCallback;
     PatchDataCallback patchDataCallback;
     ParameterChangeCallback parameterChangeCallback;
+    SynthErrorCallback synthErrorCallback;
+    UploadCompleteCallback uploadCompleteCallback;
 
     // Patch request state
     bool waitingForPatchAck = false;
     bool collectingSections = false;
+    bool waitingForUploadAck = false;  // True while waiting for synth ACK after uploadPatch
+    // Sequential upload state: send one section at a time, wait for ACK between each
+    std::vector<std::vector<uint8_t>> uploadSections;  // serialized PDL2 sections
+    std::vector<uint8_t> buildUploadSysEx(int sectionIndex, int numSections, int slot);
+    void sendNextUploadSection();
+    int uploadSlot = 0;
+    int uploadSectionIndex = 0;
     int pendingPatchSlot = 0;
     int currentSlot = 0;  // Track which slot is currently loaded
     int currentPatchId = 0;  // Track the patch ID from ACK (used in parameter changes)

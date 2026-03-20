@@ -152,6 +152,69 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     });
 }
 
+std::vector<uint8_t> ConnectionManager::buildUploadSysEx(int sectionIndex, int numSections, int slot)
+{
+    bool isFirst = (sectionIndex == 0);
+    bool isLast  = (sectionIndex == numSections - 1);
+    int  cc      = 0x1c | (isFirst ? 1 : 0) | (isLast ? 2 : 0);
+    int  sectionsEnded = sectionIndex + 1;
+
+    // payload[0]: 0:1 command:1 pid:6
+    //   MSB=0, command=1 (bulk upload), pid=sectionsEnded
+    uint8_t cmdPidByte = static_cast<uint8_t>(0x40 | (sectionsEnded & 0x3F));
+
+    std::vector<uint8_t> msg;
+    msg.push_back(0xF0);
+    msg.push_back(0x33);
+    msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (slot & 0x03)));
+    msg.push_back(0x06);
+    msg.push_back(cmdPidByte);
+    msg.insert(msg.end(), uploadSections[static_cast<size_t>(sectionIndex)].begin(),
+                          uploadSections[static_cast<size_t>(sectionIndex)].end());
+    // Checksum: sum of all bytes (F0 through last payload byte) % 128
+    uint32_t sum = 0;
+    for (auto b : msg)
+        sum += b;
+    msg.push_back(static_cast<uint8_t>(sum % 128));
+    msg.push_back(0xF7);
+    return msg;
+}
+
+void ConnectionManager::sendNextUploadSection()
+{
+    int total = static_cast<int>(uploadSections.size());
+    if (uploadSectionIndex >= total)
+    {
+        // All sections sent and ACKed — done
+        std::cout << "[UPLOAD] All " << total << " sections sent and ACKed." << std::endl;
+        waitingForUploadAck = false;
+        // Notify MainComponent that upload is complete
+        if (uploadCompleteCallback)
+        {
+            auto cb = uploadCompleteCallback;
+            juce::MessageManager::callAsync([cb]() { cb(); });
+        }
+        // Re-request the patch from synth so our model stays in sync
+        juce::Timer::callAfterDelay(200, [this]() {
+            if (isConnected() && !waitingForPatchAck && !collectingSections)
+                requestPatch(currentSlot);
+        });
+        return;
+    }
+
+    auto msg = buildUploadSysEx(uploadSectionIndex, total, uploadSlot);
+
+    // Log first 12 bytes for debugging
+    std::cout << "[UPLOAD]   section " << uploadSectionIndex
+              << "/" << total << " size=" << msg.size() << " bytes:";
+    for (size_t k = 0; k < std::min(msg.size(), size_t(12)); ++k)
+        std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int)msg[k];
+    std::cout << std::dec << " ..." << std::endl;
+
+    sendRawSysEx(msg);
+    // waitingForUploadAck stays true — onAckReceived will call sendNextUploadSection
+}
+
 void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
     if (!isConnected())
@@ -159,60 +222,16 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 
     // Serialize the patch into individual PDL2 sections (Java upload order, 16 sections)
     PatchSerializer serializer;
-    auto sections = serializer.serializeForUpload(patch);
-
-    int nSections = static_cast<int>(sections.size());
+    uploadSections = serializer.serializeForUpload(patch);
+    uploadSlot = slot;
+    uploadSectionIndex = 0;
 
     std::cout << "[UPLOAD] Uploading patch \"" << patch.getName().toStdString()
-              << "\" to slot " << slot << " (" << nSections << " sections)" << std::endl;
+              << "\" to slot " << slot << " (" << uploadSections.size() << " sections)" << std::endl;
 
-    // Build and send one SysEx message per section.
-    // Format: F0 33 [(cc<<2)|slot] 06 [cmd/pid] [section_data...] checksum F7
-    //   cc = 0x1c | (isFirst?1:0) | (isLast?2:0)
-    //   cmd/pid byte = 0:1 command:1 pid:6
-    //     command = 1 (bulk upload, not incremental)
-    //     pid = sectionsEnded (= sectionIndex + 1)
-    //   section_data = 7-bit MIDI encoded PDL2 section bytes
-    for (int i = 0; i < nSections; ++i)
-    {
-        bool isFirst = (i == 0);
-        bool isLast  = (i == nSections - 1);
-        int  cc      = 0x1c | (isFirst ? 1 : 0) | (isLast ? 2 : 0);
-        int  sectionsEnded = i + 1;
-
-        // payload[0]: 0:1 command:1 pid:6
-        //   MSB=0, command=1 (bulk upload), pid=sectionsEnded
-        uint8_t cmdPidByte = static_cast<uint8_t>(0x40 | (sectionsEnded & 0x3F));
-
-        std::vector<uint8_t> msg;
-        msg.push_back(0xF0);
-        msg.push_back(0x33);
-        msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (slot & 0x03)));
-        msg.push_back(0x06);
-        msg.push_back(cmdPidByte);
-        msg.insert(msg.end(), sections[static_cast<size_t>(i)].begin(),
-                              sections[static_cast<size_t>(i)].end());
-        // Checksum: sum of all bytes (F0 through last payload byte) % 128
-        uint32_t sum = 0;
-        for (auto b : msg)
-            sum += b;
-        msg.push_back(static_cast<uint8_t>(sum % 128));
-        msg.push_back(0xF7);
-
-        // Log first 12 bytes for debugging
-        std::cout << "[UPLOAD]   section " << i
-                  << " size=" << msg.size() << " bytes:";
-        for (size_t k = 0; k < std::min(msg.size(), size_t(12)); ++k)
-            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int)msg[k];
-        std::cout << std::dec << " ..." << std::endl;
-
-        sendRawSysEx(msg);
-
-        // 30ms delay between sections — prevents MIDI buffer overflow in synth
-        juce::Thread::sleep(30);
-    }
-
-    std::cout << "[UPLOAD] Done. Sent " << nSections << " sections." << std::endl;
+    // Send sections one at a time, waiting for ACK between each (like Java protocol)
+    waitingForUploadAck = true;
+    sendNextUploadSection();
 }
 
 void ConnectionManager::sendParameter(int section, int moduleId, int parameterId, int value)
@@ -276,6 +295,17 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     DBG("ACK received: pid1=" + juce::String(msg.pid1)
         + " type=0x" + juce::String::toHexString(msg.type)
         + " pid2=" + juce::String(msg.pid2));
+
+    if (waitingForUploadAck)
+    {
+        // Synth ACK for current upload section — advance to next
+        currentPatchId = msg.pid1;
+        uploadSectionIndex++;
+        std::cout << "[UPLOAD] ACK for section " << (uploadSectionIndex - 1)
+                  << ", patchId=" << currentPatchId << std::endl;
+        sendNextUploadSection();  // sends next or completes if all done
+        return;
+    }
 
     if (waitingForPatchAck)
     {
@@ -509,8 +539,14 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     if (msg.sc == 0x7e)  // Error notification from synth
     {
         int errorCode = msg.data.empty() ? -1 : msg.data[0];
-        DBG("*** SYNTH ERROR: sc=0x7e code=" + juce::String(errorCode)
-            + " (pid=" + juce::String(msg.pid) + ")");
+        std::cout << "*** SYNTH ERROR: sc=0x7e code=" << errorCode
+                  << " (pid=" << msg.pid << ")" << std::endl;
+        if (synthErrorCallback)
+        {
+            juce::MessageManager::callAsync([this, errorCode]() {
+                if (synthErrorCallback) synthErrorCallback(errorCode);
+            });
+        }
     }
 
     if (msg.sc == 0x09 && !msg.data.empty())  // SlotActivated
