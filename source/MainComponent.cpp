@@ -322,14 +322,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             ma.morph = morphGroup;
             ma.range = 0;  // Default range: 0 (not moving with morph until explicitly set)
             assignments.push_back(ma);
-            // Send assignment to synth
+            // Send only the assignment — the canvas will call morphRangeChangeCallback
+            // separately with span=0, avoiding sending two messages in quick succession.
             int pid = connectionManager.getCurrentPatchId();
             int slot = connectionManager.getCurrentSlot();
             MorphAssignmentMessage msg(pid, section, moduleId, paramId, morphGroup);
             connectionManager.sendRawSysEx(msg.toSysEx(slot));
-            // Explicitly set range=0 on synth to match our model
-            MorphRangeChangeMessage rangeMsg(pid, section, moduleId, paramId, 0, 0);
-            connectionManager.sendRawSysEx(rangeMsg.toSysEx(slot));
             std::cout << "[MAIN] Morph assign: section=" << section
                       << " module=" << moduleId << " param=" << paramId
                       << " group=" << morphGroup << std::endl;
