@@ -117,7 +117,8 @@ private:
     // Patch request state
     bool waitingForPatchAck = false;
     bool collectingSections = false;
-    bool waitingForUploadAck = false;  // True while waiting for synth ACK after uploadPatch
+    bool waitingForUploadAck = false;      // True while waiting for synth ACK after uploadPatch
+    bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
     // Sequential upload state: send one section at a time, wait for ACK between each
     std::vector<std::vector<uint8_t>> uploadSections;  // serialized PDL2 sections
     std::vector<uint8_t> buildUploadSysEx(int sectionIndex, int numSections, int slot);

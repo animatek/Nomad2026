@@ -22,7 +22,7 @@ std::unique_ptr<Module> Module::createFromDescriptor(const ModuleDescriptor& des
 Parameter* Module::getParameter(int index)
 {
     for (auto& p : parameters)
-        if (p.getDescriptor()->index == index)
+        if (p.getDescriptor()->index == index && p.getDescriptor()->paramClass == "parameter")
             return &p;
     return nullptr;
 }

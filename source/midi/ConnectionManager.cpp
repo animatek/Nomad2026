@@ -194,11 +194,11 @@ void ConnectionManager::sendNextUploadSection()
             auto cb = uploadCompleteCallback;
             juce::MessageManager::callAsync([cb]() { cb(); });
         }
-        // Re-request the patch from synth so our model stays in sync
-        juce::Timer::callAfterDelay(200, [this]() {
-            if (isConnected() && !waitingForPatchAck && !collectingSections)
-                requestPatch(currentSlot);
-        });
+        // Suppress the next auto-fetch triggered by NewPatchInSlot (sc=0x38).
+        // currentPatch is already authoritative — it IS the patch we just uploaded.
+        // Re-fetching would replace it with a synth copy that may not include
+        // morph assignments (the synth's working-slot memory may strip them).
+        suppressNextAutoFetch = true;
         return;
     }
 
@@ -523,9 +523,18 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         slotDetected = true;
         slotDetectGeneration++;  // Cancel any pending fallback timer
 
-        // Auto-request the new patch data from the synth
-        // Don't interrupt an in-progress collection
-        if (isConnected() && !waitingForPatchAck && !collectingSections && msg.newPatchSlot >= 0)
+        // Update the patch ID from the synth's notification
+        currentPatchId = msg.newPatchPid;
+
+        // Auto-request the new patch data from the synth — but skip once after
+        // uploadPatch() completes so we don't replace currentPatch with a copy
+        // that may be missing morph/custom data the synth doesn't echo back.
+        if (suppressNextAutoFetch)
+        {
+            suppressNextAutoFetch = false;
+            std::cout << "[UPLOAD] Skipping auto-fetch after upload (NewPatchInSlot)" << std::endl;
+        }
+        else if (isConnected() && !waitingForPatchAck && !collectingSections && msg.newPatchSlot >= 0)
             requestPatch(msg.newPatchSlot);
     }
 

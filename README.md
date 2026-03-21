@@ -87,6 +87,13 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - *Medium*: Dead code loop removed from `duplicateSelection()`
   - *Low*: Timeout constants documented with rationale (8s patch, 2s stale, 10s patch list)
   - *Low*: `duplicateSelection` stores section in `oldToNew` map — eliminates O(N²) re-search after module creation
+- [x] **Morph system bug fixes** (6 bugs fixed):
+  - *Critical*: Inspector dangling pointer crash — `clearModule()` before replacing patch prevents SIGSEGV when `refreshMorphList()` accesses destroyed module (all 3 patch-replace paths: synth load, file load, new patch)
+  - *Critical*: Morph assignments lost after "Send Patch to Synth" — suppress auto-refetch (`NewPatchInSlot`) after upload; `currentPatch` is already authoritative
+  - *High*: `getParameter(int)` matched wrong parameter on modules with overlapping indices (e.g. FilterF: custom "freq display units" and regular "frequency" both index=0) — now filters to `paramClass == "parameter"` only
+  - *Medium*: "Zero Morph" now fully removes morph assignment (group + range) instead of only zeroing the range
+  - *Medium*: Default morph range changed from 64 to 0 on new assignments — matches synth expectation
+  - *Low*: Bidirectional morph range sync between canvas (Ctrl+drag) and inspector panel
 
 ### In Progress
 - [ ] Visual indicator for currently loaded patch in browser

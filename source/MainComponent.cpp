@@ -228,6 +228,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         juce::MessageManager::callAsync([this, p = std::move(patch)]() mutable {
           // CRITICAL: Destroy synchronizer BEFORE replacing patch to avoid dangling reference
           patchSynchronizer.reset();
+          // Clear inspector before replacing patch — its currentModule points into the old patch
+          mainLayout->getInspector().clearModule();
 
           currentPatch = std::move(p);
           if (currentPatch) {
@@ -358,6 +360,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         int slot = connectionManager.getCurrentSlot();
         MorphRangeChangeMessage msg(pid, section, moduleId, paramId, span, direction);
         connectionManager.sendRawSysEx(msg.toSysEx(slot));
+        // Keep inspector morph list in sync with canvas changes
+        mainLayout->getInspector().refreshMorphList();
       });
 
   // Wire morph knob changes from header bar to synth
@@ -598,6 +602,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 void MainComponent::newPatch() {
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   patchSynchronizer.reset();
+  mainLayout->getInspector().clearModule();
 
   currentPatch = std::make_unique<Patch>();
   currentPatchFile = juce::File();
@@ -671,6 +676,8 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   patchSynchronizer.reset();
+  // Clear inspector before replacing patch — its currentModule points into the old patch
+  mainLayout->getInspector().clearModule();
 
   currentPatch = std::move(patch);
   currentPatchFile = file;

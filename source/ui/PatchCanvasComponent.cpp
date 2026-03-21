@@ -2264,11 +2264,12 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
             }
             else if (result == 2)
             {
-                // Zero Morph: set range to 0 locally and notify synth
+                // Zero Morph: remove morph assignment entirely (group + range)
+                param.setMorphGroup(-1);
                 param.setMorphRange(0);
-                if (morphRangeChangeCallback)
-                    morphRangeChangeCallback(section, m.getContainerIndex(),
-                                            pd2->index, 0, 0);
+                if (morphAssignCallback)
+                    morphAssignCallback(section, m.getContainerIndex(),
+                                       pd2->index, -1);
                 repaint();
             }
             else if (result == 10)
