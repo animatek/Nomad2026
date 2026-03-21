@@ -114,10 +114,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         ma.section = section; ma.module = module->getContainerIndex();
         ma.param = paramIndex; ma.morph = morphGroup; ma.range = 0;
         assignments.push_back(ma);
-        int pid = connectionManager.getCurrentPatchId();
+        int pid  = connectionManager.getCurrentPatchId();
         int slot = connectionManager.getCurrentSlot();
         MorphAssignmentMessage msg(pid, section, module->getContainerIndex(), paramIndex, morphGroup);
         connectionManager.sendRawSysEx(msg.toSysEx(slot));
+        // Set range=0 on synth to match model
+        MorphRangeChangeMessage rangeMsg(pid, section, module->getContainerIndex(), paramIndex, 0, 0);
+        connectionManager.sendRawSysEx(rangeMsg.toSysEx(slot));
     }
     mainLayout->getCanvas().repaintCanvas();
   };
@@ -317,13 +320,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             ma.module = moduleId;
             ma.param = paramId;
             ma.morph = morphGroup;
-            ma.range = 64;  // Default range (center)
+            ma.range = 0;  // Default range: 0 (not moving with morph until explicitly set)
             assignments.push_back(ma);
-            // Send to synth
+            // Send assignment to synth
             int pid = connectionManager.getCurrentPatchId();
             int slot = connectionManager.getCurrentSlot();
             MorphAssignmentMessage msg(pid, section, moduleId, paramId, morphGroup);
             connectionManager.sendRawSysEx(msg.toSysEx(slot));
+            // Explicitly set range=0 on synth to match our model
+            MorphRangeChangeMessage rangeMsg(pid, section, moduleId, paramId, 0, 0);
+            connectionManager.sendRawSysEx(rangeMsg.toSysEx(slot));
             std::cout << "[MAIN] Morph assign: section=" << section
                       << " module=" << moduleId << " param=" << paramId
                       << " group=" << morphGroup << std::endl;

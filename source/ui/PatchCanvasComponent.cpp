@@ -2264,10 +2264,12 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
             }
             else if (result == 2)
             {
-                // Zero Morph: send MorphRangeChange span=0 direction=0
+                // Zero Morph: set range to 0 locally and notify synth
+                param.setMorphRange(0);
                 if (morphRangeChangeCallback)
                     morphRangeChangeCallback(section, m.getContainerIndex(),
                                             pd2->index, 0, 0);
+                repaint();
             }
             else if (result == 10)
             {
@@ -2281,13 +2283,17 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
             }
             else if (result >= 11 && result <= 14)
             {
-                // Assign to morph group 0-3
+                // Assign to morph group 0-3, start at range=0
                 int group = result - 11;
                 param.setMorphGroup(group);
-                param.setMorphRange(64);  // default range: half maximum
+                param.setMorphRange(0);
                 if (morphAssignCallback)
                     morphAssignCallback(section, m.getContainerIndex(),
                                        pd2->index, group);
+                // Explicitly tell the synth range=0 so it matches our model
+                if (morphRangeChangeCallback)
+                    morphRangeChangeCallback(section, m.getContainerIndex(),
+                                            pd2->index, 0, 0);
                 repaint();
             }
         });
