@@ -1,0 +1,86 @@
+JPF Application boot failed.
+Fri Mar 06 16:42:28 CET 2026
+
+-----------------------------------------------
+Exception details.
+
+Class: java.lang.IllegalArgumentException
+Message: unknown plug-in ID - null
+
+Stack trace:
+
+org.java.plugin.registry.xml.PluginRegistryImpl.getPluginDescriptor(PluginRegistryImpl.java:729)
+org.java.plugin.standard.StandardPluginManager.getPlugin(StandardPluginManager.java:213)
+org.java.plugin.boot.DefaultApplicationInitializer.initApplication(DefaultApplicationInitializer.java:312)
+org.java.plugin.boot.Boot.initApplication(Boot.java:538)
+org.java.plugin.boot.Boot.boot(Boot.java:343)
+org.java.plugin.boot.Boot.main(Boot.java:243)
+
+-----------------------------------------------
+System properties:
+
+awt.toolkit=sun.awt.X11.XToolkit
+file.encoding=UTF-8
+file.encoding.pkg=sun.io
+file.separator=/
+java.awt.graphicsenv=sun.awt.X11GraphicsEnvironment
+java.awt.printerjob=sun.print.PSPrinterJob
+java.class.path=nomad-0-3_2/nomad.jar
+java.class.version=52.0
+java.endorsed.dirs=/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/endorsed
+java.ext.dirs=/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/ext:/usr/java/packages/lib/ext
+java.home=/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre
+java.io.tmpdir=/tmp
+java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+java.runtime.name=OpenJDK Runtime Environment
+java.runtime.version=1.8.0_482-b08
+java.specification.maintenance.version=6
+java.specification.name=Java Platform API Specification
+java.specification.vendor=Oracle Corporation
+java.specification.version=1.8
+java.vendor=Temurin
+java.vendor.url=https://adoptium.net/
+java.vendor.url.bug=https://github.com/adoptium/adoptium-support/issues
+java.version=1.8.0_482
+java.vm.info=mixed mode
+java.vm.name=OpenJDK 64-Bit Server VM
+java.vm.specification.name=Java Virtual Machine Specification
+java.vm.specification.vendor=Oracle Corporation
+java.vm.specification.version=1.8
+java.vm.vendor=Temurin
+java.vm.version=25.482-b08
+jpf.boot.mode=shell
+line.separator=
+
+org.java.plugin.jpf-version=1.5.1
+os.arch=amd64
+os.name=Linux
+os.version=6.19.5-3-cachyos
+path.separator=:
+sun.arch.data.model=64
+sun.boot.class.path=/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/resources.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/rt.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/sunrsasign.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/jsse.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/jce.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/charsets.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/jfr.jar:/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/classes
+sun.boot.library.path=/mnt/SPEED/CODE/Nomad2026/jdk8u482-b08/jre/lib/amd64
+sun.cpu.endian=little
+sun.cpu.isalist=
+sun.font.fontmanager=sun.awt.X11FontManager
+sun.io.unicode.encoding=UnicodeLittle
+sun.java.command=nomad-0-3_2/nomad.jar
+sun.java.launcher=SUN_STANDARD
+sun.jnu.encoding=UTF-8
+sun.management.compiler=HotSpot 64-Bit Tiered Compilers
+sun.os.patch.level=unknown
+user.country=ES
+user.dir=/mnt/SPEED/CODE/Nomad2026
+user.home=/home/animatek
+user.language=es
+user.name=animatek
+user.timezone=Europe/Madrid
+
+-----------------------------------------------
+Runtime info:
+
+Memory TOTAL / FREE / MAX: 504889344 / 496961920 / 7460618240
+Available processors: 12
+System class loader: sun.misc.Launcher$AppClassLoader@232204a1
+Thread context class loader: sun.misc.Launcher$AppClassLoader@232204a1
+Security manager: null
