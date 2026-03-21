@@ -4,6 +4,8 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "protocol/StorePatchMessage.h"
+#include "protocol/MorphAssignmentMessage.h"
+#include "protocol/MorphRangeChangeMessage.h"
 #include <iostream>
 #include <iomanip>
 
@@ -77,138 +79,139 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         [this, total]() { mainLayout->getStatusBar().setVoiceCount(total); });
   });
 
-  // Wire patch list updates to inspector panel
+  // Wire canvas selection to inspector
+  mainLayout->getCanvas().setModuleSelectedCallback(
+      [this](Module* module, int section) {
+        if (module)
+          mainLayout->getInspector().setModule(module, section);
+        else
+          mainLayout->getInspector().clearModule();
+      });
+
+  // Wire inspector name changes to canvas repaint
+  mainLayout->getInspector().onNameChanged = [this](int /*section*/, Module* /*module*/, const juce::String& newName) {
+    std::cout << "[MAIN] Module renamed via inspector to: " << newName.toStdString() << std::endl;
+    mainLayout->getCanvas().repaintCanvas();
+  };
+
+  // Wire inspector morph group remove
+  mainLayout->getInspector().onMorphGroupChanged = [this](int section, Module* module,
+                                                           int paramIndex, int morphGroup) {
+    if (!currentPatch || !module) return;
+    // Update patch morph assignments
+    auto& assignments = currentPatch->morphAssignments;
+    assignments.erase(
+        std::remove_if(assignments.begin(), assignments.end(),
+            [section, module, paramIndex](const MorphAssignment& ma) {
+                return ma.section == section
+                    && ma.module  == module->getContainerIndex()
+                    && ma.param   == paramIndex;
+            }),
+        assignments.end());
+    if (morphGroup >= 0)
+    {
+        MorphAssignment ma;
+        ma.section = section; ma.module = module->getContainerIndex();
+        ma.param = paramIndex; ma.morph = morphGroup; ma.range = 0;
+        assignments.push_back(ma);
+        int pid = connectionManager.getCurrentPatchId();
+        int slot = connectionManager.getCurrentSlot();
+        MorphAssignmentMessage msg(pid, section, module->getContainerIndex(), paramIndex, morphGroup);
+        connectionManager.sendRawSysEx(msg.toSysEx(slot));
+    }
+    mainLayout->getCanvas().repaintCanvas();
+  };
+
+  // Wire inspector morph range change
+  mainLayout->getInspector().onMorphRangeChanged = [this](int section, Module* module,
+                                                           int paramIndex, int span, int dir) {
+    if (!module || !currentPatch) return;
+    // Keep patch model in sync
+    int signedRange = (dir == 0) ? span : -span;
+    int moduleId    = module->getContainerIndex();
+    for (auto& ma : currentPatch->morphAssignments)
+    {
+        if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
+        { ma.range = signedRange; break; }
+    }
+    int pid  = connectionManager.getCurrentPatchId();
+    int slot = connectionManager.getCurrentSlot();
+    MorphRangeChangeMessage msg(pid, section, moduleId, paramIndex, span, dir);
+    connectionManager.sendRawSysEx(msg.toSysEx(slot));
+    mainLayout->getCanvas().repaintCanvas();
+  };
+
+  // Wire patch list updates to patch browser panel
   connectionManager.setPatchListCallback([this](const std::vector<std::string>& names) {
     juce::MessageManager::callAsync([this, names]() {
-      mainLayout->getInspector().setPatchList(names);
+      mainLayout->getPatchBrowser().setPatchList(names);
+      mainLayout->getPatchBrowser().setLoadingState(false);
     });
   });
 
   // Wire patch browser callbacks
-  mainLayout->getInspector().onPatchDoubleClicked = [this](int section, int position) {
+  mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
     std::cout << "[MAIN] Loading patch from browser: section=" << section << " pos=" << position << std::endl;
     connectionManager.loadPatchFromBank(section, position);
-
-    // Track this location for quick save
     mainLayout->getHeaderBar().setCurrentLocation(section, position);
   };
 
-  mainLayout->getInspector().onRefreshRequested = [this]() {
-    std::cout << "[MAIN] Refresh requested" << std::endl;
-    mainLayout->getInspector().setLoadingState(true);
+  mainLayout->getPatchBrowser().onRefreshRequested = [this]() {
+    mainLayout->getPatchBrowser().setLoadingState(true);
     connectionManager.requestPatchList();
   };
 
-  mainLayout->getInspector().onPatchDelete = [this](int section, int position) {
-    int displayLocation = (section + 1) * 100 + position + 1;
+  mainLayout->getPatchBrowser().onPatchDelete = [this](int section, int position) {
     const auto& patchList = connectionManager.getPatchList();
     int index = section * 99 + position;
     juce::String patchName = (index < static_cast<int>(patchList.size()) && !patchList[index].empty())
                               ? patchList[index] : "--";
-
     auto* dialog = new juce::AlertWindow("Delete Patch",
-        "Are you sure you want to delete patch at location " + juce::String(displayLocation) +
-        "?\n\n\"" + patchName + "\"\n\nThis will clear the slot.",
+        "Delete \"" + patchName + "\" from location " +
+        juce::String((section + 1) * 100 + position + 1) + "?",
         juce::MessageBoxIconType::WarningIcon);
-
     dialog->addButton("Delete", 1, juce::KeyPress(juce::KeyPress::returnKey));
     dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-
+    juce::Component::SafePointer<MainComponent> safeThis(this);
     dialog->enterModalState(true, juce::ModalCallbackFunction::create(
-        [this, section, position](int result) {
-          if (result == 0)
-            return;
-
-          std::cout << "[MAIN] Delete patch: section=" << section << " pos=" << position << std::endl;
-
-          // Attempt delete (currently not implemented - requires patch serialization)
-          connectionManager.deletePatchInBank(section, position);
-
-          juce::AlertWindow::showMessageBoxAsync(
-              juce::MessageBoxIconType::WarningIcon,
-              "Not Implemented",
-              "Patch delete requires patch serialization which is not yet implemented.\n\n"
-              "To clear a patch slot, you can:\n"
-              "1. Create a new empty patch in the editor\n"
-              "2. Use 'Save to Synth' to save it to the desired location");
-        }));
+        [safeThis, section, position](int result) {
+          if (safeThis != nullptr && result == 1)
+              safeThis->connectionManager.deletePatchInBank(section, position);
+        }), true);
   };
 
-  mainLayout->getInspector().onPatchCopy = [this](int section, int position) {
-    int displayLocation = (section + 1) * 100 + position + 1;
+  mainLayout->getPatchBrowser().onPatchCopy = [this](int section, int position) {
     const auto& patchList = connectionManager.getPatchList();
-    int srcIndex = section * 99 + position;
-    juce::String srcPatchName = (srcIndex < static_cast<int>(patchList.size()) && !patchList[srcIndex].empty())
-                                 ? patchList[srcIndex] : "--";
-
-    auto* locationDialog = new PatchLocationDialog(patchList, false, 0);  // No slot selector
-
-    locationDialog->setCallback([this, section, position]
-                                (const PatchLocationDialog::Result& result) {
-      if (!result.confirmed)
-        return;
-
-      std::cout << "[MAIN] Copy patch: from section=" << section << " pos=" << position
-                << " to section=" << result.section << " pos=" << result.position << std::endl;
-
-      // Perform the copy operation
-      connectionManager.copyPatchInBank(section, position, result.section, result.position);
-
-      // Show success message
-      juce::AlertWindow::showMessageBoxAsync(
-          juce::MessageBoxIconType::InfoIcon,
-          "Copy Complete",
-          "Patch copied successfully!\n\nRefresh the patch browser to see the changes.");
+    auto* dlg = new PatchLocationDialog(patchList, false, 0);
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    dlg->setCallback([safeThis, section, position](const PatchLocationDialog::Result& r) {
+      if (safeThis != nullptr && r.confirmed)
+        safeThis->connectionManager.copyPatchInBank(section, position, r.section, r.position);
     });
-
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(locationDialog);
-    options.dialogTitle = "Copy Patch from " + juce::String(displayLocation) + ": " + srcPatchName;
-    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = false;
-    options.launchAsync();
+    juce::DialogWindow::LaunchOptions opts;
+    opts.content.setOwned(dlg);
+    opts.dialogTitle = "Copy Patch";
+    opts.escapeKeyTriggersCloseButton = true;
+    opts.useNativeTitleBar = true;
+    opts.resizable = false;
+    opts.launchAsync();
   };
 
-  mainLayout->getInspector().onPatchMove = [this](int section, int position) {
-    int displayLocation = (section + 1) * 100 + position + 1;
+  mainLayout->getPatchBrowser().onPatchMove = [this](int section, int position) {
     const auto& patchList = connectionManager.getPatchList();
-    int srcIndex = section * 99 + position;
-    juce::String srcPatchName = (srcIndex < static_cast<int>(patchList.size()) && !patchList[srcIndex].empty())
-                                 ? patchList[srcIndex] : "--";
-
-    auto* locationDialog = new PatchLocationDialog(patchList, false, 0);  // No slot selector
-
-    locationDialog->setCallback([this, section, position]
-                                (const PatchLocationDialog::Result& result) {
-      if (!result.confirmed)
-        return;
-
-      std::cout << "[MAIN] Move patch: from section=" << section << " pos=" << position
-                << " to section=" << result.section << " pos=" << result.position << std::endl;
-
-      // Perform the move operation (currently just copies, doesn't delete source)
-      connectionManager.movePatchInBank(section, position, result.section, result.position);
-
-      // Show partial implementation notice
-      juce::AlertWindow::showMessageBoxAsync(
-          juce::MessageBoxIconType::InfoIcon,
-          "Move Complete (Partial)",
-          "Patch copied to destination successfully!\n\n"
-          "NOTE: Source patch was NOT deleted (requires patch serialization).\n"
-          "You can manually delete it later.\n\n"
-          "Refresh the patch browser to see the changes.");
+    auto* dlg = new PatchLocationDialog(patchList, false, 0);
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    dlg->setCallback([safeThis, section, position](const PatchLocationDialog::Result& r) {
+      if (safeThis != nullptr && r.confirmed)
+        safeThis->connectionManager.movePatchInBank(section, position, r.section, r.position);
     });
-
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(locationDialog);
-    options.dialogTitle = "Move Patch from " + juce::String(displayLocation) + ": " + srcPatchName;
-    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = false;
-    options.launchAsync();
+    juce::DialogWindow::LaunchOptions opts;
+    opts.content.setOwned(dlg);
+    opts.dialogTitle = "Move Patch";
+    opts.escapeKeyTriggersCloseButton = true;
+    opts.useNativeTitleBar = true;
+    opts.resizable = false;
+    opts.launchAsync();
   };
 
   connectionManager.setPatchDataCallback(
@@ -274,6 +277,83 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           mainLayout->getStatusBar().setConnectionStatus(
             "Failed to add module - check synth memory/limits", true);
         }
+      });
+
+  // Wire module delete from canvas context menu
+  mainLayout->getCanvas().setDeleteModuleCallback(
+      [this](int section, Module* module) {
+        if (!currentPatch) return;
+        auto& container = currentPatch->getContainer(section);
+        container.removeModule(module);
+        mainLayout->getCanvas().repaintCanvas();
+        std::cout << "[MAIN] Module deleted from section " << section << std::endl;
+      });
+
+  // Wire module rename from canvas context menu
+  mainLayout->getCanvas().setRenameModuleCallback(
+      [](int /*section*/, Module* /*module*/, const juce::String& newName) {
+        // Title is already updated on the module object; log for now
+        // Future: send NameDump to synth when protocol supports it
+        std::cout << "[MAIN] Module renamed to: " << newName.toStdString() << std::endl;
+      });
+
+  // Wire morph group assignment from parameter context menu
+  mainLayout->getCanvas().setMorphAssignCallback(
+      [this](int section, int moduleId, int paramId, int morphGroup) {
+        if (!currentPatch) return;
+        // Update patch model: add/update/remove morph assignment
+        auto& assignments = currentPatch->morphAssignments;
+        // Remove any existing assignment for this param
+        assignments.erase(
+            std::remove_if(assignments.begin(), assignments.end(),
+                [section, moduleId, paramId](const MorphAssignment& ma) {
+                    return ma.section == section && ma.module == moduleId && ma.param == paramId;
+                }),
+            assignments.end());
+        if (morphGroup >= 0)
+        {
+            MorphAssignment ma;
+            ma.section = section;
+            ma.module = moduleId;
+            ma.param = paramId;
+            ma.morph = morphGroup;
+            ma.range = 64;  // Default range (center)
+            assignments.push_back(ma);
+            // Send to synth
+            int pid = connectionManager.getCurrentPatchId();
+            int slot = connectionManager.getCurrentSlot();
+            MorphAssignmentMessage msg(pid, section, moduleId, paramId, morphGroup);
+            connectionManager.sendRawSysEx(msg.toSysEx(slot));
+            std::cout << "[MAIN] Morph assign: section=" << section
+                      << " module=" << moduleId << " param=" << paramId
+                      << " group=" << morphGroup << std::endl;
+        }
+        else
+        {
+            std::cout << "[MAIN] Morph disabled for section=" << section
+                      << " module=" << moduleId << " param=" << paramId << std::endl;
+        }
+        // Refresh inspector if the current module is the one that changed
+        mainLayout->getInspector().refreshMorphList();
+      });
+
+  // Wire zero morph / Ctrl+drag (MorphRangeChange) from canvas
+  mainLayout->getCanvas().setMorphRangeChangeCallback(
+      [this](int section, int moduleId, int paramId, int span, int direction) {
+        // Update patch model so serialization uses the correct range
+        if (currentPatch)
+        {
+            int signedRange = (direction == 0) ? span : -span;
+            for (auto& ma : currentPatch->morphAssignments)
+            {
+                if (ma.section == section && ma.module == moduleId && ma.param == paramId)
+                { ma.range = signedRange; break; }
+            }
+        }
+        int pid  = connectionManager.getCurrentPatchId();
+        int slot = connectionManager.getCurrentSlot();
+        MorphRangeChangeMessage msg(pid, section, moduleId, paramId, span, direction);
+        connectionManager.sendRawSysEx(msg.toSysEx(slot));
       });
 
   // Wire morph knob changes from header bar to synth
@@ -368,6 +448,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         mainLayout->getCanvas().repaintCanvas();
       }
     });
+  });
+
+  connectionManager.setSynthErrorCallback([this](int errorCode) {
+    mainLayout->getStatusBar().showMessage(
+        "ERROR: Synth error code " + juce::String(errorCode)
+        + " — check console for details", 8000);
   });
 
   setSize(1280, 800);
@@ -618,51 +704,62 @@ void MainComponent::savePatchToSynth() {
   // Step 1: Upload the patch to the synth's current working slot.
   // This replaces whatever the synth has in RAM with our editor patch.
   mainLayout->getStatusBar().showMessage("Uploading patch to synth...", 0);
-  connectionManager.uploadPatch(slot, *currentPatch);
 
-  const char* slotNames[] = {"A", "B", "C", "D"};
-  mainLayout->getStatusBar().showMessage(
-      juce::String("Patch uploaded to slot ") + slotNames[slot]
-      + " — use Store to Bank to save permanently", 5000);
+  // Step 2: Only show the "Store to Bank" dialog AFTER the synth ACKs the upload.
+  // Sending StorePatch before the upload ACK causes synth error 6 ("upload incomplete").
+  // Use SafePointer so the lambda is safe even if MainComponent is destroyed
+  // before the async callback fires (e.g. window closed mid-upload).
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  connectionManager.setUploadCompleteCallback([safeThis, slot]() {
+    if (safeThis == nullptr) return;
+    // One-shot: clear the callback immediately so it doesn't fire again
+    safeThis->connectionManager.setUploadCompleteCallback(nullptr);
 
-  // Step 2: Optionally store to bank (requires patch list).
-  // Only show the dialog if the patch list is already loaded.
-  if (!connectionManager.isPatchListLoaded())
-    return;  // Upload done; user can store to bank later
+    const char* slotNames[] = {"A", "B", "C", "D"};
+    safeThis->mainLayout->getStatusBar().showMessage(
+        juce::String("Patch uploaded to slot ") + slotNames[slot]
+        + " — use Store to Bank to save permanently", 5000);
 
-  auto* locationDialog = new PatchLocationDialog(connectionManager.getPatchList(),
-                                                  true,  // Show slot selector
-                                                  slot);
-
-  locationDialog->setCallback([this](const PatchLocationDialog::Result& result) {
-    if (!result.confirmed)
+    // Only offer bank storage if the patch list is loaded
+    if (!safeThis->connectionManager.isPatchListLoaded())
       return;
 
-    int location = (result.section + 1) * 100 + result.position + 1;  // Display: 101-999
+    auto* locationDialog = new PatchLocationDialog(safeThis->connectionManager.getPatchList(),
+                                                    true,  // Show slot selector
+                                                    slot);
 
-    mainLayout->getStatusBar().showMessage("Storing to bank location " + juce::String(location) + "...", 0);
+    locationDialog->setCallback([safeThis](const PatchLocationDialog::Result& result) {
+      if (safeThis == nullptr || !result.confirmed)
+        return;
 
-    StorePatchMessage msg(result.slot, result.section, result.position);
-    auto sysex = msg.toSysEx(result.slot);
-    connectionManager.sendRawSysEx(sysex);
+      int location = (result.section + 1) * 100 + result.position + 1;
 
-    std::cout << "[STORE] Sent StorePatch: slot=" << result.slot
-        << " section=" << result.section << " pos=" << result.position
-        << " (location " << location << ")" << std::endl;
+      safeThis->mainLayout->getStatusBar().showMessage("Storing to bank location " + juce::String(location) + "...", 0);
 
-    const char* storeSlotNames[] = {"A", "B", "C", "D"};
-    mainLayout->getStatusBar().showMessage(
-        "Stored slot " + juce::String(storeSlotNames[result.slot]) + " to bank location " + juce::String(location), 3000);
+      StorePatchMessage msg(result.slot, result.section, result.position);
+      auto sysex = msg.toSysEx(result.slot);
+      safeThis->connectionManager.sendRawSysEx(sysex);
+
+      std::cout << "[STORE] Sent StorePatch: slot=" << result.slot
+          << " section=" << result.section << " pos=" << result.position
+          << " (location " << location << ")" << std::endl;
+
+      const char* storeSlotNames[] = {"A", "B", "C", "D"};
+      safeThis->mainLayout->getStatusBar().showMessage(
+          "Stored slot " + juce::String(storeSlotNames[result.slot]) + " to bank location " + juce::String(location), 3000);
+    });
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(locationDialog);
+    options.dialogTitle = "Store Patch to Bank";
+    options.dialogBackgroundColour = safeThis->getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    options.launchAsync();
   });
 
-  juce::DialogWindow::LaunchOptions options;
-  options.content.setOwned(locationDialog);
-  options.dialogTitle = "Store Patch to Bank";
-  options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-  options.escapeKeyTriggersCloseButton = true;
-  options.useNativeTitleBar = true;
-  options.resizable = false;
-  options.launchAsync();
+  connectionManager.uploadPatch(slot, *currentPatch);
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {
@@ -720,8 +817,6 @@ void MainComponent::onConnectionStatusChanged(
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
-    // Request patch list from synth to populate the browser
-    mainLayout->getInspector().setLoadingState(true);
     connectionManager.requestPatchList();
   } else {
     // Disable synchronizer on disconnect

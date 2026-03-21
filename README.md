@@ -74,6 +74,19 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **MorphAssignmentMessage**: New protocol message — assigns a parameter to a morph group
 - [x] **MorphRangeChangeMessage**: New protocol message — changes morph range/direction for a parameter
 - [x] **Inspector morph integration**: onMorphGroupChanged / onMorphRangeChanged callbacks sync changes live to synth
+- [x] **Code robustness review** (14 bugs fixed):
+  - *Critical*: `QuickAddPopup` safe destructor — `PatchCanvas::~PatchCanvas` clears callbacks before deleting popup, prevents dangling-pointer crash on window close
+  - *Critical*: `dragState` reset on `setPatch()` — raw pointers into old patch cleared before loading new patch
+  - *Critical*: `const_cast<Parameter*>` eliminated — `findParameter()` non-const overload returns `Parameter*` directly
+  - *High*: `uploadCompleteCallback` and all dialog callbacks use `SafePointer<MainComponent>` — safe if window closed mid-upload
+  - *High*: `synthErrorCallback` captured by value in async lambda — safe if `ConnectionManager` destroyed before async fires
+  - *High*: `MorphListComponent` saves `paramIndex` before `rebuild()` invalidates rows vector
+  - *High*: `ParameterEncoder` logs unknown module types instead of silently returning empty vector
+  - *Medium*: `onPatchDelete/Copy/Move` browser callbacks use `SafePointer` — safe against MainComponent destruction while dialog open
+  - *Medium*: `dragState.module` null guard added to `MorphRange` drag handler
+  - *Medium*: Dead code loop removed from `duplicateSelection()`
+  - *Low*: Timeout constants documented with rationale (8s patch, 2s stale, 10s patch list)
+  - *Low*: `duplicateSelection` stores section in `oldToNew` map — eliminates O(N²) re-search after module creation
 
 ### In Progress
 - [ ] Visual indicator for currently loaded patch in browser

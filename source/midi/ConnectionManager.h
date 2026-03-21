@@ -134,8 +134,13 @@ private:
     std::vector<std::vector<uint8_t>> patchSections;      // completed sections
     int sectionsReceived = 0;
     static constexpr int totalSections = 13;
-    static constexpr int patchTimeoutMs = 8000;   // Hard timeout: 8 seconds max for entire patch
-    static constexpr int sectionStaleMs = 2000;   // Stale timeout: 2 seconds since last section received
+    // patchTimeoutMs: absolute upper bound for the full 13-section fetch.
+    // 8 s chosen empirically — a slow USB-MIDI round trip for 13 sections is ~2-3 s;
+    // 8 s gives headroom for sluggish hosts without hanging the UI indefinitely.
+    static constexpr int patchTimeoutMs = 8000;
+    // sectionStaleMs: if no new section arrives within this window, the transfer
+    // is considered stalled (synth dropped a packet).  2 s > worst observed gap.
+    static constexpr int sectionStaleMs = 2000;
     int patchTimeoutGeneration = 0;  // Incremented on each new request to invalidate old timeouts
 
     // Slot detection: synth sends SlotActivated after handshake
@@ -150,7 +155,9 @@ private:
     int patchListGeneration = 0;   // Invalidate old timeouts
     std::vector<std::string> patchListNames;  // 891 entries (9 banks × 99 positions)
     PatchListCallback patchListCallback;
-    static constexpr int patchListTimeoutMs = 10000;  // 10 seconds total timeout
+    // patchListTimeoutMs: 891 patches × one request/response each.
+    // Measured at ~8-9 s on a real G1; 10 s allows for occasional retransmits.
+    static constexpr int patchListTimeoutMs = 10000;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ConnectionManager)
 };

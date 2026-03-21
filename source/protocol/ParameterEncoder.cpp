@@ -1,4 +1,6 @@
 #include "ParameterEncoder.h"
+#include <iostream>
+#include <set>
 
 std::vector<int> ParameterEncoder::getParameterBitWidths(int moduleType)
 {
@@ -64,23 +66,24 @@ std::vector<int> ParameterEncoder::getParameterBitWidths(int moduleType)
             // detuneCoarse:7 detuneFine:7 shape:2 fmaMod:7 mute:1
             return {7, 7, 2, 7, 1};
 
-        // Param15 - LFO (module 15)
+        // Param15 - NoteSeqA (module 15)
         case 15:
-            // step1:7 ... step16:7 (16 parameters)
-            return {7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7};
+            // step1:7..step16:7 stepCount:7 editPosition:5 record:1 pause:1 active:1
+            return {7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                    7, 5, 1, 1, 1};
 
         // Param16 - EnvD (module 16)
         case 16:
             // time:7
             return {7};
 
-        // Param17 - CtrlSeq (module 17)
+        // Param17 - EventSeq (module 17)
         case 17:
             // stepcount:7 active:1 gate1:1 gate2:1
-            // seq1step1:1 seq1step2:1 seq1step3:1 seq1step4:1 seq1step5:1 ...
-            // (This is complex - has many 1-bit parameters)
-            // For now, return empty to signal "not fully implemented"
-            return {};
+            // seq1step1:1..seq1step16:1 seq2step1:1..seq2step16:1
+            return {7, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
         // Param18 - Xfade (module 18)
         case 18:
@@ -157,9 +160,28 @@ std::vector<int> ParameterEncoder::getParameterBitWidths(int moduleType)
             // filterType:2 gainControl:1 frequencyMod:7 frequency:7 kbt:7 resonanceMod:7 resonance:7 slope:1 frequencyMod2:7 bypass:1
             return {2, 1, 7, 7, 7, 7, 7, 1, 7, 1};
 
+        // Param52 - Multi-Env (module 52)
+        case 52:
+            // level1:7 level2:7 level3:7 level4:7 time1:7 time2:7 time3:7 time4:7 time5:7 sustain:3 curve:2
+            return {7, 7, 7, 7, 7, 7, 7, 7, 7, 3, 2};
+
+        // Param90 - NoteSeqB (module 90)
+        case 90:
+            // note1:7..note16:7 step:7 currentstep:5 record:1 play:1 loop:1
+            return {7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                    7, 5, 1, 1, 1};
+
         // Add more common modules as needed...
-        // For now, return empty vector for unknown types
         default:
+            // Unknown module type — will fall back to all-7-bit encoding in caller.
+            // Log once per unknown type to help identify missing entries.
+            static std::set<int> warnedTypes;
+            if (warnedTypes.find(moduleType) == warnedTypes.end())
+            {
+                warnedTypes.insert(moduleType);
+                std::cout << "[ParameterEncoder] WARNING: unknown module type " << moduleType
+                          << " — falling back to 7-bit encoding (add entry to fix)" << std::endl;
+            }
             return {};
     }
 }

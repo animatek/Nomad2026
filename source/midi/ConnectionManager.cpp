@@ -543,9 +543,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
                   << " (pid=" << msg.pid << ")" << std::endl;
         if (synthErrorCallback)
         {
-            juce::MessageManager::callAsync([this, errorCode]() {
-                if (synthErrorCallback) synthErrorCallback(errorCode);
-            });
+            // Capture callback by value so it's safe even if ConnectionManager
+            // is destroyed before the async fires.
+            auto cb = synthErrorCallback;
+            juce::MessageManager::callAsync([cb, errorCode]() { cb(errorCode); });
         }
     }
 
