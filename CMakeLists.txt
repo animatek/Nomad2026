@@ -33,6 +33,8 @@ target_sources(Nomad2026 PRIVATE
     source/ui/PatchHeaderBar.cpp
     source/ui/PatchLocationDialog.cpp
     source/ui/MidiSettingsDialog.cpp
+    source/ui/QuickAddPopup.cpp
+    source/ui/PatchBrowserPanel.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
@@ -51,6 +53,10 @@ target_sources(Nomad2026 PRIVATE
     source/protocol/ParameterEncoder.cpp
     source/protocol/StorePatchMessage.cpp
     source/protocol/SetPatchTitleMessage.cpp
+    source/protocol/MorphAssignmentMessage.cpp
+    source/protocol/MorphRangeChangeMessage.cpp
+    source/protocol/KnobAssignmentMessage.cpp
+    source/protocol/MidiCtrlAssignmentMessage.cpp
 
     # Synchronization
     source/sync/PatchSynchronizer.cpp

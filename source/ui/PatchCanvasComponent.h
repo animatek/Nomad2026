@@ -22,6 +22,10 @@ public:
     using MorphAssignCallback = std::function<void(int section, int moduleId, int paramId, int morphGroup)>;
     // section, moduleId, paramId, span, direction
     using MorphRangeChangeCallback = std::function<void(int section, int moduleId, int paramId, int span, int direction)>;
+    // section, moduleId, paramId, knobIndex (0-22, or -1=disable)
+    using KnobAssignCallback = std::function<void(int section, int moduleId, int paramId, int knobIndex)>;
+    // section, moduleId, paramId, midiCC (0-127, or -1=disable)
+    using MidiCtrlAssignCallback = std::function<void(int section, int moduleId, int paramId, int midiCC)>;
 
     PatchCanvas();
     ~PatchCanvas();
@@ -42,6 +46,8 @@ public:
     void setModuleSelectedCallback(ModuleSelectedCallback cb) { moduleSelectedCallback = std::move(cb); }
     void setMorphAssignCallback(MorphAssignCallback cb) { morphAssignCallback = std::move(cb); }
     void setMorphRangeChangeCallback(MorphRangeChangeCallback cb) { morphRangeChangeCallback = std::move(cb); }
+    void setKnobAssignCallback(KnobAssignCallback cb) { knobAssignCallback = std::move(cb); }
+    void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
 
     // DragAndDropTarget interface
     bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override;
@@ -118,6 +124,8 @@ private:
     ModuleSelectedCallback moduleSelectedCallback;
     MorphAssignCallback morphAssignCallback;
     MorphRangeChangeCallback morphRangeChangeCallback;
+    KnobAssignCallback knobAssignCallback;
+    MidiCtrlAssignCallback midiCtrlAssignCallback;
 
     // Module drop preview
     bool showModuleDropPreview = false;
@@ -247,6 +255,18 @@ public:
     {
         polyCanvas.setMorphRangeChangeCallback(cb);
         commonCanvas.setMorphRangeChangeCallback(std::move(cb));
+    }
+
+    void setKnobAssignCallback(PatchCanvas::KnobAssignCallback cb)
+    {
+        polyCanvas.setKnobAssignCallback(cb);
+        commonCanvas.setKnobAssignCallback(std::move(cb));
+    }
+
+    void setMidiCtrlAssignCallback(PatchCanvas::MidiCtrlAssignCallback cb)
+    {
+        polyCanvas.setMidiCtrlAssignCallback(cb);
+        commonCanvas.setMidiCtrlAssignCallback(std::move(cb));
     }
 
     void repaintCanvas()

@@ -1,70 +1,63 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include <vector>
-#include <string>
+#include "../model/Patch.h"
 
-class InspectorPanel : public juce::Component
+// Forward declaration
+class AssignmentsListComponent;
+
+class InspectorPanel : public juce::Component,
+                       public juce::TextEditor::Listener
 {
 public:
     InspectorPanel();
+    ~InspectorPanel() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-    // Update the patch list from the synth
-    void setPatchList(const std::vector<std::string>& names);
-    void setLoadingState(bool loading);
+    // Set the current patch (for patch-wide morph view when no module selected)
+    void setPatch(Patch* patch);
+
+    // Called when the user selects a module on the canvas
+    void setModule(Module* module, int section);
+    void clearModule();
 
     // Callbacks
-    std::function<void(int section, int position)> onPatchDoubleClicked;
-    std::function<void()> onRefreshRequested;
-    std::function<void(int section, int position)> onPatchRename;
-    std::function<void(int section, int position)> onPatchDelete;
-    std::function<void(int section, int position)> onPatchCopy;
-    std::function<void(int section, int position)> onPatchMove;
+    std::function<void(int section, Module*, const juce::String&)> onNameChanged;
+    // section, module, paramIndex, newGroup (-1=remove)
+    std::function<void(int section, Module*, int paramIndex, int morphGroup)> onMorphGroupChanged;
+    // section, module, paramIndex, span (0-127), direction (0=+, 1=-)
+    std::function<void(int section, Module*, int paramIndex, int span, int direction)> onMorphRangeChanged;
+    // section, moduleId, paramId, knobIndex=-1 (deassign)
+    std::function<void(int section, int moduleId, int paramId, int knobIndex)> onKnobRemoved;
+    // section, moduleId, paramId, midiCC=-1 (deassign)
+    std::function<void(int section, int moduleId, int paramId, int midiCC)> onMidiCtrlRemoved;
+
+    // Called by canvas when a morph assignment changes (so inspector can refresh)
+    void refreshMorphList();
 
 private:
-    class PatchTreeItem : public juce::TreeViewItem
-    {
-    public:
-        PatchTreeItem(const juce::String& name, int section = -1, int position = -1, InspectorPanel* parent = nullptr);
+    void textEditorReturnKeyPressed(juce::TextEditor&) override;
+    void textEditorFocusLost(juce::TextEditor&) override;
+    void commitName();
 
-        bool mightContainSubItems() override;
-        void paintItem(juce::Graphics& g, int width, int height) override;
-        void itemClicked(const juce::MouseEvent& e) override;
-        void itemDoubleClicked(const juce::MouseEvent& e) override;
+    Module* currentModule = nullptr;
+    Patch*  currentPatch  = nullptr;
+    int currentSection = -1;
 
-        void showContextMenu();
+    // Header
+    juce::Label titleLabel;
+    juce::Label nameLabel;
+    juce::TextEditor nameEditor;
+    juce::Label sectionLabel;
 
-    private:
-        juce::String itemName;
-        int section;   // -1 for root/bank nodes
-        int position;  // -1 for root/bank nodes
-        InspectorPanel* panel;
-    };
+    // Assignments list (morphs + knobs + CCs)
+    juce::Viewport morphViewport;
+    std::unique_ptr<AssignmentsListComponent> assignmentsList;
 
-    std::unique_ptr<juce::TreeView> treeView;
-    std::unique_ptr<PatchTreeItem> rootItem;
-    juce::Label statusLabel;
-    bool isLoading = false;
-
-    // Search and filter controls
-    juce::Label searchLabel;
-    juce::TextEditor searchBox;
-    juce::ToggleButton hideEmptyButton;
-    juce::TextButton refreshButton;
-
-    // Cached patch list
-    std::vector<std::string> cachedPatchList;
-    juce::String currentSearchText;
-    bool hideEmptySlots = false;
-
-    void rebuildTree(const std::vector<std::string>& names);
-    void applyFilters();
-    void onSearchTextChanged();
-    void onHideEmptyToggled();
-    void onRefreshClicked();
+    static constexpr int margin = 8;
+    static constexpr int rowH   = 24;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(InspectorPanel)
 };

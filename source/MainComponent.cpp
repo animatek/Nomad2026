@@ -6,6 +6,8 @@
 #include "protocol/StorePatchMessage.h"
 #include "protocol/MorphAssignmentMessage.h"
 #include "protocol/MorphRangeChangeMessage.h"
+#include "protocol/KnobAssignmentMessage.h"
+#include "protocol/MidiCtrlAssignmentMessage.h"
 #include <iostream>
 #include <iomanip>
 
@@ -144,6 +146,53 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     mainLayout->getCanvas().repaintCanvas();
   };
 
+  // Wire knob/CC removal from inspector X buttons
+  mainLayout->getInspector().onKnobRemoved = [this](int section, int moduleId, int paramId, int /*knobIndex*/) {
+    if (!currentPatch) return;
+    // Find which knob has this assignment
+    for (int k = 0; k < 23; ++k)
+    {
+        auto& ka = currentPatch->knobAssignments[static_cast<size_t>(k)];
+        if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
+        {
+            ka.assigned = false;
+            int pid  = connectionManager.getCurrentPatchId();
+            int slot = connectionManager.getCurrentSlot();
+            connectionManager.sendRawSysEx(KnobAssignmentMessage::deassign(pid, k, slot));
+            std::cout << "[MAIN] Inspector knob deassign: knob=" << k << std::endl;
+            break;
+        }
+    }
+    mainLayout->getInspector().refreshMorphList();
+    mainLayout->getCanvas().repaintCanvas();
+  };
+
+  mainLayout->getInspector().onMidiCtrlRemoved = [this](int section, int moduleId, int paramId, int /*midiCC*/) {
+    if (!currentPatch) return;
+    int prevCtrl = -1;
+    for (auto& ca : currentPatch->ctrlAssignments)
+    {
+        if (ca.section == section && ca.module == moduleId && ca.param == paramId)
+        { prevCtrl = ca.control; break; }
+    }
+    if (prevCtrl >= 0)
+    {
+        currentPatch->ctrlAssignments.erase(
+            std::remove_if(currentPatch->ctrlAssignments.begin(),
+                           currentPatch->ctrlAssignments.end(),
+                           [section, moduleId, paramId](const CtrlAssignment& ca) {
+                               return ca.section == section && ca.module == moduleId && ca.param == paramId;
+                           }),
+            currentPatch->ctrlAssignments.end());
+        int pid  = connectionManager.getCurrentPatchId();
+        int slot = connectionManager.getCurrentSlot();
+        connectionManager.sendRawSysEx(MidiCtrlAssignmentMessage::deassign(pid, prevCtrl, slot));
+        std::cout << "[MAIN] Inspector MIDI ctrl deassign: CC " << prevCtrl << std::endl;
+    }
+    mainLayout->getInspector().refreshMorphList();
+    mainLayout->getCanvas().repaintCanvas();
+  };
+
   // Wire patch list updates to patch browser panel
   connectionManager.setPatchListCallback([this](const std::vector<std::string>& names) {
     juce::MessageManager::callAsync([this, names]() {
@@ -236,6 +285,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs,
                                              &themeData);
             mainLayout->getHeaderBar().setPatch(currentPatch.get());
+            mainLayout->getInspector().setPatch(currentPatch.get());
             mainLayout->getStatusBar().setConnectionStatus(
                 "Connected - " + currentPatch->getName(), true);
 
@@ -362,6 +412,128 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         connectionManager.sendRawSysEx(msg.toSysEx(slot));
         // Keep inspector morph list in sync with canvas changes
         mainLayout->getInspector().refreshMorphList();
+      });
+
+  // Wire knob assignment from parameter context menu
+  mainLayout->getCanvas().setKnobAssignCallback(
+      [this](int section, int moduleId, int paramId, int knobIndex) {
+        if (!currentPatch) return;
+        int pid  = connectionManager.getCurrentPatchId();
+        int slot = connectionManager.getCurrentSlot();
+
+        // Find if this param already has a knob assigned
+        int prevKnob = -1;
+        for (int k = 0; k < 23; ++k)
+        {
+            auto& ka = currentPatch->knobAssignments[static_cast<size_t>(k)];
+            if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
+            { prevKnob = k; break; }
+        }
+
+        if (knobIndex < 0)
+        {
+            // Disable: deassign from current knob
+            if (prevKnob >= 0)
+            {
+                currentPatch->knobAssignments[static_cast<size_t>(prevKnob)].assigned = false;
+                connectionManager.sendRawSysEx(
+                    KnobAssignmentMessage::deassign(pid, prevKnob, slot));
+                std::cout << "[MAIN] Knob deassign: knob=" << prevKnob << std::endl;
+            }
+        }
+        else
+        {
+            // Clear previous assignment for this knob (if different param was on it)
+            currentPatch->knobAssignments[static_cast<size_t>(knobIndex)] = { true, section, moduleId, paramId };
+
+            if (prevKnob >= 0 && prevKnob != knobIndex)
+            {
+                // Move from prevKnob to knobIndex
+                currentPatch->knobAssignments[static_cast<size_t>(prevKnob)].assigned = false;
+                connectionManager.sendRawSysEx(
+                    KnobAssignmentMessage::reassign(pid, prevKnob, knobIndex, section, moduleId, paramId, slot));
+                std::cout << "[MAIN] Knob reassign: " << prevKnob << " -> " << knobIndex << std::endl;
+            }
+            else if (prevKnob < 0)
+            {
+                // New assignment
+                connectionManager.sendRawSysEx(
+                    KnobAssignmentMessage::assign(pid, knobIndex, section, moduleId, paramId, slot));
+                std::cout << "[MAIN] Knob assign: knob=" << knobIndex
+                          << " section=" << section << " module=" << moduleId
+                          << " param=" << paramId << std::endl;
+            }
+            // prevKnob == knobIndex: already assigned to same knob, no-op
+        }
+        mainLayout->getInspector().refreshMorphList();
+        mainLayout->getCanvas().repaintCanvas();
+      });
+
+  // Wire MIDI controller assignment from parameter context menu
+  mainLayout->getCanvas().setMidiCtrlAssignCallback(
+      [this](int section, int moduleId, int paramId, int midiCC) {
+        if (!currentPatch) return;
+        int pid  = connectionManager.getCurrentPatchId();
+        int slot = connectionManager.getCurrentSlot();
+
+        // Find if this param already has a MIDI CC assigned
+        int prevCtrl = -1;
+        for (size_t i = 0; i < currentPatch->ctrlAssignments.size(); ++i)
+        {
+            auto& ca = currentPatch->ctrlAssignments[i];
+            if (ca.section == section && ca.module == moduleId && ca.param == paramId)
+            { prevCtrl = ca.control; break; }
+        }
+
+        if (midiCC < 0)
+        {
+            // Disable: deassign
+            if (prevCtrl >= 0)
+            {
+                currentPatch->ctrlAssignments.erase(
+                    std::remove_if(currentPatch->ctrlAssignments.begin(),
+                                   currentPatch->ctrlAssignments.end(),
+                                   [section, moduleId, paramId](const CtrlAssignment& ca) {
+                                       return ca.section == section && ca.module == moduleId && ca.param == paramId;
+                                   }),
+                    currentPatch->ctrlAssignments.end());
+                connectionManager.sendRawSysEx(
+                    MidiCtrlAssignmentMessage::deassign(pid, prevCtrl, slot));
+                std::cout << "[MAIN] MIDI ctrl deassign: CC " << prevCtrl << std::endl;
+            }
+        }
+        else
+        {
+            if (prevCtrl >= 0)
+            {
+                // Update existing entry
+                for (auto& ca : currentPatch->ctrlAssignments)
+                {
+                    if (ca.section == section && ca.module == moduleId && ca.param == paramId)
+                    { ca.control = midiCC; break; }
+                }
+                connectionManager.sendRawSysEx(
+                    MidiCtrlAssignmentMessage::reassign(pid, prevCtrl, midiCC, section, moduleId, paramId, slot));
+                std::cout << "[MAIN] MIDI ctrl reassign: CC " << prevCtrl << " -> " << midiCC << std::endl;
+            }
+            else
+            {
+                // New assignment
+                CtrlAssignment ca;
+                ca.control = midiCC;
+                ca.section = section;
+                ca.module = moduleId;
+                ca.param = paramId;
+                currentPatch->ctrlAssignments.push_back(ca);
+                connectionManager.sendRawSysEx(
+                    MidiCtrlAssignmentMessage::assign(pid, midiCC, section, moduleId, paramId, slot));
+                std::cout << "[MAIN] MIDI ctrl assign: CC " << midiCC
+                          << " section=" << section << " module=" << moduleId
+                          << " param=" << paramId << std::endl;
+            }
+        }
+        mainLayout->getInspector().refreshMorphList();
+        mainLayout->getCanvas().repaintCanvas();
       });
 
   // Wire morph knob changes from header bar to synth
@@ -608,6 +780,7 @@ void MainComponent::newPatch() {
   currentPatchFile = juce::File();
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch.get());
+  mainLayout->getInspector().setPatch(currentPatch.get());
   mainLayout->getHeaderBar().clearCurrentLocation();  // Clear quick save location
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
 
@@ -683,6 +856,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   currentPatchFile = file;
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch.get());
+  mainLayout->getInspector().setPatch(currentPatch.get());
   mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
 
   // Enable patch synchronization if connected

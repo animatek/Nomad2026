@@ -94,6 +94,23 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - *Medium*: "Zero Morph" now fully removes morph assignment (group + range) instead of only zeroing the range
   - *Medium*: Default morph range changed from 64 to 0 on new assignments — matches synth expectation
   - *Low*: Bidirectional morph range sync between canvas (Ctrl+drag) and inspector panel
+- [x] **Hardware Knob Assignment** (parameter context menu → Knob):
+  - Assign any parameter to Knob 1-18, Pedal, After touch, or On/Off switch
+  - Shows current assignment with tick mark and "(used)" indicator
+  - Reassign between knobs or disable assignment
+  - KnobAssignmentMessage protocol: SysEx sc=0x25 (new) / sc=0x26 (reassign/deassign)
+- [x] **MIDI Controller Assignment** (parameter context menu → MIDI Ctrl):
+  - Assign any parameter to MIDI CC 0-119
+  - Shows current assignment with tick mark
+  - Reassign between CCs or disable assignment
+  - MidiCtrlAssignmentMessage protocol: SysEx sc=0x22 (new) / sc=0x23 (reassign/deassign)
+- [x] **Inspector Panel: Assignments View** (3-section unified display):
+  - **Morphs** (purple): morph group headers, X remove button, drag-to-adjust range bar
+  - **Knobs** (blue): badge label ("Knob 3", "Pedal"), X remove button with SysEx deassign
+  - **MIDI CC** (gold): badge label ("CC 74"), X remove button with SysEx deassign
+  - Dual mode: single-module view (when module selected) or patch-wide view (when no module selected)
+  - Auto-refresh on every assignment change
+- [x] **Resizable 3-panel layout**: Module browser, canvas, and inspector with draggable dividers
 
 ### In Progress
 - [ ] Visual indicator for currently loaded patch in browser

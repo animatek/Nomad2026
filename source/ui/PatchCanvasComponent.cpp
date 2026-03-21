@@ -2235,7 +2235,72 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
     bool hasMorphAssigned = (currentMorphGroup >= 0);
     menu.addItem(2, "Zero Morph", hasMorphAssigned);
 
-    // 3. Morph Group submenu
+    // 3. Knob assignment submenu
+    // Find current knob assignment for this param
+    int currentKnob = -1;
+    if (patch != nullptr)
+    {
+        for (int k = 0; k < 23; ++k)
+        {
+            const auto& ka = patch->knobAssignments[static_cast<size_t>(k)];
+            if (ka.assigned && ka.section == section
+                && ka.module == m.getContainerIndex() && ka.param == pd->index)
+            { currentKnob = k; break; }
+        }
+    }
+    {
+        juce::PopupMenu knobSubMenu;
+        // Knob 1-6
+        for (int k = 0; k < 6; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        // Knob 7-12
+        for (int k = 6; k < 12; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        // Knob 13-15
+        for (int k = 12; k < 15; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        // Knob 16-18
+        for (int k = 15; k < 18; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        // Pedal, After touch, On/Off switch
+        const char* specialNames[] = { "Pedal", "After touch", "On/Off switch" };
+        for (int k = 18; k < 21; ++k)
+        {
+            juce::String label = specialNames[k - 18];
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        knobSubMenu.addItem(99, "Disable", currentKnob >= 0);
+        menu.addSubMenu("Knob", knobSubMenu);
+    }
+
+    // 4. Morph Group submenu
     juce::PopupMenu morphSubMenu;
     for (int g = 1; g <= 4; ++g)
     {
@@ -2247,8 +2312,30 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
     morphSubMenu.addItem(10, "Disable", currentMorphGroup >= 0);
     menu.addSubMenu("Morph", morphSubMenu);
 
+    // 5. MIDI Controller submenu
+    int currentMidiCtrl = -1;
+    if (patch != nullptr)
+    {
+        for (const auto& ca : patch->ctrlAssignments)
+        {
+            if (ca.section == section && ca.module == m.getContainerIndex() && ca.param == pd->index)
+            { currentMidiCtrl = ca.control; break; }
+        }
+    }
+    {
+        juce::PopupMenu midiSubMenu;
+        for (int cc = 0; cc < 120; ++cc)
+        {
+            bool isCurrent = (cc == currentMidiCtrl);
+            midiSubMenu.addItem(200 + cc, "CC " + juce::String(cc), true, isCurrent);
+        }
+        midiSubMenu.addSeparator();
+        midiSubMenu.addItem(199, "Disable", currentMidiCtrl >= 0);
+        menu.addSubMenu("MIDI Controller", midiSubMenu);
+    }
+
     menu.showMenuAsync(juce::PopupMenu::Options{},
-        [this, &m, section, &param](int result)
+        [this, &m, section, &param, currentKnob, currentMidiCtrl](int result)
         {
             auto* pd2 = param.getDescriptor();
             if (pd2 == nullptr) return;
@@ -2296,6 +2383,30 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
                     morphRangeChangeCallback(section, m.getContainerIndex(),
                                             pd2->index, 0, 0);
                 repaint();
+            }
+            // Knob assignment (99=disable, 100-122=assign knob 0-22)
+            else if (result == 99)
+            {
+                if (knobAssignCallback && currentKnob >= 0)
+                    knobAssignCallback(section, m.getContainerIndex(), pd2->index, -1);
+            }
+            else if (result >= 100 && result < 123)
+            {
+                int knob = result - 100;
+                if (knobAssignCallback)
+                    knobAssignCallback(section, m.getContainerIndex(), pd2->index, knob);
+            }
+            // MIDI Controller assignment (199=disable, 200-319=assign CC 0-119)
+            else if (result == 199)
+            {
+                if (midiCtrlAssignCallback && currentMidiCtrl >= 0)
+                    midiCtrlAssignCallback(section, m.getContainerIndex(), pd2->index, -1);
+            }
+            else if (result >= 200 && result < 320)
+            {
+                int cc = result - 200;
+                if (midiCtrlAssignCallback)
+                    midiCtrlAssignCallback(section, m.getContainerIndex(), pd2->index, cc);
             }
         });
 }

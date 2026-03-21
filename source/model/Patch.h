@@ -21,10 +21,14 @@ public:
     int getMorphGroup() const { return morphGroup; }
     void setMorphGroup(int g) { morphGroup = g; }
 
+    int getMorphRange() const { return morphRange; }
+    void setMorphRange(int r) { morphRange = r; }
+
 private:
     const ParameterDescriptor* descriptor;
     int value;
     int morphGroup = -1;  // -1 = none
+    int morphRange = 0;   // signed -127..127
 };
 
 class Connector

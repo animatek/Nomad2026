@@ -3,8 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/ModuleDescriptions.h"
 
-class ModuleBrowserPanel : public juce::Component,
-                            public juce::DragAndDropContainer
+class ModuleBrowserPanel : public juce::Component
 {
 public:
     ModuleBrowserPanel();

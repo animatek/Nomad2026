@@ -33,6 +33,7 @@ void ModuleDescriptions::parseModule(const juce::XmlElement& elem)
     desc.name        = elem.getStringAttribute("name");
     desc.fullname    = elem.getStringAttribute("fullname", desc.name);
     desc.category    = elem.getStringAttribute("category", "Other");
+    if (desc.category == "Seqencer") desc.category = "Sequencer";  // typo in modules.xml
 
     // Parse child elements
     for (auto* child = elem.getFirstChildElement(); child != nullptr; child = child->getNextElement())
