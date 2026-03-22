@@ -309,7 +309,7 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
             theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
 
         if (theme != nullptr)
-            paintModuleThemed(g, m, rect, *theme);
+            paintModuleThemed(g, m, rect, *theme, container);
         else
             paintModuleFallback(g, m, rect);
 
@@ -322,7 +322,7 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
     }
 }
 
-void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container)
 {
     paintModuleBackground(g, m, bounds, theme);
     paintCustomDisplays(g, m, bounds, theme);
@@ -331,7 +331,7 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, juce::Re
     paintSliders(g, m, bounds, theme);
     paintKnobs(g, m, bounds, theme);
     paintButtons(g, m, bounds, theme);
-    paintConnectors(g, m, bounds, theme);
+    paintConnectors(g, m, bounds, theme, container);
     paintLights(g, bounds, theme);
 }
 
@@ -371,7 +371,37 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     }
 }
 
-void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+bool PatchCanvas::hasHiddenCable(const Connector& conn, const ModuleContainer& container) const
+{
+    if (patch == nullptr) return false;
+    const auto& hdr = patch->getHeader();
+
+    for (auto& connection : container.getConnections())
+    {
+        if (connection.output == &conn || connection.input == &conn)
+        {
+            if (connection.output == nullptr || connection.output->getDescriptor() == nullptr)
+                continue;
+
+            bool visible = true;
+            switch (connection.output->getDescriptor()->signalType)
+            {
+                case SignalType::Audio:       visible = hdr.cableVisRed;    break;
+                case SignalType::Control:     visible = hdr.cableVisBlue;   break;
+                case SignalType::Logic:       visible = hdr.cableVisYellow; break;
+                case SignalType::MasterSlave: visible = hdr.cableVisGray;   break;
+                case SignalType::User1:       visible = hdr.cableVisGreen;  break;
+                case SignalType::User2:       visible = hdr.cableVisPurple; break;
+                case SignalType::None:        visible = hdr.cableVisWhite;  break;
+            }
+
+            if (!visible) return true;
+        }
+    }
+    return false;
+}
+
+void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container)
 {
     for (auto& tc : theme.connectors)
     {
@@ -388,16 +418,21 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
         else if (tc.cssClass == "cUSER1")    connColour = juce::Colour(0xff9AC899);
         else if (tc.cssClass == "cUSER2")    connColour = juce::Colour(0xffBB00D7);
 
-        // Find if this connector is output or input
+        // Find the actual connector object and check if output
         bool isOutput = false;
+        const Connector* actualConnector = nullptr;
         for (auto& conn : m.getConnectors())
         {
             if (conn.getDescriptor() && conn.getDescriptor()->componentId == tc.componentId)
             {
                 isOutput = conn.getDescriptor()->isOutput;
+                actualConnector = &conn;
                 break;
             }
         }
+
+        // Check if this connector has a hidden (filtered) cable — show "capped" visual
+        bool capped = (actualConnector != nullptr) && hasHiddenCable(*actualConnector, container);
 
         const float innerRatio = 0.38f;
         const float innerSz = sz * innerRatio;
@@ -407,19 +442,29 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
         if (isOutput)
         {
-            // Output: filled circle + dark inner circle (plug hole effect)
+            // Output: filled circle
             g.setColour(connColour);
             g.fillEllipse(cx, cy, sz, sz);
 
             g.setColour(outline);
             g.drawEllipse(cx, cy, sz, sz, 1.0f);
 
-            g.setColour(darkHole);
-            g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
+            if (capped)
+            {
+                // Capped: filled center (no hole) with a subtle cross/cap indicator
+                g.setColour(connColour.darker(0.4f));
+                g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
+            }
+            else
+            {
+                // Normal: dark inner circle (plug hole)
+                g.setColour(darkHole);
+                g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
+            }
         }
         else
         {
-            // Input: rounded rectangle + dark inner square (socket/hole effect)
+            // Input: rounded rectangle
             const float cornerRadius = sz * 0.25f;
             g.setColour(connColour);
             g.fillRoundedRectangle(cx, cy, sz, sz, cornerRadius);
@@ -427,10 +472,22 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
             g.setColour(outline);
             g.drawRoundedRectangle(cx, cy, sz, sz, cornerRadius, 1.0f);
 
-            const float sqSz = innerSz * 1.1f;
-            const float sqOff = (sz - sqSz) * 0.5f;
-            g.setColour(darkHole);
-            g.fillRoundedRectangle(cx + sqOff, cy + sqOff, sqSz, sqSz, cornerRadius * 0.4f);
+            if (capped)
+            {
+                // Capped: filled center (no socket hole)
+                const float sqSz = innerSz * 1.1f;
+                const float sqOff = (sz - sqSz) * 0.5f;
+                g.setColour(connColour.darker(0.4f));
+                g.fillRoundedRectangle(cx + sqOff, cy + sqOff, sqSz, sqSz, cornerRadius * 0.4f);
+            }
+            else
+            {
+                // Normal: dark inner square (socket hole)
+                const float sqSz = innerSz * 1.1f;
+                const float sqOff = (sz - sqSz) * 0.5f;
+                g.setColour(darkHole);
+                g.fillRoundedRectangle(cx + sqOff, cy + sqOff, sqSz, sqSz, cornerRadius * 0.4f);
+            }
         }
     }
 }
@@ -1311,6 +1368,32 @@ void PatchCanvas::paintModuleFallback(juce::Graphics& g, const Module& m, juce::
     }
 }
 
+void PatchCanvas::shakeCables()
+{
+    cableSagOffsets.clear();
+    std::mt19937 rng(static_cast<unsigned>(juce::Time::currentTimeMillis()));
+    std::uniform_real_distribution<float> dist(-0.6f, 0.6f);
+
+    auto addOffsets = [&](const ModuleContainer& container)
+    {
+        for (auto& conn : container.getConnections())
+        {
+            if (conn.output && conn.input)
+            {
+                auto key = std::make_pair(conn.output, conn.input);
+                cableSagOffsets[key] = dist(rng);
+            }
+        }
+    };
+
+    if (patch != nullptr)
+    {
+        addOffsets(patch->getPolyVoiceArea());
+        addOffsets(patch->getCommonArea());
+    }
+    repaint();
+}
+
 void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& container, int yOffset)
 {
     for (auto& conn : container.getConnections())
@@ -1357,12 +1440,21 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
 
         auto cableCol = getSignalColour(conn.output->getDescriptor()->signalType);
 
-        // Draw a curved cable
+        // Draw a curved cable with optional shake offset
         juce::Path path;
         path.startNewSubPath(srcPos.toFloat());
 
         float midY = (srcPos.y + dstPos.y) * 0.5f;
-        float sag = std::abs(static_cast<float>(srcPos.x - dstPos.x)) * 0.15f + 15.0f;
+        float baseSag = std::abs(static_cast<float>(srcPos.x - dstPos.x)) * 0.15f + 15.0f;
+
+        // Apply shake offset if present
+        float sagMultiplier = 1.0f;
+        auto key = std::make_pair(conn.output, conn.input);
+        auto it = cableSagOffsets.find(key);
+        if (it != cableSagOffsets.end())
+            sagMultiplier += it->second;
+
+        float sag = baseSag * sagMultiplier;
 
         path.cubicTo(static_cast<float>(srcPos.x), midY + sag,
                      static_cast<float>(dstPos.x), midY + sag,
@@ -1727,12 +1819,25 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             menu.addItem(1, "Paste");
         }
 
+        menu.addSeparator();
+        menu.addItem(2, "Shake Cables");
+        menu.addItem(3, "Reset Cables");
+
         menu.showMenuAsync(juce::PopupMenu::Options{},
             [this, clickSection, clickGX, clickGY, pos](int result)
             {
                 if (result == 1)
                 {
                     pasteFromClipboard(pos);
+                }
+                else if (result == 2)
+                {
+                    shakeCables();
+                }
+                else if (result == 3)
+                {
+                    cableSagOffsets.clear();
+                    repaint();
                 }
                 else if (result >= 1000)
                 {

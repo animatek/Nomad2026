@@ -7,6 +7,8 @@
 #include "QuickAddPopup.h"
 #include <set>
 #include <vector>
+#include <map>
+#include <random>
 
 class PatchCanvas : public juce::Component,
                      public juce::DragAndDropTarget
@@ -29,6 +31,8 @@ public:
 
     PatchCanvas();
     ~PatchCanvas();
+
+    void shakeCables();
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -78,9 +82,9 @@ private:
     juce::Point<int> getConnectorPosition(const Module& m, const Connector& conn, int yOffset) const;
 
     // Theme-aware painting helpers
-    void paintModuleThemed(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintModuleThemed(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
-    void paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
@@ -201,6 +205,12 @@ private:
 
     QuickAddPopup* activeQuickAdd = nullptr;  // nullptr when no popup open
 
+    // Cable shake: per-connection random sag offsets for visual redistribution
+    std::map<std::pair<const Connector*, const Connector*>, float> cableSagOffsets;
+
+    // Check if a connector has a hidden (filtered) cable attached
+    bool hasHiddenCable(const Connector& conn, const ModuleContainer& container) const;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PatchCanvas)
 };
 
@@ -273,6 +283,12 @@ public:
     {
         polyCanvas.repaint();
         commonCanvas.repaint();
+    }
+
+    void shakeCables()
+    {
+        polyCanvas.shakeCables();
+        commonCanvas.shakeCables();
     }
 
     bool isDragging(int section, int moduleId, int parameterId) const

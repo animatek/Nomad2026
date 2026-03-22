@@ -590,6 +590,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getHeaderBar().setCableVisibilityCallback(
       [this]() { mainLayout->getCanvas().repaintCanvas(); });
 
+  // Wire shake cables button
+  mainLayout->getHeaderBar().setShakeCablesCallback(
+      [this]() { mainLayout->getCanvas().shakeCables(); });
+
   // Wire parameter changes from synth to editor (user turns knob on hardware)
   connectionManager.setParameterChangeCallback([this](int section, int moduleId,
                                                       int parameterId,

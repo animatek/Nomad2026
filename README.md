@@ -112,14 +112,15 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Auto-refresh on every assignment change
 - [x] **Resizable 3-panel layout**: Module browser, canvas, and inspector with draggable dividers
 
-### In Progress
-- [ ] Visual indicator for currently loaded patch in browser
-- [ ] Module drag & drop from browser to canvas
+- [x] **Cable creation/deletion**: Drag between connectors to create cables, right-click to delete
+- [x] **Module drag & drop**: Add modules from browser to canvas
+- [x] **Shake Cables**: "S" button in header bar randomizes cable curvature to reduce overlap with controls; also available via canvas context menu with "Reset Cables" option
+- [x] **Hidden cable connector indicator**: When cables are hidden via color filter, connected connectors show a "capped" visual (filled center) instead of the open hole, indicating a hidden connection exists
 
 ### Next Up
 - [ ] Multi-slot support (load/save per slot using slot tabs)
 - [ ] Undo/Redo system
-- [ ] Cable creation/deletion by clicking connectors
+- [ ] Visual indicator for currently loaded patch in browser
 
 ## Roadmap
 
@@ -192,11 +193,11 @@ This section outlines all planned features to achieve feature parity with the or
   - Organize patch collections
 
 ### Module Canvas Editing
-- [ ] **Drag & Drop Modules** - Add modules from browser to canvas by dragging
+- [x] **Drag & Drop Modules** - Add modules from browser to canvas by dragging
 - [x] **Move Modules** - Reposition modules on canvas (single and multi-move)
 - [x] **Delete Modules** - Remove modules from patch (Delete key or context menu)
-- [ ] **Cable Creation** - Click connectors to create cables
-- [ ] **Cable Deletion** - Click/right-click cables to delete
+- [x] **Cable Creation** - Drag between connectors to create cables
+- [x] **Cable Deletion** - Right-click cables to delete
 - [x] **Module Copy/Paste** - Ctrl+C / Ctrl+V with parameter values and internal cables
 - [x] **Duplicate** - Duplicate selected modules with or without cables (context menu)
 - [x] **Selection Tool** - Rubber-band + Shift+click multi-selection

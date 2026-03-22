@@ -203,6 +203,19 @@ int PatchHeaderBar::getCableToggleAt(juce::Point<int> pos) const
     return -1;
 }
 
+juce::Rectangle<float> PatchHeaderBar::getShakeButtonBounds() const
+{
+    // Place "S" button right after the last cable toggle, with some spacing
+    float lastToggleRight = static_cast<float>(cableSecX_ + numCableTypes * (cableToggleSize + cableToggleSpacing));
+    float cy = (static_cast<float>(getHeight()) - cableToggleSize) / 2.0f;
+    return { lastToggleRight + 2.0f, cy, static_cast<float>(cableToggleSize), static_cast<float>(cableToggleSize) };
+}
+
+bool PatchHeaderBar::isShakeButtonAt(juce::Point<int> pos) const
+{
+    return getShakeButtonBounds().expanded(2.0f).contains(pos.toFloat());
+}
+
 PatchHeaderBar::ArrowHit PatchHeaderBar::getVoiceArrowAt(juce::Point<int> pos) const
 {
     int ax = voicesSecX_ + voicesLblW + voicesValW;
@@ -440,6 +453,18 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.drawEllipse(tb.reduced(0.5f), 1.5f);
         }
     }
+
+    // --- Shake Cables Button ("S") ---
+    {
+        auto sb = getShakeButtonBounds();
+        g.setColour(juce::Colour(0xff555555));
+        g.fillRoundedRectangle(sb, 3.0f);
+        g.setColour(juce::Colour(0xff888888));
+        g.drawRoundedRectangle(sb.reduced(0.5f), 3.0f, 1.0f);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
+        g.drawText("S", sb.toNearestInt(), juce::Justification::centred, false);
+    }
 }
 
 // --- Mouse interaction ---
@@ -480,6 +505,14 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     if (cableIdx >= 0)
     {
         toggleCableVisibility(cableIdx);
+        return;
+    }
+
+    // Shake cables button
+    if (isShakeButtonAt(pos))
+    {
+        if (shakeCablesCallback)
+            shakeCablesCallback();
         return;
     }
 }

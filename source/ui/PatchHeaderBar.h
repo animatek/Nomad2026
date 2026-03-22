@@ -19,12 +19,14 @@ public:
     using CableVisibilityCallback = std::function<void()>;
     using NameChangeCallback = std::function<void(const juce::String& newName)>;
     using QuickSaveCallback = std::function<void()>;
+    using ShakeCablesCallback = std::function<void()>;
 
     void setMorphChangeCallback(MorphChangeCallback cb) { morphChangeCallback = std::move(cb); }
     void setVoiceChangeCallback(VoiceChangeCallback cb) { voiceChangeCallback = std::move(cb); }
     void setCableVisibilityCallback(CableVisibilityCallback cb) { cableVisCallback = std::move(cb); }
     void setNameChangeCallback(NameChangeCallback cb) { nameChangeCallback = std::move(cb); }
     void setQuickSaveCallback(QuickSaveCallback cb) { quickSaveCallback = std::move(cb); }
+    void setShakeCablesCallback(ShakeCablesCallback cb) { shakeCablesCallback = std::move(cb); }
 
     // Set the current bank/position for quick save button
     void setCurrentLocation(int section, int position);
@@ -76,6 +78,10 @@ private:
     CableVisibilityCallback cableVisCallback;
     NameChangeCallback nameChangeCallback;
     QuickSaveCallback quickSaveCallback;
+    ShakeCablesCallback shakeCablesCallback;
+
+    juce::Rectangle<float> getShakeButtonBounds() const;
+    bool isShakeButtonAt(juce::Point<int> pos) const;
 
     std::unique_ptr<juce::Label> patchNameEditor;
     std::unique_ptr<juce::DrawableButton> quickSaveButton;
