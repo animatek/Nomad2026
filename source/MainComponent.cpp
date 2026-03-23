@@ -157,6 +157,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     std::cout << "[MAIN] Loading patch from browser: section=" << section << " pos=" << position << std::endl;
     connectionManager.loadPatchFromBank(section, position);
     mainLayout->getHeaderBar().setCurrentLocation(section, position);
+    mainLayout->getPatchBrowser().setLoadedPatch(section, position);
   };
 
   mainLayout->getPatchBrowser().onRefreshRequested = [this]() {
@@ -250,6 +251,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
             undoManager.clearUndoHistory();
             rebuildUndoContext();
+
+            // Update browser indicator to show which patch is currently loaded
+            int ls = connectionManager.getLastLoadedSection();
+            int lp = connectionManager.getLastLoadedPosition();
+            if (ls >= 0 && lp >= 0)
+                mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
           }
         });
       });

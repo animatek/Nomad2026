@@ -157,6 +157,15 @@ void PatchBrowserPanel::setLoadingState(bool loading)
     repaint();
 }
 
+void PatchBrowserPanel::setLoadedPatch(int section, int position)
+{
+    if (loadedSection == section && loadedPosition == position)
+        return;
+    loadedSection = section;
+    loadedPosition = position;
+    treeView->repaint();
+}
+
 void PatchBrowserPanel::rebuildTree(const std::vector<std::string>& names)
 {
     std::cout << "[INSPECTOR] rebuildTree starting, names.size()=" << names.size() << std::endl;
@@ -256,21 +265,45 @@ bool PatchBrowserPanel::PatchTreeItem::mightContainSubItems()
 
 void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, int height)
 {
-    juce::Colour textColor = juce::Colour(0xffcccccc);
+    bool isLoaded = (panel != nullptr
+                     && section >= 0 && position >= 0
+                     && section == panel->loadedSection
+                     && position == panel->loadedPosition);
 
-    // Bank nodes in bold
+    if (isLoaded)
+    {
+        // Subtle highlight background for the loaded patch
+        g.setColour(juce::Colour(0x33ffaa00));
+        g.fillRect(0, 0, width, height);
+    }
+
+    juce::Colour textColor = isLoaded ? juce::Colour(0xffffcc44) : juce::Colour(0xffcccccc);
+
     if (section >= 0 && position == -1)
     {
+        // Bank node — bold
         g.setColour(textColor);
         g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+        g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
     }
     else
     {
         g.setColour(textColor);
-        g.setFont(juce::Font(juce::FontOptions(12.0f)));
-    }
+        g.setFont(juce::Font(juce::FontOptions(isLoaded ? 12.5f : 12.0f)));
 
-    g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
+        if (isLoaded)
+        {
+            // Draw play indicator
+            g.setFont(juce::Font(juce::FontOptions(10.0f)));
+            g.drawText(juce::CharPointer_UTF8("\xe2\x96\xb6"), 2, 0, 12, height, juce::Justification::centredLeft);
+            g.setFont(juce::Font(juce::FontOptions(12.5f)));
+            g.drawText(itemName, 16, 0, width - 16, height, juce::Justification::centredLeft, true);
+        }
+        else
+        {
+            g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
+        }
+    }
 }
 
 void PatchBrowserPanel::PatchTreeItem::itemClicked(const juce::MouseEvent& e)

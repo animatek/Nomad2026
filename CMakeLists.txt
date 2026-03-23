@@ -60,6 +60,10 @@ target_sources(Nomad2026 PRIVATE
 
     # Synchronization
     source/sync/PatchSynchronizer.cpp
+
+    # Help system
+    source/help/ModuleHelpData.cpp
+    source/help/ModuleHelpPopup.cpp
 )
 
 target_include_directories(Nomad2026 PRIVATE source)

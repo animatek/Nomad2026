@@ -124,9 +124,15 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Structural undos (add/delete module) trigger a debounced full patch upload to synth
   - Multi-module grouped undo (e.g. delete selection) handled correctly — single upload after all actions settle
 
+- [x] **Visual indicator for loaded patch in browser**: Currently loaded bank patch highlighted with ▶ icon and amber color
+- [x] **Module Help System** (F1):
+  - Press F1 with a module selected or hovered to open a floating help popup
+  - Displays module description and per-parameter documentation from the original Nord Modular Editor v3.03 help file (157 modules)
+  - Fuzzy name matching (fullname, short name, normalized hyphens/spaces)
+  - Draggable popup, close with Escape/F1/X button
+
 ### Next Up
 - [ ] Multi-slot support (load/save per slot using slot tabs)
-- [ ] Visual indicator for currently loaded patch in browser
 
 ## Roadmap
 
@@ -211,8 +217,8 @@ This section outlines all planned features to achieve feature parity with the or
 - [x] **Parameter Context Menu** - Right-click params to assign/remove morph group
 
 ### Help System
+- [x] **Module Help** (F1) - Context-sensitive module help from original v3.03 help file
 - [ ] **Help Contents** - Integrated help documentation
-- [ ] **Using Help** - Meta-help for navigating help system
 - [ ] **About Dialog** - Version info, credits, license
 
 ### Quality of Life

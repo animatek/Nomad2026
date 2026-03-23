@@ -5,6 +5,7 @@
 #include "../model/ModuleDescriptions.h"
 #include "../model/ThemeData.h"
 #include "QuickAddPopup.h"
+#include "../help/ModuleHelpPopup.h"
 #include <set>
 #include <vector>
 #include <map>

@@ -16,6 +16,12 @@ public:
     void setPatchList(const std::vector<std::string>& names);
     void setLoadingState(bool loading);
 
+    // Mark which patch is currently loaded in the editor (section/position, -1 = none)
+    void setLoadedPatch(int section, int position);
+
+    int getLoadedSection() const { return loadedSection; }
+    int getLoadedPosition() const { return loadedPosition; }
+
     // Callbacks
     std::function<void(int section, int position)> onPatchDoubleClicked;
     std::function<void()> onRefreshRequested;
@@ -59,6 +65,10 @@ private:
     std::vector<std::string> cachedPatchList;
     juce::String currentSearchText;
     bool hideEmptySlots = false;
+
+    // Currently loaded patch location (-1 = unknown)
+    int loadedSection = -1;
+    int loadedPosition = -1;
 
     void rebuildTree(const std::vector<std::string>& names);
     void applyFilters();

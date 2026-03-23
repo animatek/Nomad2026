@@ -2250,6 +2250,46 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (redoCallback) { redoCallback(); return true; }
     }
 
+    // F1 → show help popup for the selected/hovered module
+    if (key == juce::KeyPress::F1Key)
+    {
+        // Prefer the module under the mouse cursor, fall back to last selected
+        Module* target = nullptr;
+        auto mousePos = getMouseXYRelative();
+        if (patch != nullptr)
+        {
+            for (auto& modPtr : patch->getPolyVoiceArea().getModules())
+            {
+                auto pos = modPtr->getPosition();
+                int pw = 255;
+                int ph = (modPtr->getDescriptor() ? modPtr->getDescriptor()->height * 15 : 60);
+                juce::Rectangle<int> bounds(pos.x * gridX, pos.y * gridY, pw, ph);
+                if (bounds.contains(mousePos)) { target = modPtr.get(); break; }
+            }
+            if (!target)
+                for (auto& modPtr : patch->getCommonArea().getModules())
+                {
+                    auto pos = modPtr->getPosition();
+                    int ph = (modPtr->getDescriptor() ? modPtr->getDescriptor()->height * 15 : 60);
+                    juce::Rectangle<int> bounds(pos.x * gridX, pos.y * gridY, 255, ph);
+                    if (bounds.contains(mousePos)) { target = modPtr.get(); break; }
+                }
+        }
+        if (!target && selectedModule != nullptr)
+            target = selectedModule;
+
+        if (target && target->getDescriptor())
+        {
+            // Pass both fullname and short name separated by '|' so findModuleHelp
+            // can try each — e.g. "12/18/24dB Classic Low Pass Filter|FilterF"
+            juce::String helpQuery = target->getDescriptor()->fullname
+                                   + "|" + target->getDescriptor()->name;
+            ModuleHelpPopup::show(helpQuery, this);
+        }
+
+        return true;
+    }
+
     return false;
 }
 
