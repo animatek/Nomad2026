@@ -38,7 +38,7 @@ PatchLocationDialog::PatchLocationDialog(const std::vector<std::string>& patchLi
     addAndMakeVisible(positionLabel);
 
     addAndMakeVisible(positionCombo);
-    updatePositionItems();  // Populate with bank 1 initially
+    updatePositionItems();
 
     // Buttons
     confirmButton.setButtonText("OK");

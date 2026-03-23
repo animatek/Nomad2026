@@ -22,6 +22,10 @@ public:
     void disable();
     bool isEnabled() const { return enabled_; }
 
+    /** Suppress all SysEx sends (used during undo/redo to avoid double-sends) */
+    void setSuppressed(bool s) { suppressed_ = s; }
+    bool isSuppressed() const { return suppressed_; }
+
 private:
     // Event handlers
     void onCableAdded(int section, Connector* output, Connector* input);
@@ -42,4 +46,5 @@ private:
     Patch& patch_;
     ConnectionManager& connMgr_;
     bool enabled_ = false;
+    bool suppressed_ = false;
 };

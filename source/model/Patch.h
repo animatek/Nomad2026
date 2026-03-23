@@ -115,7 +115,14 @@ public:
     using ModuleRemovedCallback = std::function<void(Module* module)>;
 
     Module* addModule(std::unique_ptr<Module> module);
+    /** Add module without firing the onModuleAdded callback (for undo re-insertion) */
+    Module* addModuleSilent(std::unique_ptr<Module> module);
     void removeModule(Module* module);
+
+    /** Remove module without destroying it — returns ownership for undo storage.
+     *  Also removes all connections involving this module's connectors.
+     *  Does NOT fire the onModuleRemoved callback. */
+    std::unique_ptr<Module> extractModule(Module* module);
 
     bool canAdd(const ModuleDescriptor& desc) const;
 

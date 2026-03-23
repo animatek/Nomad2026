@@ -40,7 +40,8 @@ public:
     void uploadPatch(int slot, const Patch& patch);  // Upload full patch to synth working slot
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
-    void sendRawSysEx(const std::vector<uint8_t>& sysex);
+    void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
+    void sendAckedSysEx(const std::vector<uint8_t>& sysex);     // Queued, waits for ACK before next
 
     // Bank operations (high-level)
     void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition);
@@ -49,6 +50,10 @@ public:
 
     int getCurrentSlot() const;
     int getCurrentPatchId() const { return currentPatchId; }
+
+    // Bank location of the last loaded patch (-1 = unknown, e.g. synth-side change)
+    int getLastLoadedSection() const { return lastLoadedSection; }
+    int getLastLoadedPosition() const { return lastLoadedPosition; }
 
     // Device enumeration (delegates to MidiDeviceManager)
     static juce::Array<juce::MidiDeviceInfo> getAvailableInputDevices();
@@ -85,6 +90,10 @@ public:
 
     NmProtocol& getProtocol() { return protocol; }
 
+    // When true, NewPatchInSlot will NOT trigger auto-fetch.
+    // Set this while PatchSynchronizer is active (local model is authoritative).
+    void setSuppressNewPatchInSlot(bool s) { suppressNewPatchInSlot_ = s; }
+
 private:
     // NmProtocol::Listener
     void onIAmReceived(const IAmMessage& msg) override;
@@ -119,6 +128,7 @@ private:
     bool collectingSections = false;
     bool waitingForUploadAck = false;      // True while waiting for synth ACK after uploadPatch
     bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
+    bool suppressNewPatchInSlot_ = false;  // Set while PatchSynchronizer is active (local model authoritative)
     // Sequential upload state: send one section at a time, wait for ACK between each
     std::vector<std::vector<uint8_t>> uploadSections;  // serialized PDL2 sections
     std::vector<uint8_t> buildUploadSysEx(int sectionIndex, int numSections, int slot);
@@ -127,6 +137,9 @@ private:
     int uploadSectionIndex = 0;
     int pendingPatchSlot = 0;
     int currentSlot = 0;  // Track which slot is currently loaded
+    int lastLoadedSection = -1;   // Bank section of last loadPatchFromBank (-1=unknown)
+    int lastLoadedPosition = -1;  // Bank position of last loadPatchFromBank (-1=unknown)
+    bool suppressNextLocationClear = false;  // Set by loadPatchFromBank, cleared on NewPatchInSlot
     int currentPatchId = 0;  // Track the patch ID from ACK (used in parameter changes)
     int patchPacketsReceived = 0;
 
@@ -159,6 +172,17 @@ private:
     // patchListTimeoutMs: 891 patches × one request/response each.
     // Measured at ~8-9 s on a real G1; 10 s allows for occasional retransmits.
     static constexpr int patchListTimeoutMs = 10000;
+
+    // Outgoing message queue with ACK-wait (mirrors Java NmProtocol send queue).
+    // Messages sent via sendAckedSysEx() are queued and sent one at a time;
+    // each waits for an ACK from the synth before the next is dispatched.
+    // This prevents the synth from freezing/dropping operations when multiple
+    // edit messages (DeleteModule, NewCable, etc.) are sent in rapid succession.
+    std::deque<std::vector<uint8_t>> ackedQueue;
+    bool ackedQueueWaiting = false;       // True while awaiting ACK for in-flight message
+    int ackedQueueGeneration = 0;         // Incremented each time a message is sent; invalidates old timeouts
+    static constexpr int ackedTimeoutMs = 3000;  // 3 s timeout per message
+    void drainAckedQueue();              // Send next from queue if not already waiting
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ConnectionManager)
 };

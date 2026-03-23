@@ -16,10 +16,18 @@ class PatchCanvas : public juce::Component,
 public:
     // Callback types
     using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
+    // Fired on mouseUp after a parameter drag — carries old+new for undo
+    using ParameterDragCompleteCallback = std::function<void(int section, int moduleId, int parameterId, int oldValue, int newValue)>;
     using ModuleDropCallback = std::function<void(int typeId, int section, int gridX, int gridY, const juce::String& name)>;
     using DeleteModuleCallback = std::function<void(int section, Module* module)>;
     using RenameModuleCallback = std::function<void(int section, Module* module, const juce::String& newName)>;
     using ModuleSelectedCallback = std::function<void(Module* module, int section)>;
+    // Module move callback for undo: section, moduleIndex, oldPos, newPos
+    using ModuleMoveCallback = std::function<void(int section, int moduleIndex,
+                                                   juce::Point<int> oldPos, juce::Point<int> newPos)>;
+    // Cable callbacks for undo: section, outModIndex, outConnIndex, outIsOutput, inModIndex, inConnIndex, inIsOutput
+    using CableCallback = std::function<void(int section, int outModIdx, int outConnIdx, bool outIsOut,
+                                              int inModIdx, int inConnIdx, bool inIsOut)>;
     // section, moduleId, paramId, morphGroup (0-3, or -1=disable)
     using MorphAssignCallback = std::function<void(int section, int moduleId, int paramId, int morphGroup)>;
     // section, moduleId, paramId, span, direction
@@ -44,14 +52,21 @@ public:
 
     // Callbacks
     void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
+    void setParameterDragCompleteCallback(ParameterDragCompleteCallback cb) { paramDragCompleteCallback = std::move(cb); }
     void setModuleDropCallback(ModuleDropCallback cb) { moduleDropCallback = std::move(cb); }
     void setDeleteModuleCallback(DeleteModuleCallback cb) { deleteModuleCallback = std::move(cb); }
     void setRenameModuleCallback(RenameModuleCallback cb) { renameModuleCallback = std::move(cb); }
+    void setModuleMoveCallback(ModuleMoveCallback cb) { moduleMoveCallback = std::move(cb); }
     void setModuleSelectedCallback(ModuleSelectedCallback cb) { moduleSelectedCallback = std::move(cb); }
     void setMorphAssignCallback(MorphAssignCallback cb) { morphAssignCallback = std::move(cb); }
     void setMorphRangeChangeCallback(MorphRangeChangeCallback cb) { morphRangeChangeCallback = std::move(cb); }
     void setKnobAssignCallback(KnobAssignCallback cb) { knobAssignCallback = std::move(cb); }
     void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
+    void setCableCreatedCallback(CableCallback cb) { cableCreatedCallback = std::move(cb); }
+    void setCableDeletedCallback(CableCallback cb) { cableDeletedCallback = std::move(cb); }
+    void setUndoCallback(std::function<void()> cb) { undoCallback = std::move(cb); }
+    void setRedoCallback(std::function<void()> cb) { redoCallback = std::move(cb); }
+    void setUndoManager(juce::UndoManager* um) { undoManager = um; }
 
     // DragAndDropTarget interface
     bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override;
@@ -119,17 +134,25 @@ private:
         int lastSentValue = -1;  // Track last value sent to avoid duplicates
         juce::int64 lastSendTime = 0;  // Rate limiting for real-time sends
         int dragOffsetX = 0, dragOffsetY = 0;  // ModuleMove: pixel offset from module origin
+        juce::Point<int> startGridPos;          // ModuleMove: grid position before drag
     };
     DragState dragState;
     ParameterChangeCallback parameterChangeCallback;
+    ParameterDragCompleteCallback paramDragCompleteCallback;
     ModuleDropCallback moduleDropCallback;
     DeleteModuleCallback deleteModuleCallback;
     RenameModuleCallback renameModuleCallback;
+    ModuleMoveCallback moduleMoveCallback;
     ModuleSelectedCallback moduleSelectedCallback;
     MorphAssignCallback morphAssignCallback;
     MorphRangeChangeCallback morphRangeChangeCallback;
     KnobAssignCallback knobAssignCallback;
     MidiCtrlAssignCallback midiCtrlAssignCallback;
+    CableCallback cableCreatedCallback;
+    CableCallback cableDeletedCallback;
+    std::function<void()> undoCallback;
+    std::function<void()> redoCallback;
+    juce::UndoManager* undoManager = nullptr;
 
     // Module drop preview
     bool showModuleDropPreview = false;
@@ -231,6 +254,12 @@ public:
         commonCanvas.setParameterChangeCallback(std::move(cb));
     }
 
+    void setParameterDragCompleteCallback(PatchCanvas::ParameterDragCompleteCallback cb)
+    {
+        polyCanvas.setParameterDragCompleteCallback(cb);
+        commonCanvas.setParameterDragCompleteCallback(std::move(cb));
+    }
+
     void setModuleDropCallback(PatchCanvas::ModuleDropCallback cb)
     {
         polyCanvas.setModuleDropCallback(cb);
@@ -247,6 +276,12 @@ public:
     {
         polyCanvas.setRenameModuleCallback(cb);
         commonCanvas.setRenameModuleCallback(std::move(cb));
+    }
+
+    void setModuleMoveCallback(PatchCanvas::ModuleMoveCallback cb)
+    {
+        polyCanvas.setModuleMoveCallback(cb);
+        commonCanvas.setModuleMoveCallback(std::move(cb));
     }
 
     void setModuleSelectedCallback(PatchCanvas::ModuleSelectedCallback cb)
@@ -277,6 +312,36 @@ public:
     {
         polyCanvas.setMidiCtrlAssignCallback(cb);
         commonCanvas.setMidiCtrlAssignCallback(std::move(cb));
+    }
+
+    void setCableCreatedCallback(PatchCanvas::CableCallback cb)
+    {
+        polyCanvas.setCableCreatedCallback(cb);
+        commonCanvas.setCableCreatedCallback(std::move(cb));
+    }
+
+    void setCableDeletedCallback(PatchCanvas::CableCallback cb)
+    {
+        polyCanvas.setCableDeletedCallback(cb);
+        commonCanvas.setCableDeletedCallback(std::move(cb));
+    }
+
+    void setUndoCallback(std::function<void()> cb)
+    {
+        polyCanvas.setUndoCallback(cb);
+        commonCanvas.setUndoCallback(std::move(cb));
+    }
+
+    void setRedoCallback(std::function<void()> cb)
+    {
+        polyCanvas.setRedoCallback(cb);
+        commonCanvas.setRedoCallback(std::move(cb));
+    }
+
+    void setUndoManager(juce::UndoManager* um)
+    {
+        polyCanvas.setUndoManager(um);
+        commonCanvas.setUndoManager(um);
     }
 
     void repaintCanvas()

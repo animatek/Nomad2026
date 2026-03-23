@@ -104,6 +104,14 @@ void ConnectionManager::requestPatch(int slot)
     if (!isConnected())
         return;
 
+    // Cancel any pending edit queue — we're about to reload from synth
+    if (!ackedQueue.empty() || ackedQueueWaiting)
+    {
+        ackedQueue.clear();
+        ackedQueueWaiting = false;
+        ++ackedQueueGeneration;
+    }
+
     // Reset any in-progress request (new request supersedes old one)
     waitingForPatchAck = true;
     collectingSections = false;
@@ -133,6 +141,10 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
         return;
 
     int slot = (targetSlot >= 0) ? targetSlot : currentSlot;
+
+    lastLoadedSection = section;
+    lastLoadedPosition = position;
+    suppressNextLocationClear = true;
 
     std::cout << "[LOAD] Loading patch from bank: section=" << section
               << " position=" << position << " to slot=" << slot << std::endl;
@@ -204,12 +216,12 @@ void ConnectionManager::sendNextUploadSection()
 
     auto msg = buildUploadSysEx(uploadSectionIndex, total, uploadSlot);
 
-    // Log first 12 bytes for debugging
+    // Log full SysEx for debugging
     std::cout << "[UPLOAD]   section " << uploadSectionIndex
-              << "/" << total << " size=" << msg.size() << " bytes:";
-    for (size_t k = 0; k < std::min(msg.size(), size_t(12)); ++k)
+              << "/" << total << " size=" << msg.size() << " hex:";
+    for (size_t k = 0; k < msg.size(); ++k)
         std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int)msg[k];
-    std::cout << std::dec << " ..." << std::endl;
+    std::cout << std::dec << std::endl;
 
     sendRawSysEx(msg);
     // waitingForUploadAck stays true — onAckReceived will call sendNextUploadSection
@@ -219,6 +231,20 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
     if (!isConnected())
         return;
+
+    // Cancel any pending edit operations in the ACK queue.
+    // The upload sends the complete patch state, making individual
+    // DeleteModule/DeleteCable/NewModule messages redundant and potentially
+    // conflicting with the upload sequence on the synth.
+    if (!ackedQueue.empty() || ackedQueueWaiting)
+    {
+        std::cout << "[UPLOAD] Clearing edit queue (" << ackedQueue.size()
+                  << " pending messages discarded)" << std::endl;
+        ackedQueue.clear();
+        ackedQueueWaiting = false;
+        // Bump generation so any in-flight timeout lambda is invalidated
+        ++ackedQueueGeneration;
+    }
 
     // Serialize the patch into individual PDL2 sections (Java upload order, 16 sections)
     PatchSerializer serializer;
@@ -285,9 +311,43 @@ void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
     if (!isConnected() || !midiDevice)
         return;
 
-    // Send the raw SysEx bytes directly via the MIDI device
-    // This bypasses the NmProtocol queue system, for use by PatchSynchronizer
     midiDevice->sendSysEx(sysex);
+}
+
+void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex)
+{
+    if (!isConnected() || !midiDevice)
+        return;
+
+    ackedQueue.push_back(sysex);
+    drainAckedQueue();
+}
+
+void ConnectionManager::drainAckedQueue()
+{
+    if (ackedQueueWaiting || ackedQueue.empty())
+        return;
+
+    auto msg = ackedQueue.front();
+    ackedQueue.pop_front();
+    ackedQueueWaiting = true;
+    int generation = ++ackedQueueGeneration;
+    midiDevice->sendSysEx(msg);
+
+    std::cout << "[QUEUE] Sent queued message (gen=" << generation
+              << ", " << ackedQueue.size() << " remaining), waiting for ACK" << std::endl;
+
+    // 3-second timeout: if no ACK arrives, unblock the queue.
+    // The generation check ensures only the timeout for the *current* message fires.
+    juce::Timer::callAfterDelay(ackedTimeoutMs, [this, generation]() {
+        if (ackedQueueWaiting && ackedQueueGeneration == generation)
+        {
+            std::cout << "[QUEUE] ACK timeout (gen=" << generation << ") — unblocking queue ("
+                      << ackedQueue.size() << " pending)" << std::endl;
+            ackedQueueWaiting = false;
+            drainAckedQueue();
+        }
+    });
 }
 
 void ConnectionManager::onAckReceived(const AckMessage& msg)
@@ -295,6 +355,15 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     DBG("ACK received: pid1=" + juce::String(msg.pid1)
         + " type=0x" + juce::String::toHexString(msg.type)
         + " pid2=" + juce::String(msg.pid2));
+
+    // Unblock the acked queue — any pending edit messages can now be sent
+    if (ackedQueueWaiting)
+    {
+        ackedQueueWaiting = false;
+        std::cout << "[QUEUE] ACK received, unblocking queue ("
+                  << ackedQueue.size() << " pending)" << std::endl;
+        drainAckedQueue();
+    }
 
     if (waitingForUploadAck)
     {
@@ -526,16 +595,37 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         // Update the patch ID from the synth's notification
         currentPatchId = msg.newPatchPid;
 
-        // Auto-request the new patch data from the synth — but skip once after
-        // uploadPatch() completes so we don't replace currentPatch with a copy
-        // that may be missing morph/custom data the synth doesn't echo back.
-        if (suppressNextAutoFetch)
+        // Auto-request the new patch data from the synth — unless suppressed.
+        // suppressNewPatchInSlot_: set while PatchSynchronizer is active; local model is
+        //   authoritative, so real-time notifications from module/cable edits must not
+        //   cause a re-fetch that would overwrite in-progress changes.
+        // suppressNextAutoFetch: one-shot flag set after upload completes.
+        // waitingForUploadAck: upload in progress — don't re-fetch.
+        if (suppressNewPatchInSlot_)
+        {
+            std::cout << "[SYNC] Ignoring NewPatchInSlot (sync active, local model authoritative)" << std::endl;
+        }
+        else if (suppressNextAutoFetch)
         {
             suppressNextAutoFetch = false;
             std::cout << "[UPLOAD] Skipping auto-fetch after upload (NewPatchInSlot)" << std::endl;
         }
-        else if (isConnected() && !waitingForPatchAck && !collectingSections && msg.newPatchSlot >= 0)
+        else if (isConnected() && !waitingForPatchAck && !collectingSections
+                 && !waitingForUploadAck && msg.newPatchSlot >= 0)
+        {
+            if (suppressNextLocationClear)
+                suppressNextLocationClear = false;
+            else
+            {
+                lastLoadedSection = -1;
+                lastLoadedPosition = -1;
+            }
             requestPatch(msg.newPatchSlot);
+        }
+        else if (waitingForUploadAck)
+        {
+            std::cout << "[UPLOAD] Ignoring NewPatchInSlot during upload" << std::endl;
+        }
     }
 
     if (msg.sc == 0x40 && msg.data.size() >= 4)  // KnobChange: physical knob turned on synth
@@ -568,8 +658,13 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         slotDetected = true;
         slotDetectGeneration++;  // Cancel any pending fallback timer
 
-        // Auto-load patch from the active slot (unless already loading)
-        if (isConnected() && !waitingForPatchAck && !collectingSections)
+        // Slot changed on synth — we don't know the bank location
+        lastLoadedSection = -1;
+        lastLoadedPosition = -1;
+        suppressNextLocationClear = false;
+
+        // Auto-load patch from the active slot (unless already loading or uploading)
+        if (isConnected() && !waitingForPatchAck && !collectingSections && !waitingForUploadAck)
             requestPatch(activeSlot);
     }
 
@@ -579,6 +674,16 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 {
+    // In Java protocol, PatchMessage.isreply = true — patch packets unblock the send queue.
+    // The synth may respond to some edit commands (NewModule) with a patch confirmation packet.
+    if (ackedQueueWaiting)
+    {
+        ackedQueueWaiting = false;
+        std::cout << "[QUEUE] PatchPacket received — unblocking queue ("
+                  << ackedQueue.size() << " pending)" << std::endl;
+        drainAckedQueue();
+    }
+
     if (!collectingSections && !waitingForPatchAck)
         return;  // Not expecting patch data
 
@@ -612,6 +717,14 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 
 void ConnectionManager::onError(const ErrorMessage& msg)
 {
+    // ErrorMessage.isreply = true in Java — also unblocks the send queue
+    if (ackedQueueWaiting)
+    {
+        std::cout << "[QUEUE] Error from synth (code " << msg.errorCode
+                  << ") — unblocking queue (" << ackedQueue.size() << " pending)" << std::endl;
+        ackedQueueWaiting = false;
+        drainAckedQueue();
+    }
     setStatus(State::Disconnected,
               "Error from synth (code " + juce::String(msg.errorCode) + ")");
 }

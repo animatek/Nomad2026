@@ -50,20 +50,22 @@ Module* ModuleContainer::addModule(std::unique_ptr<Module> module)
     auto* ptr = module.get();
     modules.push_back(std::move(module));
 
-    // Trigger callback if set
     if (onModuleAdded)
         onModuleAdded(ptr);
 
     return ptr;
 }
 
-void ModuleContainer::removeModule(Module* module)
+Module* ModuleContainer::addModuleSilent(std::unique_ptr<Module> module)
 {
-    // Call callback BEFORE removing (so it can access module data)
-    if (onModuleRemoved)
-        onModuleRemoved(module);
+    auto* ptr = module.get();
+    modules.push_back(std::move(module));
+    return ptr;
+}
 
-    // Remove connections involving this module's connectors
+std::unique_ptr<Module> ModuleContainer::extractModule(Module* module)
+{
+    // Remove connections involving this module's connectors (silently)
     for (auto& conn : module->getConnectors())
     {
         connections.erase(
@@ -71,6 +73,59 @@ void ModuleContainer::removeModule(Module* module)
                 [&conn](const Connection& c) { return c.output == &conn || c.input == &conn; }),
             connections.end());
     }
+
+    // Find and extract the unique_ptr
+    std::unique_ptr<Module> extracted;
+    for (auto it = modules.begin(); it != modules.end(); ++it)
+    {
+        if (it->get() == module)
+        {
+            extracted = std::move(*it);
+            modules.erase(it);
+            break;
+        }
+    }
+    return extracted;
+}
+
+void ModuleContainer::removeModule(Module* module)
+{
+    // First: fire onCableRemoved for every cable connected to this module.
+    // This sends DeleteCableMessage to the synth BEFORE DeleteModuleMessage,
+    // matching the Java NmPatchSynchronizer order (removeAllConnections first).
+    // Without this, the synth receives DeleteModule while cables are still
+    // attached, causing the synth to freeze/hang.
+    if (onCableRemoved)
+    {
+        for (auto& conn : module->getConnectors())
+        {
+            for (auto it = connections.begin(); it != connections.end(); )
+            {
+                if (it->output == &conn || it->input == &conn)
+                {
+                    onCableRemoved(it->output, it->input);
+                    it = connections.erase(it);
+                }
+                else
+                    ++it;
+            }
+        }
+    }
+    else
+    {
+        // No cable callback: just remove from model silently
+        for (auto& conn : module->getConnectors())
+        {
+            connections.erase(
+                std::remove_if(connections.begin(), connections.end(),
+                    [&conn](const Connection& c) { return c.output == &conn || c.input == &conn; }),
+                connections.end());
+        }
+    }
+
+    // Then: fire onModuleRemoved (sends DeleteModuleMessage to synth)
+    if (onModuleRemoved)
+        onModuleRemoved(module);
 
     modules.erase(
         std::remove_if(modules.begin(), modules.end(),

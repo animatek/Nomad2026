@@ -55,17 +55,18 @@ PatchHeaderBar::PatchHeaderBar()
             editor->setInputRestrictions(15);  // Hard limit to 15 characters
     };
 
-    patchNameEditor->onTextChange = [this]()
+    patchNameEditor->onTextChange = []()
     {
-        if (patch && nameChangeCallback)
-        {
-            juce::String newName = patchNameEditor->getText().substring(0, 15);  // CRITICAL: Max 15 chars (16+ hangs synth!)
-            patch->setName(newName);
-            nameChangeCallback(newName);
-        }
+        // Don't fire callback on every keystroke — wait until editing is done
     };
     patchNameEditor->onEditorHide = [this]()
     {
+        // Fire callback once when editing finishes (Enter / click away)
+        if (patch && nameChangeCallback)
+        {
+            juce::String newName = patchNameEditor->getText().substring(0, 15);  // CRITICAL: Max 15 chars (16+ hangs synth!)
+            nameChangeCallback(newName);
+        }
         repaint();  // Redraw after editing
     };
     addAndMakeVisible(patchNameEditor.get());

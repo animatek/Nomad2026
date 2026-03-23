@@ -8,6 +8,7 @@
 #include "model/PchFileIO.h"
 #include "midi/ConnectionManager.h"
 #include "sync/PatchSynchronizer.h"
+#include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
 
 class MainComponent : public juce::Component,
@@ -31,7 +32,8 @@ private:
     void openPatch();
     void savePatch();
     void savePatchAs();
-    void savePatchToSynth();
+    void uploadToActiveSlot();
+    void storePatchToBank();
     void loadPatchFromFile(const juce::File& file);
     bool savePatchToFile(const juce::File& file);
 
@@ -53,6 +55,10 @@ private:
     std::unique_ptr<Patch> currentPatch;
     juce::File currentPatchFile;
     std::unique_ptr<PatchSynchronizer> patchSynchronizer;
+
+    juce::UndoManager undoManager;
+    std::unique_ptr<UndoContext> undoContext;
+    void rebuildUndoContext();  // call after patch change
 
     juce::String lastInputId;
     juce::String lastOutputId;

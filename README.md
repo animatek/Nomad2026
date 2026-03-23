@@ -116,10 +116,16 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Module drag & drop**: Add modules from browser to canvas
 - [x] **Shake Cables**: "S" button in header bar randomizes cable curvature to reduce overlap with controls; also available via canvas context menu with "Reset Cables" option
 - [x] **Hidden cable connector indicator**: When cables are hidden via color filter, connected connectors show a "capped" visual (filled center) instead of the open hole, indicating a hidden connection exists
+- [x] **Undo/Redo system** (Ctrl+Z / Ctrl+Y):
+  - Add/delete modules, move modules, add/delete cables
+  - Parameter changes (with coalescing for rapid knob turns)
+  - Morph assignments/ranges, hardware knob assignments, MIDI CC assignments
+  - Rename patch
+  - Structural undos (add/delete module) trigger a debounced full patch upload to synth
+  - Multi-module grouped undo (e.g. delete selection) handled correctly — single upload after all actions settle
 
 ### Next Up
 - [ ] Multi-slot support (load/save per slot using slot tabs)
-- [ ] Undo/Redo system
 - [ ] Visual indicator for currently loaded patch in browser
 
 ## Roadmap
@@ -212,7 +218,7 @@ This section outlines all planned features to achieve feature parity with the or
 ### Quality of Life
 - [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
 - [ ] **Module Rendering Polish** - Compare each module type with original editor for pixel-perfect accuracy
-- [ ] **Undo/Redo System** - Full undo/redo for all patch operations
+- [x] **Undo/Redo System** - Full undo/redo for all patch operations
 - [ ] **Keyboard Shortcuts** - Complete keyboard shortcut system matching original editor
 - [ ] **Window Management** - Remember window positions and sizes across sessions
 

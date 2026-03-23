@@ -1518,7 +1518,29 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                     {
                         if (e.mods.isRightButtonDown())
                         {
-                            // Delete cables on this connector
+                            // Fire undo callbacks for each cable before removing
+                            if (cableDeletedCallback && undoManager)
+                            {
+                                undoManager->beginNewTransaction("Delete Cables");
+                                for (auto& cable : area.container->getConnections())
+                                {
+                                    if (cable.output == conn || cable.input == conn)
+                                    {
+                                        auto findOwner = [&](Connector* c) -> Module* {
+                                            for (auto& mp : area.container->getModules())
+                                                for (auto& mc : mp->getConnectors())
+                                                    if (&mc == c) return mp.get();
+                                            return nullptr;
+                                        };
+                                        auto* outMod = findOwner(cable.output);
+                                        auto* inMod = findOwner(cable.input);
+                                        if (outMod && inMod)
+                                            cableDeletedCallback(area.section,
+                                                outMod->getContainerIndex(), cable.output->getDescriptor()->index, cable.output->getDescriptor()->isOutput,
+                                                inMod->getContainerIndex(), cable.input->getDescriptor()->index, cable.input->getDescriptor()->isOutput);
+                                    }
+                                }
+                            }
                             area.container->removeConnectionsForConnector(conn);
                             repaint();
                             return;
@@ -1651,10 +1673,14 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         if (newValue > pd->maxValue)
                             newValue = pd->minValue;
 
+                        int oldButtonValue = dragState.parameter->getValue();
                         dragState.parameter->setValue(newValue);
 
                         if (parameterChangeCallback)
                             parameterChangeCallback(dragState.section, m.getContainerIndex(), pd->index, newValue);
+                        // Button clicks complete immediately — fire drag complete for undo
+                        if (paramDragCompleteCallback)
+                            paramDragCompleteCallback(dragState.section, m.getContainerIndex(), pd->index, oldButtonValue, newValue);
 
                         repaint();
                         return;
@@ -1736,6 +1762,8 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         }
                         else if (result == 5)
                         {
+                            if (undoManager)
+                                undoManager->beginNewTransaction("Delete Module");
                             if (deleteModuleCallback)
                                 deleteModuleCallback(sec, modPtr);
                             if (selectedModule == modPtr)
@@ -1769,6 +1797,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 dragState.module = &m;
                 dragState.section = area.section;
                 dragState.startPos = pos;
+                dragState.startGridPos = m.getPosition();
                 dragState.dragOffsetX = pos.x - rect.getX();
                 dragState.dragOffsetY = pos.y - rect.getY();
             }
@@ -1844,7 +1873,10 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                     int typeIndex = result - 1000;
                     auto* desc = moduleDescs->getModuleByIndex(typeIndex);
                     if (desc && moduleDropCallback)
+                    {
+                        if (undoManager) undoManager->beginNewTransaction("Add Module");
                         moduleDropCallback(typeIndex, clickSection, clickGX, clickGY, desc->name);
+                    }
                 }
             });
     }
@@ -2012,6 +2044,17 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 
     if (dragState.type == DragState::MultiModuleMove)
     {
+        if (moduleMoveCallback && undoManager)
+        {
+            undoManager->beginNewTransaction("Move Modules");
+            for (auto& ms : multiMoveState)
+            {
+                auto newPos = ms.module->getPosition();
+                if (newPos != ms.startGridPos)
+                    moduleMoveCallback(ms.section, ms.module->getContainerIndex(),
+                                       ms.startGridPos, newPos);
+            }
+        }
         multiMoveState.clear();
         dragState = DragState();
         return;
@@ -2019,6 +2062,16 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 
     if (dragState.type == DragState::ModuleMove)
     {
+        if (moduleMoveCallback && undoManager && dragState.module)
+        {
+            auto newPos = dragState.module->getPosition();
+            if (newPos != dragState.startGridPos)
+            {
+                undoManager->beginNewTransaction("Move Module");
+                moduleMoveCallback(dragState.section, dragState.module->getContainerIndex(),
+                                   dragState.startGridPos, newPos);
+            }
+        }
         dragState = DragState();
         return;
     }
@@ -2037,11 +2090,34 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
             auto& container = patch->getContainer(dragState.section);
 
             // Connect output→input, auto-swap if needed
-            if (srcOut && !dstOut)
-                container.addConnection(src, dst);
-            else if (!srcOut && dstOut)
-                container.addConnection(dst, src);
-            // output→output or input→input: silently ignored
+            Connector* outConn = nullptr;
+            Connector* inConn = nullptr;
+            if (srcOut && !dstOut) { outConn = src; inConn = dst; }
+            else if (!srcOut && dstOut) { outConn = dst; inConn = src; }
+
+            if (outConn && inConn)
+            {
+                container.addConnection(outConn, inConn);
+
+                if (cableCreatedCallback && dragState.module)
+                {
+                    if (undoManager)
+                        undoManager->beginNewTransaction("Add Cable");
+                    // Find module owners for undo info
+                    auto findOwner = [&](Connector* c) -> Module* {
+                        for (auto& mp : container.getModules())
+                            for (auto& mc : mp->getConnectors())
+                                if (&mc == c) return mp.get();
+                        return nullptr;
+                    };
+                    auto* outMod = findOwner(outConn);
+                    auto* inMod = findOwner(inConn);
+                    if (outMod && inMod)
+                        cableCreatedCallback(dragState.section,
+                            outMod->getContainerIndex(), outConn->getDescriptor()->index, true,
+                            inMod->getContainerIndex(), inConn->getDescriptor()->index, false);
+                }
+            }
         }
         repaint();
         dragState = DragState();
@@ -2069,13 +2145,21 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 
     // Send final value to synth (only for knobs/sliders, buttons already sent on mouseDown)
     // Skip if the value was already sent during drag
-    if (dragState.type != DragState::Button && parameterChangeCallback && dragState.module != nullptr)
+    if (dragState.type != DragState::Button && dragState.module != nullptr)
     {
         int finalValue = dragState.parameter->getValue();
-        if (finalValue != dragState.lastSentValue)
+        if (finalValue != dragState.lastSentValue && parameterChangeCallback)
         {
             auto* pd = dragState.parameter->getDescriptor();
             parameterChangeCallback(dragState.section, dragState.module->getContainerIndex(), pd->index, finalValue);
+        }
+
+        // Fire drag complete for undo (knobs/sliders only — buttons fire on mouseDown)
+        if (paramDragCompleteCallback && finalValue != dragState.startValue)
+        {
+            auto* pd = dragState.parameter->getDescriptor();
+            paramDragCompleteCallback(dragState.section, dragState.module->getContainerIndex(),
+                                      pd->index, dragState.startValue, finalValue);
         }
     }
 
@@ -2136,13 +2220,34 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             [this, section](const ModuleDescriptor* desc, int pgx, int pgy)
             {
                 if (moduleDropCallback && desc)
+                {
+                    if (undoManager) undoManager->beginNewTransaction("Add Module");
                     moduleDropCallback(desc->index, section, pgx, pgy, desc->name);
+                }
             },
             [this]() { activeQuickAdd = nullptr; }
         );
 
         activeQuickAdd->grabFocusNow();
         return true;
+    }
+
+    // Ctrl+Z → undo
+    if (key == juce::KeyPress('z', juce::ModifierKeys::commandModifier, 0))
+    {
+        if (undoCallback) { undoCallback(); return true; }
+    }
+
+    // Ctrl+Shift+Z → redo
+    if (key == juce::KeyPress('z', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 0))
+    {
+        if (redoCallback) { redoCallback(); return true; }
+    }
+
+    // Ctrl+Y → redo (alternative)
+    if (key == juce::KeyPress('y', juce::ModifierKeys::commandModifier, 0))
+    {
+        if (redoCallback) { redoCallback(); return true; }
     }
 
     return false;
@@ -2315,7 +2420,10 @@ void PatchCanvas::itemDropped(const SourceDetails& dragSourceDetails)
 
     // Trigger callback if set
     if (moduleDropCallback)
+    {
+        if (undoManager) undoManager->beginNewTransaction("Add Module");
         moduleDropCallback(typeId, section, dropX, dropY, moduleName);
+    }
 
     repaint();
 }
@@ -2448,10 +2556,14 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
             if (result == 1)
             {
                 // Set to default value
+                int oldVal = param.getValue();
                 param.setValue(pd2->defaultValue);
                 if (parameterChangeCallback)
                     parameterChangeCallback(section, m.getContainerIndex(),
                                            pd2->index, pd2->defaultValue);
+                if (paramDragCompleteCallback && oldVal != pd2->defaultValue)
+                    paramDragCompleteCallback(section, m.getContainerIndex(),
+                                              pd2->index, oldVal, pd2->defaultValue);
                 repaint();
             }
             else if (result == 2)
@@ -2565,10 +2677,18 @@ void PatchCanvas::deleteSelection()
 {
     if (selection.empty() || patch == nullptr) return;
 
+    if (undoManager)
+        undoManager->beginNewTransaction("Delete Selection");
+
     for (auto& sel : selection)
     {
-        auto& container = patch->getContainer(sel.section);
-        container.removeModule(sel.module);
+        if (deleteModuleCallback)
+            deleteModuleCallback(sel.section, sel.module);
+        else
+        {
+            auto& container = patch->getContainer(sel.section);
+            container.removeModule(sel.module);
+        }
     }
     clearSelection();
     repaint();
@@ -2577,6 +2697,9 @@ void PatchCanvas::deleteSelection()
 void PatchCanvas::duplicateSelection(bool withCables)
 {
     if (selection.empty() || patch == nullptr || moduleDescs == nullptr) return;
+
+    if (undoManager)
+        undoManager->beginNewTransaction("Duplicate");
 
     // Offset for duplicates: 1 column to the right, 0 rows down
     const int offsetX = 1, offsetY = 2;
@@ -2724,6 +2847,9 @@ void PatchCanvas::copySelectionToClipboard()
 void PatchCanvas::pasteFromClipboard(juce::Point<int> mousePos)
 {
     if (clipboard.empty() || patch == nullptr || moduleDescs == nullptr) return;
+
+    if (undoManager)
+        undoManager->beginNewTransaction("Paste");
 
     // Find bounding box of clipboard to offset paste position
     int minX = clipboard[0].gridPos.x, minY = clipboard[0].gridPos.y;

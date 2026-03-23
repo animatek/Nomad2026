@@ -4,12 +4,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "protocol/StorePatchMessage.h"
-#include "protocol/MorphAssignmentMessage.h"
-#include "protocol/MorphRangeChangeMessage.h"
-#include "protocol/KnobAssignmentMessage.h"
-#include "protocol/MidiCtrlAssignmentMessage.h"
 #include <iostream>
-#include <iomanip>
 
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
@@ -99,98 +94,54 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire inspector morph group remove
   mainLayout->getInspector().onMorphGroupChanged = [this](int section, Module* module,
                                                            int paramIndex, int morphGroup) {
-    if (!currentPatch || !module) return;
-    // Update patch morph assignments
-    auto& assignments = currentPatch->morphAssignments;
-    assignments.erase(
-        std::remove_if(assignments.begin(), assignments.end(),
-            [section, module, paramIndex](const MorphAssignment& ma) {
-                return ma.section == section
-                    && ma.module  == module->getContainerIndex()
-                    && ma.param   == paramIndex;
-            }),
-        assignments.end());
-    if (morphGroup >= 0)
-    {
-        MorphAssignment ma;
-        ma.section = section; ma.module = module->getContainerIndex();
-        ma.param = paramIndex; ma.morph = morphGroup; ma.range = 0;
-        assignments.push_back(ma);
-        int pid  = connectionManager.getCurrentPatchId();
-        int slot = connectionManager.getCurrentSlot();
-        MorphAssignmentMessage msg(pid, section, module->getContainerIndex(), paramIndex, morphGroup);
-        connectionManager.sendRawSysEx(msg.toSysEx(slot));
-        // Set range=0 on synth to match model
-        MorphRangeChangeMessage rangeMsg(pid, section, module->getContainerIndex(), paramIndex, 0, 0);
-        connectionManager.sendRawSysEx(rangeMsg.toSysEx(slot));
-    }
-    mainLayout->getCanvas().repaintCanvas();
+    if (!currentPatch || !module || !undoContext) return;
+    int moduleId = module->getContainerIndex();
+    int oldGroup = -1, oldRange = 0;
+    for (auto& ma : currentPatch->morphAssignments)
+        if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
+        { oldGroup = ma.morph; oldRange = ma.range; break; }
+    undoManager.beginNewTransaction("Morph Assign");
+    undoManager.perform(new MorphAssignAction(*undoContext, section, moduleId, paramIndex, morphGroup, oldGroup, oldRange));
   };
 
   // Wire inspector morph range change
   mainLayout->getInspector().onMorphRangeChanged = [this](int section, Module* module,
                                                            int paramIndex, int span, int dir) {
-    if (!module || !currentPatch) return;
-    // Keep patch model in sync
-    int signedRange = (dir == 0) ? span : -span;
-    int moduleId    = module->getContainerIndex();
+    if (!module || !currentPatch || !undoContext) return;
+    int moduleId = module->getContainerIndex();
+    int newRange = (dir == 0) ? span : -span;
+    int oldRange = 0;
     for (auto& ma : currentPatch->morphAssignments)
-    {
         if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
-        { ma.range = signedRange; break; }
-    }
-    int pid  = connectionManager.getCurrentPatchId();
-    int slot = connectionManager.getCurrentSlot();
-    MorphRangeChangeMessage msg(pid, section, moduleId, paramIndex, span, dir);
-    connectionManager.sendRawSysEx(msg.toSysEx(slot));
-    mainLayout->getCanvas().repaintCanvas();
+        { oldRange = ma.range; break; }
+    undoManager.beginNewTransaction("Morph Range");
+    undoManager.perform(new MorphRangeChangeAction(*undoContext, section, moduleId, paramIndex, oldRange, newRange));
   };
 
   // Wire knob/CC removal from inspector X buttons
   mainLayout->getInspector().onKnobRemoved = [this](int section, int moduleId, int paramId, int /*knobIndex*/) {
-    if (!currentPatch) return;
-    // Find which knob has this assignment
+    if (!currentPatch || !undoContext) return;
+    int prevKnob = -1;
     for (int k = 0; k < 23; ++k)
     {
         auto& ka = currentPatch->knobAssignments[static_cast<size_t>(k)];
         if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
-        {
-            ka.assigned = false;
-            int pid  = connectionManager.getCurrentPatchId();
-            int slot = connectionManager.getCurrentSlot();
-            connectionManager.sendRawSysEx(KnobAssignmentMessage::deassign(pid, k, slot));
-            std::cout << "[MAIN] Inspector knob deassign: knob=" << k << std::endl;
-            break;
-        }
+        { prevKnob = k; break; }
     }
-    mainLayout->getInspector().refreshMorphList();
-    mainLayout->getCanvas().repaintCanvas();
+    if (prevKnob < 0) return;
+    undoManager.beginNewTransaction("Knob Deassign");
+    undoManager.perform(new KnobAssignAction(*undoContext, section, moduleId, paramId, -1, prevKnob));
   };
 
   mainLayout->getInspector().onMidiCtrlRemoved = [this](int section, int moduleId, int paramId, int /*midiCC*/) {
-    if (!currentPatch) return;
+    if (!currentPatch || !undoContext) return;
     int prevCtrl = -1;
     for (auto& ca : currentPatch->ctrlAssignments)
-    {
         if (ca.section == section && ca.module == moduleId && ca.param == paramId)
         { prevCtrl = ca.control; break; }
-    }
-    if (prevCtrl >= 0)
-    {
-        currentPatch->ctrlAssignments.erase(
-            std::remove_if(currentPatch->ctrlAssignments.begin(),
-                           currentPatch->ctrlAssignments.end(),
-                           [section, moduleId, paramId](const CtrlAssignment& ca) {
-                               return ca.section == section && ca.module == moduleId && ca.param == paramId;
-                           }),
-            currentPatch->ctrlAssignments.end());
-        int pid  = connectionManager.getCurrentPatchId();
-        int slot = connectionManager.getCurrentSlot();
-        connectionManager.sendRawSysEx(MidiCtrlAssignmentMessage::deassign(pid, prevCtrl, slot));
-        std::cout << "[MAIN] Inspector MIDI ctrl deassign: CC " << prevCtrl << std::endl;
-    }
-    mainLayout->getInspector().refreshMorphList();
-    mainLayout->getCanvas().repaintCanvas();
+    if (prevCtrl < 0) return;
+    undoManager.beginNewTransaction("MIDI CC Deassign");
+    undoManager.perform(new MidiCtrlAssignAction(*undoContext, section, moduleId, paramId, -1, prevCtrl));
   };
 
   // Wire patch list updates to patch browser panel
@@ -277,6 +228,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         juce::MessageManager::callAsync([this, p = std::move(patch)]() mutable {
           // CRITICAL: Destroy synchronizer BEFORE replacing patch to avoid dangling reference
           patchSynchronizer.reset();
+          connectionManager.setSuppressNewPatchInSlot(false);
           // Clear inspector before replacing patch — its currentModule points into the old patch
           mainLayout->getInspector().clearModule();
 
@@ -289,12 +241,15 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             mainLayout->getStatusBar().setConnectionStatus(
                 "Connected - " + currentPatch->getName(), true);
 
-            // Enable patch synchronization (live editing)
             if (connectionManager.isConnected()) {
               patchSynchronizer = std::make_unique<PatchSynchronizer>(
                   *currentPatch, connectionManager);
+              connectionManager.setSuppressNewPatchInSlot(true);
               std::cout << "[SYNC] Patch synchronizer enabled after patch load from synth" << std::endl;
             }
+
+            undoManager.clearUndoHistory();
+            rebuildUndoContext();
           }
         });
       });
@@ -305,43 +260,35 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         connectionManager.sendParameter(section, moduleId, parameterId, value);
       });
 
+  // Wire parameter drag complete for undo (fires once on mouseUp with old+new)
+  mainLayout->getCanvas().setParameterDragCompleteCallback(
+      [this](int section, int moduleId, int parameterId, int oldValue, int newValue) {
+        if (!undoContext) return;
+        undoManager.beginNewTransaction("Parameter Change");
+        undoManager.perform(new ParameterChangeAction(*undoContext, section, moduleId, parameterId, oldValue, newValue));
+      });
+
   // Wire module drops from browser to patch model
   mainLayout->getCanvas().setModuleDropCallback(
       [this](int typeId, int section, int gridX, int gridY, const juce::String& name) {
-        if (!currentPatch)
-        {
-          std::cout << "[MAIN] ERROR: Cannot add module - no current patch" << std::endl;
-          return;
-        }
-
-        std::cout << "[MAIN] Module dropped: typeId=" << typeId
-          << " section=" << section << " pos=(" << gridX << "," << gridY << ")"
-          << " name=" << name << std::endl;
-
-        // Create module in patch (will trigger synchronizer to send to synth)
-        auto* module = currentPatch->createModule(section, typeId, gridX, gridY, name, moduleDescs);
-        if (module)
-        {
-            // Repaint canvas to show new module
-          mainLayout->getCanvas().repaintCanvas();
-          std::cout << "[MAIN] Module created successfully" << std::endl;
-        }
-        else
-        {
-          std::cout << "[MAIN] ERROR: Failed to create module (type " << typeId << ")" << std::endl;
+        if (!currentPatch || !undoContext) return;
+        if (!undoManager.perform(new AddModuleAction(*undoContext, section, typeId, gridX, gridY, name)))
           mainLayout->getStatusBar().setConnectionStatus(
             "Failed to add module - check synth memory/limits", true);
-        }
       });
 
   // Wire module delete from canvas context menu
   mainLayout->getCanvas().setDeleteModuleCallback(
       [this](int section, Module* module) {
-        if (!currentPatch) return;
-        auto& container = currentPatch->getContainer(section);
-        container.removeModule(module);
-        mainLayout->getCanvas().repaintCanvas();
-        std::cout << "[MAIN] Module deleted from section " << section << std::endl;
+        if (!currentPatch || !undoContext || !module) return;
+        undoManager.perform(new DeleteModuleAction(*undoContext, section, module));
+      });
+
+  // Wire module move undo from canvas
+  mainLayout->getCanvas().setModuleMoveCallback(
+      [this](int section, int moduleIndex, juce::Point<int> oldPos, juce::Point<int> newPos) {
+        if (!currentPatch || !undoContext) return;
+        undoManager.perform(new MoveModuleAction(*undoContext, section, moduleIndex, oldPos, newPos));
       });
 
   // Wire module rename from canvas context menu
@@ -355,73 +302,33 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire morph group assignment from parameter context menu
   mainLayout->getCanvas().setMorphAssignCallback(
       [this](int section, int moduleId, int paramId, int morphGroup) {
-        if (!currentPatch) return;
-        // Update patch model: add/update/remove morph assignment
-        auto& assignments = currentPatch->morphAssignments;
-        // Remove any existing assignment for this param
-        assignments.erase(
-            std::remove_if(assignments.begin(), assignments.end(),
-                [section, moduleId, paramId](const MorphAssignment& ma) {
-                    return ma.section == section && ma.module == moduleId && ma.param == paramId;
-                }),
-            assignments.end());
-        if (morphGroup >= 0)
-        {
-            MorphAssignment ma;
-            ma.section = section;
-            ma.module = moduleId;
-            ma.param = paramId;
-            ma.morph = morphGroup;
-            ma.range = 0;  // Default range: 0 (not moving with morph until explicitly set)
-            assignments.push_back(ma);
-            // Send only the assignment — the canvas will call morphRangeChangeCallback
-            // separately with span=0, avoiding sending two messages in quick succession.
-            int pid = connectionManager.getCurrentPatchId();
-            int slot = connectionManager.getCurrentSlot();
-            MorphAssignmentMessage msg(pid, section, moduleId, paramId, morphGroup);
-            connectionManager.sendRawSysEx(msg.toSysEx(slot));
-            std::cout << "[MAIN] Morph assign: section=" << section
-                      << " module=" << moduleId << " param=" << paramId
-                      << " group=" << morphGroup << std::endl;
-        }
-        else
-        {
-            std::cout << "[MAIN] Morph disabled for section=" << section
-                      << " module=" << moduleId << " param=" << paramId << std::endl;
-        }
-        // Refresh inspector if the current module is the one that changed
-        mainLayout->getInspector().refreshMorphList();
+        if (!currentPatch || !undoContext) return;
+        // Find previous assignment
+        int oldGroup = -1, oldRange = 0;
+        for (auto& ma : currentPatch->morphAssignments)
+            if (ma.section == section && ma.module == moduleId && ma.param == paramId)
+            { oldGroup = ma.morph; oldRange = ma.range; break; }
+        undoManager.beginNewTransaction("Morph Assign");
+        undoManager.perform(new MorphAssignAction(*undoContext, section, moduleId, paramId, morphGroup, oldGroup, oldRange));
       });
 
   // Wire zero morph / Ctrl+drag (MorphRangeChange) from canvas
   mainLayout->getCanvas().setMorphRangeChangeCallback(
       [this](int section, int moduleId, int paramId, int span, int direction) {
-        // Update patch model so serialization uses the correct range
-        if (currentPatch)
-        {
-            int signedRange = (direction == 0) ? span : -span;
-            for (auto& ma : currentPatch->morphAssignments)
-            {
-                if (ma.section == section && ma.module == moduleId && ma.param == paramId)
-                { ma.range = signedRange; break; }
-            }
-        }
-        int pid  = connectionManager.getCurrentPatchId();
-        int slot = connectionManager.getCurrentSlot();
-        MorphRangeChangeMessage msg(pid, section, moduleId, paramId, span, direction);
-        connectionManager.sendRawSysEx(msg.toSysEx(slot));
-        // Keep inspector morph list in sync with canvas changes
-        mainLayout->getInspector().refreshMorphList();
+        if (!currentPatch || !undoContext) return;
+        int newSignedRange = (direction == 0) ? span : -span;
+        int oldSignedRange = 0;
+        for (auto& ma : currentPatch->morphAssignments)
+            if (ma.section == section && ma.module == moduleId && ma.param == paramId)
+            { oldSignedRange = ma.range; break; }
+        undoManager.beginNewTransaction("Morph Range");
+        undoManager.perform(new MorphRangeChangeAction(*undoContext, section, moduleId, paramId, oldSignedRange, newSignedRange));
       });
 
   // Wire knob assignment from parameter context menu
   mainLayout->getCanvas().setKnobAssignCallback(
       [this](int section, int moduleId, int paramId, int knobIndex) {
-        if (!currentPatch) return;
-        int pid  = connectionManager.getCurrentPatchId();
-        int slot = connectionManager.getCurrentSlot();
-
-        // Find if this param already has a knob assigned
+        if (!currentPatch || !undoContext) return;
         int prevKnob = -1;
         for (int k = 0; k < 23; ++k)
         {
@@ -429,111 +336,40 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
             { prevKnob = k; break; }
         }
-
-        if (knobIndex < 0)
-        {
-            // Disable: deassign from current knob
-            if (prevKnob >= 0)
-            {
-                currentPatch->knobAssignments[static_cast<size_t>(prevKnob)].assigned = false;
-                connectionManager.sendRawSysEx(
-                    KnobAssignmentMessage::deassign(pid, prevKnob, slot));
-                std::cout << "[MAIN] Knob deassign: knob=" << prevKnob << std::endl;
-            }
-        }
-        else
-        {
-            // Clear previous assignment for this knob (if different param was on it)
-            currentPatch->knobAssignments[static_cast<size_t>(knobIndex)] = { true, section, moduleId, paramId };
-
-            if (prevKnob >= 0 && prevKnob != knobIndex)
-            {
-                // Move from prevKnob to knobIndex
-                currentPatch->knobAssignments[static_cast<size_t>(prevKnob)].assigned = false;
-                connectionManager.sendRawSysEx(
-                    KnobAssignmentMessage::reassign(pid, prevKnob, knobIndex, section, moduleId, paramId, slot));
-                std::cout << "[MAIN] Knob reassign: " << prevKnob << " -> " << knobIndex << std::endl;
-            }
-            else if (prevKnob < 0)
-            {
-                // New assignment
-                connectionManager.sendRawSysEx(
-                    KnobAssignmentMessage::assign(pid, knobIndex, section, moduleId, paramId, slot));
-                std::cout << "[MAIN] Knob assign: knob=" << knobIndex
-                          << " section=" << section << " module=" << moduleId
-                          << " param=" << paramId << std::endl;
-            }
-            // prevKnob == knobIndex: already assigned to same knob, no-op
-        }
-        mainLayout->getInspector().refreshMorphList();
-        mainLayout->getCanvas().repaintCanvas();
+        if (knobIndex == prevKnob) return; // no-op
+        undoManager.beginNewTransaction("Knob Assign");
+        undoManager.perform(new KnobAssignAction(*undoContext, section, moduleId, paramId, knobIndex, prevKnob));
       });
 
   // Wire MIDI controller assignment from parameter context menu
   mainLayout->getCanvas().setMidiCtrlAssignCallback(
       [this](int section, int moduleId, int paramId, int midiCC) {
-        if (!currentPatch) return;
-        int pid  = connectionManager.getCurrentPatchId();
-        int slot = connectionManager.getCurrentSlot();
-
-        // Find if this param already has a MIDI CC assigned
+        if (!currentPatch || !undoContext) return;
         int prevCtrl = -1;
-        for (size_t i = 0; i < currentPatch->ctrlAssignments.size(); ++i)
-        {
-            auto& ca = currentPatch->ctrlAssignments[i];
+        for (auto& ca : currentPatch->ctrlAssignments)
             if (ca.section == section && ca.module == moduleId && ca.param == paramId)
             { prevCtrl = ca.control; break; }
-        }
+        if (midiCC == prevCtrl) return; // no-op
+        undoManager.beginNewTransaction("MIDI CC Assign");
+        undoManager.perform(new MidiCtrlAssignAction(*undoContext, section, moduleId, paramId, midiCC, prevCtrl));
+      });
 
-        if (midiCC < 0)
-        {
-            // Disable: deassign
-            if (prevCtrl >= 0)
-            {
-                currentPatch->ctrlAssignments.erase(
-                    std::remove_if(currentPatch->ctrlAssignments.begin(),
-                                   currentPatch->ctrlAssignments.end(),
-                                   [section, moduleId, paramId](const CtrlAssignment& ca) {
-                                       return ca.section == section && ca.module == moduleId && ca.param == paramId;
-                                   }),
-                    currentPatch->ctrlAssignments.end());
-                connectionManager.sendRawSysEx(
-                    MidiCtrlAssignmentMessage::deassign(pid, prevCtrl, slot));
-                std::cout << "[MAIN] MIDI ctrl deassign: CC " << prevCtrl << std::endl;
-            }
-        }
-        else
-        {
-            if (prevCtrl >= 0)
-            {
-                // Update existing entry
-                for (auto& ca : currentPatch->ctrlAssignments)
-                {
-                    if (ca.section == section && ca.module == moduleId && ca.param == paramId)
-                    { ca.control = midiCC; break; }
-                }
-                connectionManager.sendRawSysEx(
-                    MidiCtrlAssignmentMessage::reassign(pid, prevCtrl, midiCC, section, moduleId, paramId, slot));
-                std::cout << "[MAIN] MIDI ctrl reassign: CC " << prevCtrl << " -> " << midiCC << std::endl;
-            }
-            else
-            {
-                // New assignment
-                CtrlAssignment ca;
-                ca.control = midiCC;
-                ca.section = section;
-                ca.module = moduleId;
-                ca.param = paramId;
-                currentPatch->ctrlAssignments.push_back(ca);
-                connectionManager.sendRawSysEx(
-                    MidiCtrlAssignmentMessage::assign(pid, midiCC, section, moduleId, paramId, slot));
-                std::cout << "[MAIN] MIDI ctrl assign: CC " << midiCC
-                          << " section=" << section << " module=" << moduleId
-                          << " param=" << paramId << std::endl;
-            }
-        }
-        mainLayout->getInspector().refreshMorphList();
-        mainLayout->getCanvas().repaintCanvas();
+  // Wire cable creation undo from canvas
+  mainLayout->getCanvas().setCableCreatedCallback(
+      [this](int section, int outModIdx, int outConnIdx, bool outIsOut,
+             int inModIdx, int inConnIdx, bool inIsOut) {
+        if (!currentPatch || !undoContext) return;
+        undoManager.perform(new AddCableAction(*undoContext, section,
+            outModIdx, outConnIdx, outIsOut, inModIdx, inConnIdx, inIsOut, true));
+      });
+
+  // Wire cable deletion undo from canvas
+  mainLayout->getCanvas().setCableDeletedCallback(
+      [this](int section, int outModIdx, int outConnIdx, bool outIsOut,
+             int inModIdx, int inConnIdx, bool inIsOut) {
+        if (!currentPatch || !undoContext) return;
+        undoManager.perform(new DeleteCableAction(*undoContext, section,
+            outModIdx, outConnIdx, outIsOut, inModIdx, inConnIdx, inIsOut, true));
       });
 
   // Wire morph knob changes from header bar to synth
@@ -547,8 +383,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire patch name changes to send to synth
   mainLayout->getHeaderBar().setNameChangeCallback(
       [this](const juce::String& newName) {
-        std::cout << "[MAIN] Patch name changed to: " << newName.toStdString() << std::endl;
-        connectionManager.sendPatchTitle(newName);
+        if (!currentPatch || !undoContext) return;
+        juce::String oldName = currentPatch->getName();
+        if (oldName == newName) return;
+        undoManager.beginNewTransaction("Rename Patch");
+        undoManager.perform(new RenamePatchAction(*undoContext, oldName, newName));
       });
 
   // Wire quick save button
@@ -593,6 +432,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire shake cables button
   mainLayout->getHeaderBar().setShakeCablesCallback(
       [this]() { mainLayout->getCanvas().shakeCables(); });
+
+  // Wire undo/redo keyboard shortcuts from canvas
+  mainLayout->getCanvas().setUndoCallback([this]() { undoManager.undo(); });
+  mainLayout->getCanvas().setRedoCallback([this]() { undoManager.redo(); });
+  mainLayout->getCanvas().setUndoManager(&undoManager);
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
   connectionManager.setParameterChangeCallback([this](int section, int moduleId,
@@ -676,15 +520,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(10, "Quit");
   } else if (menuIndex == 1) // Edit
   {
-    menu.addItem(20, "Undo", false);
-    menu.addItem(21, "Redo", false);
+    menu.addItem(20, "Undo " + undoManager.getUndoDescription(),
+                 undoManager.canUndo(), false);
+    menu.addItem(21, "Redo " + undoManager.getRedoDescription(),
+                 undoManager.canRedo(), false);
   } else if (menuIndex == 2) // Device
   {
     menu.addItem(30, "MIDI Settings...");
     menu.addSeparator();
     bool connected = connectionManager.isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
-    menu.addItem(32, "Send Patch to Synth", connected);
+    menu.addItem(32, "Upload to Active Slot", connected);
+    menu.addItem(33, "Store to Bank...", connected);
   }
   else if (menuIndex == 3) // Help
   {
@@ -738,6 +585,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 10:
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
     break;
+  case 20:
+    undoManager.undo();
+    break;
+  case 21:
+    undoManager.redo();
+    break;
   case 30:
     showMidiSettingsDialog();
     break;
@@ -745,7 +598,10 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     connectionManager.requestPatch(connectionManager.getCurrentSlot());
     break;
   case 32:
-    savePatchToSynth();
+    uploadToActiveSlot();
+    break;
+  case 33:
+    storePatchToBank();
     break;
 
   // Help menu
@@ -778,6 +634,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 void MainComponent::newPatch() {
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   patchSynchronizer.reset();
+  connectionManager.setSuppressNewPatchInSlot(false);
   mainLayout->getInspector().clearModule();
 
   currentPatch = std::make_unique<Patch>();
@@ -785,14 +642,17 @@ void MainComponent::newPatch() {
   mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch.get());
   mainLayout->getInspector().setPatch(currentPatch.get());
-  mainLayout->getHeaderBar().clearCurrentLocation();  // Clear quick save location
+  mainLayout->getHeaderBar().clearCurrentLocation();
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
 
-  // Re-enable synchronizer so live edits (add/delete modules, cables) are sent to synth
   if (connectionManager.isConnected()) {
     patchSynchronizer = std::make_unique<PatchSynchronizer>(*currentPatch, connectionManager);
+    connectionManager.setSuppressNewPatchInSlot(true);
     std::cout << "[SYNC] Patch synchronizer enabled for new patch" << std::endl;
   }
+
+  undoManager.clearUndoHistory();
+  rebuildUndoContext();
 }
 
 void MainComponent::openPatch() {
@@ -853,6 +713,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   patchSynchronizer.reset();
+  connectionManager.setSuppressNewPatchInSlot(false);
   // Clear inspector before replacing patch — its currentModule points into the old patch
   mainLayout->getInspector().clearModule();
 
@@ -863,15 +724,18 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   mainLayout->getInspector().setPatch(currentPatch.get());
   mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
 
-  // Enable patch synchronization if connected
   if (connectionManager.isConnected()) {
     patchSynchronizer = std::make_unique<PatchSynchronizer>(
         *currentPatch, connectionManager);
+    connectionManager.setSuppressNewPatchInSlot(true);
     std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
+
+  undoManager.clearUndoHistory();
+  rebuildUndoContext();
 }
 
-void MainComponent::savePatchToSynth() {
+void MainComponent::uploadToActiveSlot() {
   if (!connectionManager.isConnected()) {
     juce::AlertWindow::showMessageBoxAsync(
         juce::MessageBoxIconType::WarningIcon,
@@ -879,7 +743,6 @@ void MainComponent::savePatchToSynth() {
         "Please connect to the Nord Modular first.");
     return;
   }
-
   if (currentPatch == nullptr) {
     juce::AlertWindow::showMessageBoxAsync(
         juce::MessageBoxIconType::WarningIcon,
@@ -889,66 +752,89 @@ void MainComponent::savePatchToSynth() {
   }
 
   int slot = connectionManager.getCurrentSlot();
+  const char* slotNames[] = {"A", "B", "C", "D"};
+  mainLayout->getStatusBar().showMessage(
+      juce::String("Uploading patch to slot ") + slotNames[slot] + "...", 0);
 
-  // Step 1: Upload the patch to the synth's current working slot.
-  // This replaces whatever the synth has in RAM with our editor patch.
-  mainLayout->getStatusBar().showMessage("Uploading patch to synth...", 0);
+  // Suppress synchronizer during upload to prevent redundant SysEx
+  // (the upload replaces the entire patch, individual sync messages are wasteful and cause race conditions)
+  if (patchSynchronizer)
+    patchSynchronizer->setSuppressed(true);
 
-  // Step 2: Only show the "Store to Bank" dialog AFTER the synth ACKs the upload.
-  // Sending StorePatch before the upload ACK causes synth error 6 ("upload incomplete").
-  // Use SafePointer so the lambda is safe even if MainComponent is destroyed
-  // before the async callback fires (e.g. window closed mid-upload).
   juce::Component::SafePointer<MainComponent> safeThis(this);
   connectionManager.setUploadCompleteCallback([safeThis, slot]() {
     if (safeThis == nullptr) return;
-    // One-shot: clear the callback immediately so it doesn't fire again
     safeThis->connectionManager.setUploadCompleteCallback(nullptr);
-
-    const char* slotNames[] = {"A", "B", "C", "D"};
+    // Re-enable synchronizer after upload
+    if (safeThis->patchSynchronizer)
+      safeThis->patchSynchronizer->setSuppressed(false);
+    const char* names[] = {"A", "B", "C", "D"};
     safeThis->mainLayout->getStatusBar().showMessage(
-        juce::String("Patch uploaded to slot ") + slotNames[slot]
-        + " — use Store to Bank to save permanently", 5000);
-
-    // Only offer bank storage if the patch list is loaded
-    if (!safeThis->connectionManager.isPatchListLoaded())
-      return;
-
-    auto* locationDialog = new PatchLocationDialog(safeThis->connectionManager.getPatchList(),
-                                                    true,  // Show slot selector
-                                                    slot);
-
-    locationDialog->setCallback([safeThis](const PatchLocationDialog::Result& result) {
-      if (safeThis == nullptr || !result.confirmed)
-        return;
-
-      int location = (result.section + 1) * 100 + result.position + 1;
-
-      safeThis->mainLayout->getStatusBar().showMessage("Storing to bank location " + juce::String(location) + "...", 0);
-
-      StorePatchMessage msg(result.slot, result.section, result.position);
-      auto sysex = msg.toSysEx(result.slot);
-      safeThis->connectionManager.sendRawSysEx(sysex);
-
-      std::cout << "[STORE] Sent StorePatch: slot=" << result.slot
-          << " section=" << result.section << " pos=" << result.position
-          << " (location " << location << ")" << std::endl;
-
-      const char* storeSlotNames[] = {"A", "B", "C", "D"};
-      safeThis->mainLayout->getStatusBar().showMessage(
-          "Stored slot " + juce::String(storeSlotNames[result.slot]) + " to bank location " + juce::String(location), 3000);
-    });
-
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(locationDialog);
-    options.dialogTitle = "Store Patch to Bank";
-    options.dialogBackgroundColour = safeThis->getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = false;
-    options.launchAsync();
+        juce::String("Patch uploaded to slot ") + names[slot], 3000);
   });
 
   connectionManager.uploadPatch(slot, *currentPatch);
+}
+
+void MainComponent::storePatchToBank() {
+  if (!connectionManager.isConnected()) {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::WarningIcon,
+        "Not Connected",
+        "Please connect to the Nord Modular first.");
+    return;
+  }
+  if (currentPatch == nullptr) {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::WarningIcon,
+        "No Patch",
+        "Please load a patch first.");
+    return;
+  }
+  if (!connectionManager.isPatchListLoaded()) {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::WarningIcon,
+        "Patch List Not Loaded",
+        "Please wait for the patch list to finish loading.");
+    return;
+  }
+
+  int slot = connectionManager.getCurrentSlot();
+
+  auto* locationDialog = new PatchLocationDialog(connectionManager.getPatchList(),
+                                                  true, slot);
+
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  locationDialog->setCallback([safeThis](const PatchLocationDialog::Result& result) {
+    if (safeThis == nullptr || !result.confirmed)
+      return;
+
+    int location = (result.section + 1) * 100 + result.position + 1;
+    safeThis->mainLayout->getStatusBar().showMessage(
+        "Storing to bank location " + juce::String(location) + "...", 0);
+
+    StorePatchMessage msg(result.slot, result.section, result.position);
+    auto sysex = msg.toSysEx(result.slot);
+    safeThis->connectionManager.sendRawSysEx(sysex);
+
+    std::cout << "[STORE] Sent StorePatch: slot=" << result.slot
+        << " section=" << result.section << " pos=" << result.position
+        << " (location " << location << ")" << std::endl;
+
+    const char* slotNames[] = {"A", "B", "C", "D"};
+    safeThis->mainLayout->getStatusBar().showMessage(
+        "Stored slot " + juce::String(slotNames[result.slot])
+        + " to bank location " + juce::String(location), 3000);
+  });
+
+  juce::DialogWindow::LaunchOptions options;
+  options.content.setOwned(locationDialog);
+  options.dialogTitle = "Store Patch to Bank";
+  options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+  options.escapeKeyTriggersCloseButton = true;
+  options.useNativeTitleBar = true;
+  options.resizable = false;
+  options.launchAsync();
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {
@@ -1003,6 +889,7 @@ void MainComponent::onConnectionStatusChanged(
     if (currentPatch && !patchSynchronizer) {
       patchSynchronizer = std::make_unique<PatchSynchronizer>(
           *currentPatch, connectionManager);
+      connectionManager.setSuppressNewPatchInSlot(true);
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
@@ -1010,6 +897,7 @@ void MainComponent::onConnectionStatusChanged(
   } else {
     // Disable synchronizer on disconnect
     patchSynchronizer.reset();
+    connectionManager.setSuppressNewPatchInSlot(false);
     std::cout << "[SYNC] Patch synchronizer disabled on disconnect" << std::endl;
   }
 }
@@ -1114,4 +1002,41 @@ void MainComponent::saveMidiSettings(const juce::String &inputId,
 
   settings->saveIfNeeded();
   DBG("Saved MIDI settings: input=" + inputId + " output=" + outputId);
+}
+
+void MainComponent::rebuildUndoContext()
+{
+    if (!currentPatch) { undoContext.reset(); return; }
+    undoContext = std::make_unique<UndoContext>(UndoContext{
+        *currentPatch, connectionManager, patchSynchronizer,
+        moduleDescs,
+        [this]() {
+            mainLayout->getCanvas().repaintCanvas();
+            mainLayout->getInspector().refreshMorphList();
+            mainLayout->getHeaderBar().repaint();
+        },
+        [this, syncGen = std::make_shared<int>(0)]() {
+            // Debounced full patch upload after structural undo (add/delete module).
+            // Multiple undo actions in one grouped transaction each call syncToSynth,
+            // so we wait 80ms for all of them to settle before starting the upload.
+            if (!connectionManager.isConnected() || !currentPatch) return;
+            int gen = ++(*syncGen);
+            auto capturedGen = syncGen;
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::Timer::callAfterDelay(80, [safeThis, capturedGen, gen]() {
+                if (!safeThis || *capturedGen != gen) return;  // superseded by later call
+                if (!safeThis->connectionManager.isConnected() || !safeThis->currentPatch) return;
+                int slot = safeThis->connectionManager.getCurrentSlot();
+                if (safeThis->patchSynchronizer) safeThis->patchSynchronizer->setSuppressed(true);
+                safeThis->connectionManager.setUploadCompleteCallback([safeThis]() {
+                    if (!safeThis) return;
+                    safeThis->connectionManager.setUploadCompleteCallback(nullptr);
+                    if (safeThis->patchSynchronizer)
+                        safeThis->patchSynchronizer->setSuppressed(false);
+                    safeThis->mainLayout->getStatusBar().showMessage("Patch synced to synth", 2000);
+                });
+                safeThis->connectionManager.uploadPatch(slot, *safeThis->currentPatch);
+            });
+        }
+    });
 }

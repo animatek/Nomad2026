@@ -138,12 +138,10 @@ std::vector<uint8_t> NewModuleMessageProto::toSysEx(int slot) const
         if (!bitWidths.empty())
         {
             // Encode parameters with correct bit widths from PDL2
+            // Use bitWidths.size() as the exact bound — do NOT check for 90/91
+            // sentinel values since parameter values can legitimately be 90 or 91.
             for (size_t i = 0; i < bitWidths.size() && pos < vals.size(); ++i)
-            {
-                if (vals[pos] == 91 || vals[pos] == 90)
-                    break;  // Hit next section
                 bsw.writeBits(nextVal(), bitWidths[i]);
-            }
         }
         else
         {
