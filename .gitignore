@@ -2,11 +2,17 @@
 nmedit/
 nomad-0-3_2/
 
+# Nord Editor (proprietary Clavia software)
+Nord Editor Oficial/
+
 # Portable JDK (for running original)
 jdk8u482-b08/
 
 # Build output
 build/
+build-debug/
+build-release/
+build-win-release/
 cmake-build-*/
 Builds/
 JuceLibraryCode/
