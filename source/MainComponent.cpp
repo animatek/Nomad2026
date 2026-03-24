@@ -58,6 +58,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Menu bar
   menuBar = std::make_unique<juce::MenuBarComponent>(this);
   addAndMakeVisible(menuBar.get());
+#if JUCE_MAC
+  juce::MenuBarModel::setMacMainMenu(this);
+#endif
 
   // Main layout
   mainLayout = std::make_unique<MainLayout>(moduleDescs);
@@ -534,7 +537,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   juce::Timer::callAfterDelay(800, [this]() { showBetaWarning(); });
 }
 
-MainComponent::~MainComponent() { menuBar.reset(); }
+MainComponent::~MainComponent() {
+#if JUCE_MAC
+  juce::MenuBarModel::setMacMainMenu(nullptr);
+#endif
+  menuBar.reset();
+}
 
 void MainComponent::resized() {
   auto area = getLocalBounds();
@@ -977,6 +985,7 @@ void MainComponent::onConnectionStatusChanged(
     const ConnectionManager::Status &status) {
   bool connected = (status.state == ConnectionManager::State::Connected);
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
+  menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
 
   if (connected) {
     // Save settings on successful connection
