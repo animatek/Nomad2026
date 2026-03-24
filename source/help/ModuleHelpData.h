@@ -7,31 +7,34 @@
 //==============================================================================
 
 #include <juce_core/juce_core.h>
-#include <string>
-#include <vector>
 
 namespace NordHelp
 {
 
-// std::string is used instead of juce::String to avoid the ASCII-only assertion
-// that juce::String(const char*) fires on UTF-8 content (non-ASCII chars in help text).
-// Convert to juce::String via juce::String::fromUTF8() at display time.
-
 struct ParamHelp
 {
-    std::string name;
-    std::string description;
+    juce::String name;
+    juce::String description;
 };
 
 struct ModuleHelp
 {
-    std::string name;
-    std::string description;
-    std::vector<ParamHelp> params;
+    juce::String name;
+    juce::String description;
+    juce::Array<ParamHelp> params;
+
+    /** Returns the help text for a specific parameter, or empty string if not found. */
+    juce::String getParamHelp (const juce::String& paramName) const
+    {
+        for (auto& p : params)
+            if (p.name.equalsIgnoreCase (paramName))
+                return p.description;
+        return {};
+    }
 };
 
 /** Returns the full help database (157 modules). */
-const std::vector<ModuleHelp>& getHelpDatabase();
+const juce::Array<ModuleHelp>& getHelpDatabase();
 
 /** Finds help for a module by name (case-insensitive). Returns nullptr if not found. */
 const ModuleHelp* findModuleHelp (const juce::String& moduleName);

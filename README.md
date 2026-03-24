@@ -268,6 +268,13 @@ cmake --build build-universal -j$(sysctl -n hw.logicalcpu)
 # Result: build-universal/Nomad2026_artefacts/Release/Nomad2026.app
 ```
 
+**Windows** (requires [VS 2022 Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) with the "Desktop development with C++" workload):
+```bash
+cmake -B build-win-release -G "Visual Studio 17 2022" -A x64
+cmake --build build-win-release --config Release
+# Result: build-win-release/Nomad2026_artefacts/Release/Nomad2026.exe
+```
+
 **Note:** Currently using Debug builds during active development. Some features (like URL opening in Help/About menus) require Debug mode to work correctly on all platforms.
 
 Nord Modular data files (modules, theme) are embedded in the binary via JUCE BinaryData — no external data files required.

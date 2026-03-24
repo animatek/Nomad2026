@@ -13,7 +13,7 @@ public:
         descLabel.setFont(juce::Font(juce::FontOptions(13.0f)));
         descLabel.setColour(juce::Label::textColourId,       juce::Colour(0xffdddddd));
         descLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-        descLabel.setText(juce::String::fromUTF8(help.description.c_str()), juce::dontSendNotification);
+        descLabel.setText(help.description, juce::dontSendNotification);
         descLabel.setJustificationType(juce::Justification::topLeft);
         descLabel.setMinimumHorizontalScale(1.0f);
         addAndMakeVisible(descLabel);
@@ -24,7 +24,7 @@ public:
             nl->setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
             nl->setColour(juce::Label::textColourId,       juce::Colour(0xffffaa44));
             nl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-            nl->setText(juce::String::fromUTF8(p.name.c_str()), juce::dontSendNotification);
+            nl->setText(p.name, juce::dontSendNotification);
             nl->setJustificationType(juce::Justification::topLeft);
             addAndMakeVisible(nl);
 
@@ -32,7 +32,7 @@ public:
             dl->setFont(juce::Font(juce::FontOptions(12.0f)));
             dl->setColour(juce::Label::textColourId,       juce::Colour(0xffcccccc));
             dl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-            dl->setText(juce::String::fromUTF8(p.description.c_str()), juce::dontSendNotification);
+            dl->setText(p.description, juce::dontSendNotification);
             dl->setJustificationType(juce::Justification::topLeft);
             dl->setMinimumHorizontalScale(1.0f);
             addAndMakeVisible(dl);
@@ -118,7 +118,7 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
     titleLabel.setFont(juce::Font(juce::FontOptions(14.0f)).boldened());
     titleLabel.setColour(juce::Label::textColourId,       juce::Colour(0xffffcc44));
     titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-    titleLabel.setText(juce::String::fromUTF8(help.name.c_str()), juce::dontSendNotification);
+    titleLabel.setText(help.name, juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(titleLabel);
 
