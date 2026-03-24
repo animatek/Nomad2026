@@ -12,6 +12,7 @@ jdk8u482-b08/
 build/
 build-debug/
 build-release/
+build-win/
 build-win-release/
 cmake-build-*/
 Builds/
