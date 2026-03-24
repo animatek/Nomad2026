@@ -3,6 +3,7 @@
 #include <juce_core/juce_core.h>
 #include <vector>
 #include <map>
+#include <memory>
 
 struct ThemeConnector
 {
@@ -87,12 +88,14 @@ class ThemeData
 {
 public:
     bool loadFromFile(const juce::File& xmlFile);
+    bool loadFromXmlString(const juce::String& xmlString);
 
     const ModuleTheme* getModuleTheme(const juce::String& componentId) const;
 
     int getModuleThemeCount() const { return static_cast<int>(themes.size()); }
 
 private:
+    bool loadFromXml(std::unique_ptr<juce::XmlElement> xml);
     void parseModule(const juce::XmlElement& moduleElem);
     void parseConnector(const juce::XmlElement& elem, ModuleTheme& theme);
     void parseKnob(const juce::XmlElement& elem, ModuleTheme& theme);

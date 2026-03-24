@@ -4,7 +4,16 @@ ModuleDescriptions::ModuleDescriptions() = default;
 
 bool ModuleDescriptions::loadFromFile(const juce::File& xmlFile)
 {
-    auto xml = juce::XmlDocument::parse(xmlFile);
+    return loadFromXml(juce::XmlDocument::parse(xmlFile));
+}
+
+bool ModuleDescriptions::loadFromXmlString(const juce::String& xmlString)
+{
+    return loadFromXml(juce::XmlDocument::parse(xmlString));
+}
+
+bool ModuleDescriptions::loadFromXml(std::unique_ptr<juce::XmlElement> xml)
+{
     if (xml == nullptr)
         return false;
 

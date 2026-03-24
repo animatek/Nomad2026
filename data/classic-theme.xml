@@ -1,0 +1,4803 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet version="1.0" href="module2svg.xsl" type="text/xsl"?><modules xmlns:xlink="http://www.w3.org/1999/xlink">
+<style type="text/css">
+<![CDATA[
+ text{fill:#000;font-size:9px;}
+ module{ fill:#BFBFBF;}
+ knob{ fill:#989898;}
+ textDisplay{ fill:#392F7D;}
+.cAUDIO {fill:#CB4F4F;}
+.cCONTROL {fill:#5A5FB3;}
+.cLOGIC {fill:#E5DE45;}
+.cSLAVE {fill:#A8A8A8;}
+.cUSER1 {fill:#9AC899;}
+.cUSER2 {fill:#BB00D7;}
+.cNONE {fill:#FFFFFF;}
+label{fill:#000;}
+]]>
+</style>
+
+<defs>
+  <image id="groupbox" xlink:href="./images/single/groupbox.svg" />
+  <image id="btn-up-arrow" xlink:href="./images/single/btn-up-arrow.svg" />
+  <image id="btn-down-arrow" xlink:href="./images/single/btn-down-arrow.svg" />
+  <image id="btn-right-arrow" xlink:href="./images/single/btn-right-arrow.svg" />
+  <image id="btn-left-arrow" xlink:href="./images/single/btn-left-arrow.svg" />
+</defs>
+
+
+	<module component-id="m62" width="255" height="45">
+		<name>Overdrive</name>
+		<connector x="76" y="22" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="overdrive mod" />
+		</connector>
+		<connector x="198" y="25" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="236" y="25" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="92" y="18" size="21">
+			<parameter component-id="p1" alt="overdrive mod" />
+		</knob>
+		<knob x="119" y="12" size="29">
+			<parameter component-id="p2" alt="overdrive" />
+		</knob>
+		<label x="110" y="2">Overdrive</label>
+		<image x="211" y="26" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<overdrive-display  x="156" y="4" width="38" height="38">
+			<overdrive component-id="p2" alt="overdrive" />
+		</overdrive-display>
+	</module>
+	<module component-id="m30" width="255" height="30">
+		<name>LFOSlvE</name>
+		<connector x="100" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="238" y="14" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="180" y="5" size="21">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<label x="80" y="9">Mst</label>
+		<image x="220" y="10" width="11" height="9" xlink:href="./images/slice/wf_tri.png" />
+		<textDisplay x="131" y="8" width="40" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>
+		<light component-id="ledControlOut" type="led" x="240" y="5" width="7" height="7" /> 
+	</module>
+	<module component-id="m31" width="255" height="30">
+		<name>Noise</name>
+		<connector x="236" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="out" />
+		</connector>
+		<knob x="102" y="5" size="21">
+			<parameter component-id="p1" alt="color" />
+		</knob>
+		<label x="74" y="16">White</label>
+		<label x="126" y="17">Colored</label>
+	</module>
+	<module component-id="m95" width="255" height="60">
+		<name>PercOsc</name>
+		<image x="96" y="3" width="116" height="54" xlink:href="url(#groupbox)" />
+		<connector x="4" y="25" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="amp" />
+		</connector>
+		<connector x="4" y="42" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="trig" />
+		</connector>
+		<connector x="104" y="38" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="pitchmod" />
+		</connector>
+		<connector x="239" y="41" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="151" y="16" size="29">
+			<parameter component-id="p2" alt="pitch" />
+		</knob>
+		<knob x="41" y="22" size="21">
+			<parameter component-id="p3" alt="click" />
+		</knob>
+		<knob x="70" y="22" size="21">
+			<parameter component-id="p4" alt="decay" />
+		</knob>
+		<button x="217" y="17" width="34" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="punch" />
+			<btn index="1">Punch</btn>
+			<btn index="0">Punch</btn>
+		</button>
+		<knob x="123" y="32" size="21">
+			<parameter component-id="p6" alt="pitchmod" />
+		</knob>
+		<knob x="183" y="21" size="21">
+			<parameter component-id="p7" alt="pitchfine" />
+		</knob>
+		<button x="218" y="40" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="mute" />
+			<btn index="1">M</btn>
+			<btn index="0">M</btn>
+		</button>
+		<textDisplay x="99" y="16" width="50" height="16">
+			<parameter component-id="p2" alt="pitch" />
+		</textDisplay>
+		<label x="2" y="13">Amp</label>
+		<label x="19" y="41">Trig</label>
+		<label x="41" y="9">Click</label>
+		<label x="74" y="9">Dcy</label>
+		<label x="154" y="3">Pitch</label>
+		<label x="184" y="3">Fine</label>
+		<resetButton x="189" y="14" width="9" height="6">
+			<parameter component-id="p3" alt="detune fine" />
+		</resetButton>
+	</module>
+	<module component-id="m113" width="255" height="30">
+		<name>1to2Fade</name>
+		<image x="83" y="7" width="35" height="16" xlink:href="./images/single/decoration-7.png" />
+		<image x="165" y="4" width="59" height="13" xlink:href="./images/single/decoration-8.png" />
+		<connector x="159" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="194" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out 1" />
+		</connector>
+		<connector x="234" y="8" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out 2" />
+		</connector>
+		<knob x="88" y="4" size="21">
+			<parameter component-id="p1" alt="fade" />
+		</knob>
+		<label x="185" y="9">1</label>
+		<label x="226" y="9">2</label>
+		<label x="78" y="13">1</label>
+		<label x="117" y="13">2</label>
+	</module>
+	<module component-id="m86" width="255" height="30">
+		<name>FilterA</name>
+		<connector x="200" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="160" y="5" size="21">
+			<parameter component-id="p1" alt="frequency" />
+		</knob>
+		<image x="219" y="9" size="16" xlink:href="./images/slice/ds-2-8.png" />
+		<label x="217" y="0">6dB</label>
+		<textDisplay x="107" y="7" width="40" height="16">
+			<parameter component-id="p1" alt="frequency" />
+		</textDisplay>
+	</module>
+	<module component-id="m59" width="255" height="30">
+		<name>CompareLev</name>
+		<connector x="190" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="142" y="4" size="21">
+			<parameter component-id="p1" alt="level" />
+		</knob>
+		<textDisplay x="90" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="level" />
+		</textDisplay>
+		<label x="179" y="9">A</label>
+		<label x="208" y="10">A&gt;=C</label>
+	</module>
+	<module component-id="m118" width="255" height="45">
+		<name>Digitizer</name>
+		<label x="6" y="14">Quant</label>
+		<label x="42" y="14">Bits</label>
+		<label x="80" y="7">Sample</label>
+		<label x="167" y="3">Rate</label>
+		<image x="3" y="14" width="76" height="29" xlink:href="url(#groupbox)" />
+		<image x="78" y="3" width="118" height="41" xlink:href="url(#groupbox)" />
+		<image x="210" y="28" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<connector x="197" y="27" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="117" y="27" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="sample rate mod" />
+		</connector>
+		<connector x="235" y="27" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<button x="62" y="21" width="12" height="20" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p1" alt="quant bits" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<knob x="165" y="17" size="21">
+			<parameter component-id="p2" alt="sample rate" />
+		</knob>
+		<knob x="134" y="21" size="18">
+			<parameter component-id="p3" alt="sample rate mod" />
+		</knob>
+		<button x="5" y="24" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="quant off" />
+			<btn index="1">Off</btn>
+			<btn index="0">Off</btn>
+		</button>
+		<button x="84" y="24" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="sampling off" />
+			<btn index="1">Off</btn>
+			<btn index="0">Off</btn>
+		</button>
+		<textDisplay x="34" y="25" width="27" height="15">
+			<parameter component-id="p1" alt="quant bits" />
+		</textDisplay>
+		<textDisplay x="113" y="5" width="50" height="15">
+			<parameter component-id="p2" alt="sample rate" />
+		</textDisplay>
+	</module>
+	<module component-id="m32" width="255" height="105">
+		<name>FilterBank</name>
+		<image x="6" y="14" width="256" height="72" xlink:href="url(#groupbox)" />
+		<connector x="194" y="87" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="238" y="87" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<button x="218" y="84" width="16" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p15" alt="bypass" />
+			<btn index="1">B</btn>
+			<btn index="0">B</btn>
+		</button>
+		<label x="9"  y="14">50</label>
+		<label x="26" y="14">75</label>
+		<label x="40" y="14">110</label>
+		<label x="58" y="14">170</label>
+		<label x="75" y="14">250</label>
+		<label x="93" y="14">380</label>
+		<label x="109" y="14">570</label>
+		<label x="127" y="14">850</label>
+		<label x="144" y="14">1.3</label>
+		<label x="162" y="14">1.9</label>
+		<label x="178" y="14">2.9</label>
+		<label x="196" y="14">4.2</label>
+		<label x="212" y="14">6.4</label>
+		<label x="230" y="14">8.3</label>
+		<slider x="11" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p1" alt="50" />
+		</slider>
+		<slider x="27" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p2" alt="75" />
+		</slider>
+		<slider x="45" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p3" alt="110" />
+		</slider>
+		<slider x="62" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p4" alt="170" />
+		</slider>
+		<slider x="79" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p5" alt="250" />
+		</slider>
+		<slider x="95" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p6" alt="380" />
+		</slider>
+		<slider x="112" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p7" alt="570" />
+		</slider>
+		<slider x="129" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p8" alt="850" />
+		</slider>
+		<slider x="146" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p9" alt="1" />
+		</slider>
+		<slider x="163" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p10" alt="1" />
+		</slider>
+		<slider x="180" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p11" alt="2" />
+		</slider>
+		<slider x="197" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p12" alt="4" />
+		</slider>
+		<slider x="214" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p13" alt="6" />
+		</slider>
+		<slider x="231" y="28" width="12" height="50" orientation="vertical">
+			<parameter component-id="p14" alt="8" />
+		</slider>
+	</module>
+	<module component-id="m34" width="255" height="30">
+		<name>RndStepGen</name>
+		<connector x="120" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="179" y="4" size="21">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<label x="100" y="7">Mst</label>
+		<image x="210" y="9" width="17" height="11" xlink:href="./images/slice/decorator_rndgen_diskret.png" />
+		<textDisplay x="137" y="6" width="36" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>
+	</module>
+	<module component-id="m96" width="255" height="60">
+		<name>FormantOsc</name>
+		<image x="4" y="14" width="146" height="45" xlink:href="url(#groupbox)" />
+		<connector x="7" y="37" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="pitch mod 1" />
+		</connector>
+		<connector x="47" y="37" size="13" class="cSLAVE">
+			<connector component-id="c2" alt="pitch mod 2" />
+		</connector>
+		<connector x="150" y="14" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="timbre" />
+		</connector>
+		<connector x="238" y="42" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<connector x="151" y="42" size="13" class="cSLAVE">
+			<connector component-id="c5" alt="slave" />
+		</connector>
+		<button x="174" y="37" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="kbt" />
+			<btn index="1">KBT</btn>
+			<btn index="0">KBT</btn>
+		</button>
+		<button x="216" y="41" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mute" />
+			<btn index="1">M</btn>
+			<btn index="0">M</btn>
+		</button>
+		<knob x="201" y="8" size="21">
+			<parameter component-id="p6" alt="timbre" />
+		</knob>
+		<knob x="22" y="32" size="21">
+			<parameter component-id="p7" alt="pitch mod 1" />
+		</knob>
+		<knob x="62" y="32" size="21">
+			<parameter component-id="p8" alt="pitch mod 2" />
+		</knob>
+		<knob x="86" y="25" size="29">
+			<parameter component-id="p2" alt="pitch" />
+		</knob>
+		<knob x="118" y="32" size="21">
+			<parameter component-id="p3" alt="pitch fine" />
+		</knob>
+		<textDisplay x="27" y="15" width="50" height="16">
+			<parameter component-id="p2" alt="pitch" />
+		</textDisplay>
+		<textDisplay x="168" y="13" width="30" height="16">
+			<parameter component-id="p6" alt="timbre" />
+		</textDisplay>
+		<label x="5" y="15">Freq</label>
+		<label x="85" y="15">Coarse</label>
+		<label x="120" y="15">Fine</label>
+		<label x="150" y="30">Slv</label>
+		<label x="169" y="1">Timbre</label>
+		<resetButton x="124" y="25" width="9" height="6">
+			<parameter component-id="p3" alt="pitch fine" />
+		</resetButton>
+	</module>
+	<module component-id="m117" width="255" height="45">
+		<name>RingMod</name>
+		<connector x="197" y="27" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="217" y="4" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="modulation" />
+		</connector>
+		<connector x="75" y="22" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="modulationdepth" />
+		</connector>
+		<connector x="236" y="27" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="92" y="16" size="21">
+			<parameter component-id="p1" alt="ringmod depth mod" />
+		</knob>
+		<knob x="146" y="16" size="26">
+			<parameter component-id="p2" alt="ringmod depth" />
+		</knob>
+		<label x="73" y="3">Mod depth</label>
+		<label x="135" y="27">0</label>
+		<label x="152" y="1">AM</label>
+		<label x="175" y="27">RM</label>
+		<label x="194" y="2">Mod</label>
+		<image x="211" y="17" width="25" height="22" xlink:href="./images/single/decoration-3.svg" />
+		<resetButton x="154" y="10" width="9" height="6">
+			<parameter component-id="p2" alt="ringmod depth" />
+		</resetButton>
+	</module>
+	<module component-id="m85" width="255" height="45">
+		<name>OscSlvFM</name>
+		<connector x="2" y="28" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="master" />
+		</connector>
+		<connector x="170" y="13" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="fmb" />
+		</connector>
+		<connector x="149" y="13" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="sync" />
+		</connector>
+		<connector x="238" y="27" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="74" y="13" size="29">
+			<parameter component-id="p2" alt="detune" />
+		</knob>
+		<knob x="111" y="18" size="21">
+			<parameter component-id="p3" alt="fine" />
+		</knob>
+		<button x="148" y="27" width="38" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="-3oct" />
+			<btn index="1">-3 Oct</btn>
+			<btn index="0">-3 Oct</btn>
+		</button>
+		<knob x="188" y="3" size="21">
+			<parameter component-id="p5" alt="fmb" />
+		</knob>
+		<button x="218" y="25" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="mute" />
+			<btn index="1">M</btn>
+			<btn index="0">M</btn>
+		</button>
+		<textDisplay x="20" y="16" width="50" height="16">
+			<parameter component-id="p2" alt="detune" />
+		</textDisplay>
+		<label x="1" y="13">Mst</label>
+		<label x="71" y="1">Detune</label>
+		<label x="112" y="2">Fine</label>
+		<label x="145" y="0">Sync</label>
+		<label x="168" y="1">FMB</label>
+		<image x="238" y="2" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
+		<resetButton x="117" y="13" width="9" height="6">
+			<parameter component-id="p3" alt="fine" />
+		</resetButton>
+	</module>
+	<module component-id="m61" width="255" height="45">
+		<name>Clip</name>
+		<connector x="198" y="25" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="78" y="22" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="clip" />
+		</connector>
+		<connector x="236" y="25" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="94" y="19" size="21">
+			<parameter component-id="p1" alt="clip mod" />
+		</knob>
+		<knob x="121" y="12" size="29">
+			<parameter component-id="p2" alt="clip" />
+		</knob>
+		<button x="46" y="21" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="sym" />
+			<btn index="1">Sym</btn>
+			<btn index="0">Sym</btn>
+		</button>
+		<label x="126" y="2">Clip</label>
+		<image x="211" y="26" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<clip-display x="156" y="4" width="38" height="38">
+			<clip component-id="p2" alt="clip" />
+			<symmetry component-id="p3" alt="sym" />
+		</clip-display>
+	</module>
+	<module component-id="m1" width="255" height="30">
+		<name>Keyboard</name>
+		<label x="101" y="8">Note</label>
+		<label x="140" y="8">Gate</label>
+		<label x="184" y="8">Vel</label>
+		<label x="222" y="0">Rel\nvel</label>
+		<connector x="123" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="Note" />
+		</connector>
+		<connector x="161" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="gate" />
+		</connector>
+		<connector x="199" y="8" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="velocity on" />
+		</connector>
+		<connector x="237" y="8" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="velocity off" />
+		</connector>
+	</module>
+	<module component-id="m29" width="255" height="30">
+		<name>LFOSlvD</name>
+		<connector x="100" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="238" y="14" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="180" y="4" size="21">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<label x="80" y="7">Mst</label>
+		<image x="220" y="10" width="11" height="9" xlink:href="./images/slice/wf_square.png" />
+		<textDisplay x="129" y="6" width="40" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>
+		<light component-id="ledControlOut" type="led" x="240" y="5" width="7" height="7" /> 
+	</module>
+	<module component-id="m100" width="255" height="45">
+		<name>KeybSplit</name>
+		<connector x="192" y="2" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="note" />
+		</connector>
+		<connector x="192" y="15" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="gate" />
+		</connector>
+		<connector x="192" y="28" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="vel" />
+		</connector>
+		<connector x="238" y="2" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="note" />
+		</connector>
+		<connector x="238" y="15" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="gate" />
+		</connector>
+		<connector x="238" y="28" size="13" class="cCONTROL">
+			<connector component-id="c6" alt="vel" />
+		</connector>
+		<knob x="90" y="17" size="21">
+			<parameter component-id="p1" alt="lower" />
+		</knob>
+		<knob x="130" y="17" size="21">
+			<parameter component-id="p2" alt="upper" />
+		</knob>
+		<label x="86" y="1">Lower</label>
+		<label x="127" y="1">Upper</label>
+		<label x="210" y="1">Note</label>
+		<label x="210" y="15">Gate</label>
+		<label x="211" y="28">Vel</label>
+		<textDisplay x="55" y="19" width="30" height="16">
+			<parameter component-id="p1" alt="lower" />
+		</textDisplay>
+		<textDisplay x="157" y="19" width="30" height="16">
+			<parameter component-id="p2" alt="upper" />
+		</textDisplay>
+	</module>
+	<module component-id="m68" width="255" height="45">
+		<name>ClkGen</name>
+		<connector x="6" y="15" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="reset" />
+		</connector>
+		<connector x="238" y="1" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="24 pulses / beat" />
+		</connector>
+		<connector x="238" y="15" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="4 pulses / beat" />
+		</connector>
+		<connector x="6" y="29" size="13" class="cSLAVE">
+			<connector component-id="c4" alt="slv" />
+		</connector>
+		<connector x="238" y="29" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="sync" />
+		</connector>
+		<knob x="117" y="12" size="21">
+			<parameter component-id="p1" alt="rate" />
+		</knob>
+		<button x="146" y="14" width="34" height="19" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="on/off" />
+			<btn index="1">On</btn>
+			<btn index="0">On</btn>
+		</button>
+		<label x="21" y="14">Reset</label>
+		<label x="21" y="28">Slv</label>
+		<label x="69" y="1">Rate</label>
+		<label x="181" y="0">24 pulses/b</label>
+		<label x="187" y="12">4 pulses/b</label>
+		<label x="212" y="26">Sync</label>
+		<textDisplay x="66" y="16" width="46" height="16">
+			<parameter component-id="p1" alt="rate" />
+		</textDisplay>
+	</module>
+	<module component-id="m58" width="255" height="135">
+		<name>DrumSynth</name>
+		<image x="111" y="4" width="140" height="50" xlink:href="url(#groupbox)" />
+		<image x="23" y="11" width="86" height="120" xlink:href="url(#groupbox)" />
+		<connector x="4" y="34" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="trig" />
+		</connector>
+		<connector x="5" y="70" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="vel" />
+		</connector>
+		<connector x="5" y="116" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="pitch" />
+		</connector>
+		<connector x="237" y="116" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="29" y="48" size="21">
+			<parameter component-id="p1" alt="MTune" />
+		</knob>
+		<knob x="77" y="48" size="21">
+			<parameter component-id="p2" alt="STune" />
+		</knob>
+		<knob x="29" y="74" size="21">
+			<parameter component-id="p3" alt="MDecay" />
+		</knob>
+		<knob x="77" y="74" size="21">
+			<parameter component-id="p4" alt="SDecay" />
+		</knob>
+		<knob x="29" y="102" size="21">
+			<parameter component-id="p5" alt="MLevel" />
+		</knob>
+		<knob x="77" y="102" size="21">
+			<parameter component-id="p6" alt="SLevel" />
+		</knob>
+		<knob x="123" y="27" size="21">
+			<parameter component-id="p7" alt="Filter freq" />
+		</knob>
+		<knob x="149" y="27" size="21">
+			<parameter component-id="p8" alt="Filter res" />
+		</knob>
+		<knob x="174" y="27" size="21">
+			<parameter component-id="p9" alt="Filter sweep" />
+		</knob>
+		<knob x="199" y="27" size="21">
+			<parameter component-id="p10" alt="Filter decay" />
+		</knob>
+		<button x="225" y="6" width="22" height="44" cyclic="false" landscape="false">
+			<parameter component-id="p11" alt="Filter mode" />
+			<btn index="2">LP</btn>
+			<btn index="1">BP</btn>
+			<btn index="0">HP</btn>
+		</button>
+		<knob x="123" y="77" size="21">
+			<parameter component-id="p12" alt="Amount" />
+		</knob>
+		<knob x="150" y="77" size="21">
+			<parameter component-id="p13" alt="Decay" />
+		</knob>
+		<knob x="181" y="77" size="21">
+			<parameter component-id="p14" alt="Click" />
+		</knob>
+		<knob x="206" y="77" size="21">
+			<parameter component-id="p15" alt="Noise" />
+		</knob>
+		<button x="215" y="115" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p16" alt="Mute" />
+			<btn index="1">M</btn>
+			<btn index="0">M</btn>
+		</button>
+		<label x="3" y="19">Trig</label>
+		<!--
+		<light x="7" y="48" width="7" height="7" >
+			<light>light.58.0</light>
+		</light> -->
+		<label x="4" y="57">Vel</label>
+		<label x="1" y="102">Pitch</label>
+		<label x="55" y="12">OSC</label>
+		<label x="29" y="19">Master</label>
+		<label x="74" y="19">Slave</label>
+		<label x="53" y="53">Tune</label>
+		<label x="54" y="79">Dcy</label>
+		<label x="55" y="107">Lev</label>
+		<label x="149" y="4">Noise Filter</label>
+		<label x="123" y="14">Freq</label>
+		<label x="151" y="14">Res</label>
+		<label x="175" y="14">Swp</label>
+		<label x="200" y="14">Dcy</label>
+		<label x="113" y="54">Bend</label>
+		<label x="124" y="65">Amt</label>
+		<label x="152" y="64">Dcy</label>
+		<label x="180" y="64">Click</label>
+		<label x="206" y="64">Noise</label>
+		<textDisplay x="24" y="32" width="40" height="16">
+			<parameter component-id="p1" alt="MTune" />
+		</textDisplay>
+		<textDisplay x="66" y="32" width="40" height="16">
+			<parameter component-id="p2" alt="STune" />
+		</textDisplay>
+        <light component-id="ledTriggerIn" type="led" x="6" y="50" width="7" height="7" /> 
+	</module>
+	<module component-id="m82" width="255" height="30">
+		<name>Diode</name>
+		<connector x="198" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<button x="105" y="7" width="66" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/diode_half.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/diode_full.png" /></btn>
+		</button>
+		<image x="211" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+	</module>
+	<module component-id="m63" width="255" height="45">
+		<name>KeyboardPatch</name>
+		<label x="217" y="2">Latest\nrel vel</label>
+		<label x="156" y="2">Latest\nvel on</label>
+		<connector x="41" y="27" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="latest note" />
+		</connector>
+		<connector x="103" y="27" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="patch gate" />
+		</connector>
+		<connector x="166" y="27" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="latest vel on" />
+		</connector>
+		<connector x="227" y="27" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="latest rel vel" />
+		</connector>
+		<label x="22" y="13">Latest note</label>
+		<label x="86" y="13">Patch gate</label>
+	</module>
+	<module component-id="m3" width="255" height="45">
+		<name>4Output</name>
+		<label x="221" y="1">Level</label>
+		<connector x="108" y="21" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="out 1" />
+		</connector>
+		<connector x="140" y="21" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out 2" />
+		</connector>
+		<connector x="170" y="21" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out 3" />
+		</connector>
+		<connector x="200" y="21" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out 4" />
+		</connector>
+		<knob x="218" y="11" size="29">
+			<parameter component-id="p1" alt="level" />
+		</knob>
+		<label x="54" y="20">Mix Bus</label>
+		<label x="112" y="7">1</label>
+		<label x="144" y="7">2</label>
+		<label x="174" y="7">3</label>
+		<label x="203" y="7">4</label>
+	</module>
+	<module component-id="m81" width="255" height="30">
+		<name>Amplifier</name>
+		<connector x="195" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="126" y="5" size="21">
+			<parameter component-id="p1" alt="gain" />
+		</knob>
+		<textDisplay x="157" y="7" width="30" height="16">
+			<parameter component-id="p1" alt="gain" />
+		</textDisplay>
+		<image x="171" y="4" width="-1" height="-1" xlink:href="./images/single/decoration-12.png" />
+	</module>
+	<module component-id="m27" width="255" height="30">
+		<name>LFOSlvB</name>
+		<connector x="100" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="238" y="14" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="180" y="4" size="21">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<image x="220" y="10" width="11" height="9" xlink:href="./images/slice/wf_saw.png" />
+		<label x="80" y="7">Mst</label>
+		<textDisplay x="128" y="6" width="40" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>
+		<light component-id="ledControlOut" type="led" x="240" y="5" width="7" height="7" /> 
+	</module>
+	<module component-id="m64" width="255" height="30">
+		<name>NegEdgeDelay</name>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="144" y="5" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<textDisplay x="90" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="time" />
+		</textDisplay>
+		<image x="216" y="7" width="-1" height="16" xlink:href="./images/slice/ds-2-3.png" />
+	</module>
+	<module component-id="m2" width="255" height="30">
+		<name>AudioIn</name>
+		<label x="224" y="2">L</label>
+		<!--
+		<light x="208" y="2" width="7" height="7" >
+<light>light.2.0</light>
+		</light>
+		<light x="208" y="18" width="7" height="7" >
+<light>light.2.1</light>
+		</light> -->
+		
+		<light component-id="lightAudioLeft" type="meter" x="115" y="4" width="92" height="5" /> 
+		<light component-id="lightAudioRight" type="meter" x="115" y="20" width="92" height="5" />
+		<light component-id="lightAudioLeft" type="led" x="207" y="4" width="7" height="7" ledOnValue="127" /> 
+		<light component-id="lightAudioRight" type="led" x="207" y="20" width="7" height="7" ledOnValue="127" />
+		
+		<connector x="221" y="13" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="left" />
+		</connector>
+		<connector x="237" y="13" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="right" />
+		</connector>
+		<label x="86" y="2">Left</label>
+		<label x="86" y="15">Right</label>
+		<label x="239" y="2">R</label>
+		<label x="111" y="9">30</label>
+		<label x="125" y="9">20</label>
+		<label x="138" y="9">10</label>
+		<label x="153" y="9">7</label>
+		<label x="163" y="9">5</label>
+		<label x="172" y="9">3</label>
+		<label x="183" y="9">2</label>
+		<label x="203" y="9">0</label>
+		<label x="193" y="9">1</label>
+	</module>
+	<module component-id="m38" width="255" height="30">
+		<name>Pulse</name>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="143" y="5" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<textDisplay x="90" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="time" />
+		</textDisplay>
+		<image x="216" y="7" width="16" height="16" xlink:href="./images/slice/ds-2-4.png" />
+	</module>
+	<module component-id="m28" width="255" height="30">
+		<name>LFOSlvC</name>
+		<connector x="100" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="238" y="14" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="180" y="4" size="21">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<label x="80" y="7">Mst</label>
+		<image x="220" y="10" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
+		<textDisplay x="130" y="8" width="40" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>		
+		<light component-id="ledControlOut" type="led" x="240" y="5" width="7" height="7" /> 
+	</module>
+	<module component-id="m57" width="255" height="30">
+		<name>InvLevShift</name>
+		<connector x="197" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<button x="106" y="7" width="80" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0"><image xlink:href="./images/slice/lev_shift_noshift.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/lev_shift_down.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/lev_shift_up.png" /></btn>
+		</button>
+		<button x="74" y="7" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="inv" />
+			<btn index="1">INV</btn>
+			<btn index="0">INV</btn>
+		</button>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+	</module>
+	<module component-id="m94" width="255" height="45">
+		<name>StereoChorus</name>
+		<connector x="194" y="16" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="233" y="3" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="outleft" />
+		</connector>
+		<connector x="233" y="29" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="outright" />
+		</connector>
+		<knob x="99" y="14" size="21">
+			<parameter component-id="p1" alt="detune" />
+		</knob>
+		<knob x="137" y="14" size="21">
+			<parameter component-id="p2" alt="amount" />
+		</knob>
+		<button x="211" y="15" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="bypass" />
+			<btn index="1">B</btn>
+			<btn index="0">B</btn>
+		</button>
+		<label x="95" y="1">Detune</label>
+		<label x="132" y="1">Amount</label>
+		<label x="221" y="3">L</label>
+		<label x="222" y="31">R</label>
+	</module>
+	<module component-id="m23" width="255" height="90">
+		<name>Mod-Env</name>
+		<connector x="7" y="24" size="13" class="cCONTROL">
+			<connector component-id="c8" alt="amp" />
+		</connector>
+		<connector x="7" y="73" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="retrig" />
+		</connector>
+		<connector x="32" y="67" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="attack mod" />
+		</connector>
+		<connector x="75" y="67" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="decay mod" />
+		</connector>
+		<connector x="118" y="67" size="13" class="cCONTROL">
+			<connector component-id="c5" alt="sustain mod" />
+		</connector>
+		<connector x="160" y="67" size="13" class="cCONTROL">
+			<connector component-id="c6" alt="release mod" />
+		</connector>
+		<connector x="198" y="68" size="13" class="cAUDIO">
+			<connector component-id="c7" alt="in" />
+		</connector>
+		<connector x="7" y="47" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="gate" />
+		</connector>
+		<connector x="238" y="49" size="13" class="cCONTROL">
+			<connector component-id="c9" alt="env" />
+		</connector>
+		<connector x="238" y="68" size="13" class="cAUDIO">
+			<connector component-id="c10" alt="out" />
+		</connector>
+		<knob x="42" y="35" size="21">
+			<parameter component-id="p1" alt="attack" />
+		</knob>
+		<knob x="80" y="35" size="21">
+			<parameter component-id="p2" alt="decay" />
+		</knob>
+		<knob x="116" y="35" size="21">
+			<parameter component-id="p3" alt="sustain" />
+		</knob>
+		<knob x="152" y="35" size="21">
+			<parameter component-id="p4" alt="release" />
+		</knob>
+		<knob x="47" y="61" size="21">
+			<parameter component-id="p5" alt="attack mod" />
+		</knob>
+		<knob x="90" y="61" size="21">
+			<parameter component-id="p6" alt="decay mod" />
+		</knob>
+		<knob x="133" y="61" size="21">
+			<parameter component-id="p7" alt="sustain mod" />
+		</knob>
+		<knob x="175" y="61" size="21">
+			<parameter component-id="p8" alt="release mod" />
+		</knob>
+		<button x="182" y="34" width="24" height="16" cyclic="true" landscape="false">
+			<btn index="0">Inv</btn>
+			<btn index="1">Inv</btn>
+			<parameter component-id="p9" alt="invert" />
+		</button>
+		<label x="3" y="12">Amp</label>
+		<label x="3" y="36">Gate</label>
+		<label x="1" y="60">Retrig</label>
+		<image x="211" y="61" width="27" height="19" xlink:href="./images/single/decoration-15.png" />
+		<textDisplay x="34" y="16" width="34" height="16">
+			<parameter component-id="p1" alt="attack" />
+		</textDisplay>
+		<textDisplay x="70" y="16" width="34" height="16">
+			<parameter component-id="p2" alt="decay" />
+		</textDisplay>
+		<textDisplay x="106" y="16" width="34" height="16">
+			<parameter component-id="p3" alt="sustain" />
+		</textDisplay>
+		<textDisplay x="142" y="16" width="34" height="16">
+			<parameter component-id="p4" alt="release" />
+		</textDisplay>
+		<label x="35" y="36">A</label>
+		<label x="70" y="37">D</label>
+		<label x="107" y="37">S</label>
+		<label x="142" y="37">R</label>
+		<adsr-mod-envelope x="182" y="3" width="69" height="27">
+			<release component-id="p4" alt="release" />
+			<sustain component-id="p3" alt="sustain" />
+			<attack component-id="p1" alt="attack" />
+			<decay component-id="p2" alt="decay" />
+			<inverse component-id="p9" alt="invert" />
+		</adsr-mod-envelope>
+
+		<light component-id="ledGate" type="led" x="21" y="50" width="7" height="7" /> 
+	</module>
+	<module component-id="m87" width="255" height="30">
+		<name>FilterB</name>
+		<connector x="200" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="160" y="5" size="21">
+			<parameter component-id="p1" alt="frequency" />
+		</knob>
+		<image x="218" y="9" width="16" height="16" xlink:href="./images/slice/ds-2-7.png" />
+		<label x="217" y="0">6dB</label>
+		<textDisplay x="107" y="7" width="40" height="16">
+			<parameter component-id="p1" alt="frequency" />
+		</textDisplay>
+	</module>
+	<module component-id="m35" width="255" height="30">
+		<name>RndPulsGen</name>
+		<connector x="238" y="14" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="out" />
+		</connector>
+		<knob x="179" y="4" size="21">
+			<parameter component-id="p1" alt="density" />
+		</knob>
+		<label x="140" y="9">Density</label>
+		<image x="211" y="9" width="19" height="12" xlink:href="./images/single/decorator.rndgen.logic.png" />
+		
+		<light component-id="ledLogicOut" type="led" x="240" y="5" width="7" height="7" /> 
+	</module>
+	<module component-id="m7" width="255" height="90">
+		<name>OscA</name>
+		<image x="164" y="6" width="50" height="70" xlink:href="url(#groupbox)" />
+		<connector x="140" y="70" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="sync" />
+		</connector>
+		<connector x="91" y="70" size="13" class="cSLAVE">
+			<connector component-id="c2" alt="FMA" />
+		</connector>
+		<connector x="4" y="70" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="pitch 1" />
+		</connector>
+		<connector x="49" y="70" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="pitch 2" />
+		</connector>
+		<connector x="169" y="54" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="pulse width mod" />
+		</connector>
+		<connector x="236" y="70" size="13" class="cAUDIO">
+			<connector component-id="c6" alt="out" />
+		</connector>
+		<connector x="8" y="41" size="13" class="cSLAVE">
+			<connector component-id="c7" alt="slv" />
+		</connector>
+		<knob x="64" y="17" size="29">
+			<parameter component-id="p2" alt="freq coarse" />
+		</knob>
+		<knob x="102" y="22" size="21">
+			<parameter component-id="p3" alt="freq fine" />
+		</knob>
+		<knob x="133" y="22" size="21">
+			<parameter component-id="p4" alt="freq KBT" />
+		</knob>
+		<knob x="175" y="24" size="21">
+			<parameter component-id="p5" alt="Pulse width" />
+		</knob>
+		<button x="221" y="2" width="26" height="60" cyclic="false" landscape="false">
+			<parameter component-id="p6" alt="waveform" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/wf_tri.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/wf_square.png" /></btn>
+		</button>
+		<knob x="20" y="63" size="21">
+			<parameter component-id="p7" alt="pitch mod 1" />
+		</knob>
+		<knob x="64" y="63" size="21">
+			<parameter component-id="p8" alt="pitch mod 2" />
+		</knob>
+		<knob x="108" y="63" size="21">
+			<parameter component-id="p9" alt="fma mod" />
+		</knob>
+		<knob x="185" y="49" size="21">
+			<parameter component-id="p10" alt="PW mod" />
+		</knob>
+		<button x="215" y="69" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p11" alt="Mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="7" y="24" width="50" height="16">
+			<parameter component-id="p2" alt="freq coarse" />
+		</textDisplay>
+		<label x="8" y="11">Freq</label>
+		<label x="24" y="39">Slv</label>
+		<label x="1" y="56">Pitch</label>
+		<label x="44" y="56">Pitch</label>
+		<label x="88" y="56">FMA</label>
+		<label x="135" y="56">Sync</label>
+		<label x="64" y="4">Coarse</label>
+		<label x="103" y="4">Fine</label>
+		<label x="135" y="4">KBT</label>
+		<label x="172" y="6">PWidth</label>
+		<resetButton x="108" y="15" width="9" height="6">
+			<parameter component-id="p3" alt="freq fine" />
+		</resetButton>
+		<resetButton x="140" y="15" width="9" height="6">
+			<parameter component-id="p4" alt="freq KBT" />
+		</resetButton>
+		<resetButton x="181" y="17" width="9" height="6">
+			<parameter component-id="p5" alt="Pulse width" />
+		</resetButton>
+	</module>
+	<module component-id="m54" width="255" height="30">
+		<name>Quantizer</name>
+		<connector x="197" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="158" y="2" size="21">
+			<parameter component-id="p1" alt="bits" />
+		</knob>
+		<textDisplay x="125" y="7" width="30" height="16">
+			<parameter component-id="p1" alt="bits" />
+		</textDisplay>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<label x="104" y="9">Bits</label>
+	</module>
+	<module component-id="m105" width="255" height="105">
+		<name>Expander</name>
+		<connector x="5" y="17" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in left" />
+		</connector>
+		<connector x="5" y="34" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in right" />
+		</connector>
+		<connector x="30" y="17" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="sidechain" />
+		</connector>
+		<connector x="236" y="66" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out left" />
+		</connector>
+		<connector x="236" y="85" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out right" />
+		</connector>
+		
+		<light component-id="lightGainReduction" type="meter" x="150" y="15" width="92" height="5" /> 
+		
+		<light component-id="lightGainReduction" type="led" x="220" y="32" width="7" height="7" ledOnValue="127" /> 
+		
+		<knob x="8" y="80" size="21">
+			<parameter component-id="p1" alt="attack" />
+		</knob>
+		<knob x="45" y="80" size="21">
+			<parameter component-id="p2" alt="release" />
+		</knob>
+		<knob x="80" y="80" size="21">
+			<parameter component-id="p3" alt="treshold" />
+		</knob>
+		<knob x="117" y="80" size="21">
+			<parameter component-id="p4" alt="ratio" />
+		</knob>
+		<knob x="153" y="80" size="21">
+			<parameter component-id="p5" alt="gate" />
+		</knob>
+		<knob x="190" y="80" size="21">
+			<parameter component-id="p6" alt="hold" />
+		</knob>
+		<button x="31" y="35" width="28" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p7" alt="sidechain activation" />
+			<btn index="0">Act</btn>
+			<btn index="1">Act</btn>
+		</button>
+		<button x="64" y="35" width="28" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="sidechain monitor" />
+			<btn index="0">Mon</btn>
+			<btn index="1">Mon</btn>
+		</button>
+		<button x="233" y="48" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p9" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<textDisplay x="4" y="62" width="30" height="16">
+			<parameter component-id="p1" alt="attack" />
+		</textDisplay>
+		<textDisplay x="40" y="62" width="30" height="16">
+			<parameter component-id="p2" alt="release" />
+		</textDisplay>
+		<textDisplay x="76" y="62" width="30" height="16">
+			<parameter component-id="p3" alt="treshold" />
+		</textDisplay>
+		<textDisplay x="113" y="62" width="30" height="16">
+			<parameter component-id="p4" alt="ratio" />
+		</textDisplay>
+		<textDisplay x="148" y="62" width="30" height="16">
+			<parameter component-id="p5" alt="gate" />
+		</textDisplay>
+		<textDisplay x="185" y="62" width="30" height="16">
+			<parameter component-id="p6" alt="hold" />
+		</textDisplay>
+		<label x="19" y="16">L</label>
+		<label x="19" y="33">R</label>
+		<label x="44" y="16">Side chain</label>
+		<label x="162" y="3">Gain reduction dB</label>
+		<label x="165" y="29">Gate active</label>
+		<label x="5" y="50">Attack</label>
+		<label x="38" y="50">Release</label>
+		<label x="77" y="50">Tresh.</label>
+		<label x="116" y="50">Ratio</label>
+		<label x="152" y="50">Gate</label>
+		<label x="188" y="50">Hold</label>
+		<label x="227" y="65">L</label>
+		<label x="227" y="84">R</label>
+		<expander-display x="91" y="4" width="46" height="46">
+			<threshold component-id="p3" alt="threshold" />
+			<ratio component-id="p4" alt="ratio" />
+			<gate component-id="p5" alt="gate" />						
+	    </expander-display>
+	</module>
+	<module component-id="m53" width="255" height="30">
+		<name>Sample&amp;Hold</name>
+		<image x="167" y="3" width="68" height="16" xlink:href="./images/single/decoration-1.svg" />
+		<connector x="161" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="trig" />
+		</connector>
+		<connector x="197" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+	</module>
+	<module component-id="m65" width="255" height="30">
+		<name>MIDIGlobal</name>
+		<connector x="119" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<connector x="178" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="sync" />
+		</connector>
+		<connector x="237" y="8" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="active" />
+		</connector>
+		<label x="90" y="9">Clock</label>
+		<label x="152" y="9">Sync</label>
+		<label x="207" y="9">Active</label>
+	</module>
+	<module component-id="m33" width="255" height="30">
+		<name>ClkRndGen</name>
+		<connector x="200" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="clk" />
+		</connector>
+		<connector x="238" y="14" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<button x="95" y="7" width="34" height="19" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="mono" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Mono</btn>
+		</button>
+		<button x="132" y="7" width="34" height="19" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="col" />
+			<btn index="0">White</btn>
+			<btn index="1">Col</btn>
+		</button>
+		<label x="182" y="9">Clk</label>
+		<image x="217" y="9" width="17" height="11" xlink:href="./images/slice/decorator_rndgen_diskret.png" />
+		<light component-id="ledControlOut" type="led" x="240" y="5" width="7" height="7" /> 
+	</module>
+	<module component-id="m24" width="255" height="75">
+		<name>LFOA</name>
+		<connector x="33" y="51" size="13" class="cSLAVE">
+			<connector component-id="c1" alt="rate" />
+		</connector>
+		<connector x="8" y="29" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="8" y="57" size="13" class="cSLAVE">
+			<connector component-id="c3" alt="slv" />
+		</connector>
+		<connector x="237" y="57" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="75" y="37" size="29">
+			<parameter component-id="p1" alt="rate" />
+		</knob>
+		<button x="110" y="22" width="26" height="50" cyclic="false" reverse="true" landscape="false">
+			<parameter component-id="p2" alt="range" />
+			<btn index="0">Hi</btn>
+			<btn index="1">Lo</btn>
+			<btn index="2">Sub</btn>
+		</button>
+		<button x="163" y="34" width="90" height="15" cyclic="false" landscape="true">
+			<parameter component-id="p3" alt="waveform" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/wf_tri.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/wf_saw_inv.png" /></btn>
+			<btn index="4"><image xlink:href="./images/slice/wf_square.png" /></btn>
+		</button>
+		<knob x="50" y="45" size="21">
+			<parameter component-id="p4" alt="rate mod" />
+		</knob>
+		<button x="111" y="2" width="26" height="18" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mono" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Mono</btn>
+		</button>
+		<knob x="140" y="50" size="21">
+			<parameter component-id="p6" alt="rate kbt" />
+		</knob>
+		<knob x="174" y="6" size="21">
+			<parameter component-id="p7" alt="phase" />
+		</knob>
+		<button x="219" y="56" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="51" y="15" width="50" height="16">
+			<parameter component-id="p1" alt="rate" />
+		</textDisplay>
+		<textDisplay x="142" y="15" width="30" height="16">
+			<parameter component-id="p7" alt="phase" />
+		</textDisplay>
+		<label x="7" y="15">Rst</label>
+		<label x="8" y="44">Slv</label>
+		<label x="29" y="16">Rate</label>
+		<label x="28" y="36">Rate</label>
+		<label x="143" y="3">Phase</label>
+		<label x="141" y="32">KBT</label>
+		<resetButton x="146" y="43" width="9" height="6">
+			<parameter component-id="p6" alt="rate kbt" />
+		</resetButton>
+		<LFODisplay x="200" y="7" width="46" height="20">
+			<phase component-id="p7" alt="phase" />
+			<shape component-id="p3" alt="waveform" />
+		</LFODisplay>
+		<light component-id="ledControlOut" type="led" x="240" y="50" width="7" height="7" /> 
+	</module>
+	<module component-id="m115" width="255" height="60">
+		<name>NoteVelScal</name>
+		<connector x="7" y="41" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="velocity" />
+		</connector>
+		<connector x="30" y="41" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="note" />
+		</connector>
+		<connector x="236" y="42" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="55" y="33" size="21">
+			<parameter component-id="p1" alt="velocity sensitivity" />
+		</knob>
+		<knob x="95" y="33" size="21">
+			<parameter component-id="p2" alt="left gain" />
+		</knob>
+		<knob x="129" y="33" size="21">
+			<parameter component-id="p3" alt="breakpoint" />
+		</knob>
+		<knob x="164" y="33" size="21">
+			<parameter component-id="p4" alt="right gain" />
+		</knob>
+		<textDisplay x="90" y="14" width="30" height="16">
+			<parameter component-id="p2" alt="left gain" />
+		</textDisplay>
+		<textDisplay x="125" y="14" width="30" height="16">
+			<parameter component-id="p3" alt="breakpoint" />
+		</textDisplay>
+		<textDisplay x="162" y="14" width="30" height="16">
+			<parameter component-id="p4" alt="right gain" />
+		</textDisplay>
+		<label x="6" y="29">Vel</label>
+		<label x="26" y="29">Note</label>
+		<label x="47" y="20">Vel Sens</label>
+		<label x="90" y="1">L Gain</label>
+		<label x="123" y="1">Brk Pnt</label>
+		<label x="162" y="1">R Gain</label>
+		<NoteVelScaleDisplay x="196" y="4" width="54" height="28">
+			<left-gain component-id="p2" alt="left gain" />
+			<right-gain component-id="p4" alt="right gain" />
+			<break-point component-id="p3" alt="breakpoint" />
+		</NoteVelScaleDisplay>
+	</module>
+	<module component-id="m88" width="255" height="45">
+		<name>1-4Switch</name>
+		<connector x="124" y="22" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="177" y="22" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out 1" />
+		</connector>
+		<connector x="196" y="22" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out 2" />
+		</connector>
+		<connector x="215" y="22" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out 3" />
+		</connector>
+		<connector x="233" y="22" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out 4" />
+		</connector>
+		<button x="170" y="3" width="80" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="in" />
+			<btn index="0">1</btn>
+			<btn index="1">2</btn>
+			<btn index="2">3</btn>
+			<btn index="3">4</btn>
+		</button>
+		<knob x="89" y="16" size="21">
+			<parameter component-id="p2" alt="level" />
+		</knob>
+		<button x="158" y="21" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<label x="138" y="4">Output</label>
+	</module>
+	<module component-id="m4" width="255" height="45">
+		<name>2Output</name>
+		<connector x="177" y="26" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="out left" />
+		</connector>
+		<connector x="200" y="26" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out right" />
+		</connector>
+		<knob x="219" y="12" size="29">
+			<parameter component-id="p1" alt="level" />
+		</knob>
+		<button x="57" y="22" width="80" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p2" alt="destination" />
+			<btn index="0">1/2</btn>
+			<btn index="1">3/4</btn>
+			<btn index="2">CVA</btn>
+		</button>
+		<button x="138" y="22" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<label x="4" y="23">Destination</label>
+		<label x="179" y="9">Mix Bus</label>
+		<label x="169" y="26">L</label>
+		<label x="192" y="26">R</label>
+		<label x="222" y="0">Level</label>
+	</module>
+	<module component-id="m36" width="255" height="30">
+		<name>PosEdgeDelay</name>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="144" y="5" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<textDisplay x="90" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="time" />
+		</textDisplay>
+		<image x="215" y="7" width="16" height="16" xlink:href="./images/slice/ds-2-1.png" />
+	</module>
+	<module component-id="m114" width="255" height="30">
+		<name>2to1Fade</name>
+		<label x="76" y="14">1</label>
+		<label x="118" y="13">2</label>
+		<label x="149" y="11">1</label>
+		<label x="186" y="11">2</label>
+		<image x="83" y="7" width="35" height="16" xlink:href="./images/single/decoration-7.png" />
+		<image x="172" y="3" width="68" height="13" xlink:href="./images/single/decoration-9.png" />
+		<connector x="159" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in 1" />
+		</connector>
+		<connector x="194" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in 2" />
+		</connector>
+		<connector x="234" y="8" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="88" y="4" size="21">
+			<parameter component-id="p1" alt="fade" />
+		</knob>
+	</module>
+	<module component-id="m26" width="255" height="60">
+		<name>LFOC</name>
+		<connector x="44" y="39" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="rate" />
+		</connector>
+		<connector x="238" y="42" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<connector x="3" y="41" size="13" class="cSLAVE">
+			<connector component-id="c3" alt="slv" />
+		</connector>
+		<knob x="91" y="18" size="29">
+			<parameter component-id="p1" alt="rate" />
+		</knob>
+		<knob x="61" y="33" size="21">
+			<parameter component-id="p4" alt="rate mod" />
+		</knob>
+		<button x="216" y="39" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="41" y="13" width="50" height="16">
+			<parameter component-id="p1" alt="rate" />
+		</textDisplay>
+		<label x="3" y="21">Slv</label>
+		<label x="41" y="28">Rate</label>
+		<label x="97" y="4">Rate</label>
+		<button x="161" y="3" width="90" height="15" cyclic="false" landscape="true">
+			<parameter component-id="p3" alt="waveform" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/wf_tri.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/wf_saw_inv.png" /></btn>
+			<btn index="4"><image xlink:href="./images/slice/wf_square.png" /></btn>
+		</button>
+		<button x="165" y="36" width="26" height="18" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mono" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Mono</btn>
+		</button>
+		<button x="122" y="7" width="26" height="50" cyclic="false" landscape="false" reverse="true">
+			<parameter component-id="p2" alt="range" />
+			<btn index="2">Hi</btn>
+			<btn index="1">Lo</btn>
+			<btn index="0">Sub</btn>
+		</button>
+		<light component-id="ledControlOut" type="led" x="240" y="35" width="7" height="7" /> 
+	</module>
+	<module component-id="m67" width="255" height="30">
+		<name>NoteDetect</name>
+		<connector x="181" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="gate" />
+		</connector>
+		<connector x="210" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="velocity" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="releasevelocity" />
+		</connector>
+		<knob x="132" y="5" size="21">
+			<parameter component-id="p1" alt="note" />
+		</knob>
+		<label x="158" y="8">Gate</label>
+		<label x="201" y="6">V</label>
+		<label x="228" y="6">R</label>
+		<textDisplay x="98" y="8" width="30" height="16">
+			<parameter component-id="p1" alt="note" />
+		</textDisplay>
+	</module>
+	<module component-id="m127" width="255" height="30">
+		<name>PolyAreaIn</name>
+		<light component-id="lightAudioLeft" type="meter" x="95" y="4" width="82" height="5" /> 
+		<light component-id="lightAudioRight" type="meter" x="95" y="20" width="82" height="5" />
+		<light component-id="lightAudioLeft" type="led" x="177" y="4" width="7" height="7" ledOnValue="127" /> 
+		<light component-id="lightAudioRight" type="led" x="177" y="20" width="7" height="7" ledOnValue="127" />
+		
+		<connector x="222" y="13" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="Left" />
+		</connector>
+		<connector x="238" y="13" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="Right" />
+		</connector>
+		<button x="190" y="12" width="30" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="+6db" />
+			<btn index="0">+6dB</btn>
+			<btn index="1">+6dB</btn>
+		</button>
+		<label x="85" y="13">L</label>
+		<label x="85" y="26">R</label>
+		<label x="225" y="12">L</label>
+		<label x="241" y="12">R</label><!--
+		<display.audiolevel x="95" y="6" width="90" height="5" />
+		<display.audiolevel x="95" y="20" width="90" height="5" /> -->
+	</module>
+	<module component-id="m108" width="255" height="120">
+		<name>Vocoder</name>
+		<image x="18" y="20" width="195" height="11" xlink:href="./images/single/decoration.vocoder.top.png" />
+		<image x="33" y="96" width="203" height="21" xlink:href="./images/single/decoration.vocoder.bottom.png" />
+		<connector x="3" y="26" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="control" />
+		</connector>
+		<connector x="198" y="105" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="236" y="105" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<button x="2" y="44" width="24" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p18" alt="high freq emphasis" />
+			<btn index="0"><image xlink:href="./images/slice/vocoder_emp.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/vocoder_emp.png" /></btn>
+		</button>
+		<button x="2" y="62" width="24" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p19" alt="monitor" />
+			<btn index="0">Mon</btn>
+			<btn index="1">Mon</btn>
+		</button>
+		<vocoder-display name="vocoderDisp" x="26" y="25" width="192" height="50">
+			<band0 component-id="p1" band="0" alt="vocoder band 1" />
+			<band1 component-id="p2" band="1" alt="vocoder band 2" />
+			<band2 component-id="p3" band="2" alt="vocoder band 3" />
+			<band3 component-id="p4" band="3" alt="vocoder band 4" />
+			<band4 component-id="p5" band="4" alt="vocoder band 5" />
+			<band5 component-id="p6" band="5" alt="vocoder band 6" />
+			<band6 component-id="p7" band="6" alt="vocoder band 7" />
+			<band7 component-id="p8" band="7" alt="vocoder band 8" />
+			<band8 component-id="p9" band="8" alt="vocoder band 9" />
+			<band9 component-id="p10" band="9" alt="vocoder band 10" />
+			<band10 component-id="p11" band="10" alt="vocoder band 11" />
+			<band11 component-id="p12" band="11" alt="vocoder band 12" />
+			<band12 component-id="p13" band="12" alt="vocoder band 13" />
+			<band13 component-id="p14" band="13" alt="vocoder band 14" />
+			<band14 component-id="p15" band="14" alt="vocoder band 15" />
+			<band15 component-id="p16" band="15" alt="vocoder band 16" />
+		</vocoder-display>
+		<button x="27" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p1" alt="vocoder band 1" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="39" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p2" alt="vocoder band 2" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="51" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p3" alt="vocoder band 3" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="63" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p4" alt="vocoder band 4" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="75" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p5" alt="vocoder band 5" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="87" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p6" alt="vocoder band 6" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="99" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p7" alt="vocoder band 7" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="111" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p8" alt="vocoder band 8" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="123" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p9" alt="vocoder band 9" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="135" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p10" alt="vocoder band 10" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="147" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p11" alt="vocoder band 11" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="159" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p12" alt="vocoder band 12" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="171" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p13" alt="vocoder band 13" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="183" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p14" alt="vocoder band 14" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="195" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p15" alt="vocoder band 15" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="207" y="75" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p16" alt="vocoder band 16" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="171" y="102" width="24" height="14" cyclic="true" landscape="true">
+			<call component="vocoderDisp" method="rnd" />
+			<btn index="0">Rnd</btn>
+			<btn index="1">Rnd</btn>
+		</button>
+		<knob x="225" y="57" size="21">
+			<parameter component-id="p17" alt="outgain" />
+		</knob>
+		<label x="221" y="22">Output</label>
+		<label x="226" y="35">Gain</label>
+		<label x="28" y="8">1</label>
+		<label x="41" y="8">2</label>
+		<label x="54" y="8">3</label>
+		<label x="65" y="8">4</label>
+		<label x="78" y="8">5</label>
+		<label x="89" y="8">6</label>
+		<label x="102" y="8">7</label>
+		<label x="113" y="8">8</label>
+		<label x="125" y="8">9</label>
+		<label x="134" y="8">10</label>
+		<label x="146" y="8">11</label>
+		<label x="158" y="8">12</label>
+		<label x="170" y="8">13</label>
+		<label x="182" y="8">14</label>
+		<label x="194" y="8">15</label>
+		<label x="206" y="8">16</label>
+		<resetButton x="231" y="49" width="9" height="6">
+			<parameter component-id="p17" alt="outgain" />
+		</resetButton>
+	</module>
+	<module component-id="m76" width="255" height="30">
+		<name>OnOff</name>
+		<connector x="195" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<button x="157" y="7" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="on/off" />
+			<btn index="0">On</btn>
+			<btn index="1">On</btn>
+		</button>
+		<image x="167" y="4" width="-1" height="-1" xlink:href="./images/single/decoration-14.png" />
+	</module>
+	<module component-id="m45" width="255" height="75">
+		<name>VocalFilter</name>
+		<image x="33" y="13" width="51" height="62" xlink:href="url(#groupbox)" />
+		<connector x="202" y="57" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="93" y="53" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="vowel select mod" />
+		</connector>
+		<connector x="40" y="53" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="frequency mod" />
+		</connector>
+		<connector x="237" y="57" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="118" y="26" size="21">
+			<parameter component-id="p1" alt="left vowel" />
+		</knob>
+		<knob x="147" y="24" size="21">
+			<parameter component-id="p2" alt="middle vowel" />
+		</knob>
+		<knob x="177" y="26" size="21">
+			<parameter component-id="p3" alt="right vowel" />
+		</knob>
+		<knob x="177" y="50" size="21">
+			<parameter component-id="p4" alt="in amplification" />
+		</knob>
+		<knob x="147" y="47" size="21">
+			<parameter component-id="p5" alt="vowel select" />
+		</knob>
+		<knob x="118" y="50" size="21">
+			<parameter component-id="p6" alt="vowel select mod" />
+		</knob>
+		<knob x="50" y="23" size="21">
+			<parameter component-id="p7" alt="frequency" />
+		</knob>
+		<knob x="56" y="48" size="21">
+			<parameter component-id="p8" alt="frequency mod" />
+		</knob>
+		<knob x="5" y="39" size="21">
+			<parameter component-id="p9" alt="resonance" />
+		</knob>
+		<label x="8" y="16">Res</label>
+		<label x="35" y="13">Freq</label>
+		<label x="123" y="0">Vowel navigator</label>
+		<image x="214" y="57" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<textDisplay x="86" y="26" width="27" height="14">
+			<parameter component-id="p1" alt="left vowel" />
+		</textDisplay>
+		<textDisplay x="144" y="10" width="27" height="14">
+			<parameter component-id="p2" alt="middle vowel" />
+		</textDisplay>
+		<textDisplay x="209" y="26" width="27" height="14">
+			<parameter component-id="p3" alt="right vowel" />
+		</textDisplay>
+		<resetButton x="11" y="30" width="9" height="6">
+			<parameter component-id="p9" alt="resonance" />
+		</resetButton>
+		<resetButton x="56" y="16" width="9" height="6">
+			<parameter component-id="p7" alt="frequency" />
+		</resetButton>
+	</module>
+	<module component-id="m74" width="255" height="45">
+		<name>WaveWrap</name>
+		<connector x="198" y="25" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="78" y="22" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="wrap mod" />
+		</connector>
+		<connector x="236" y="25" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="94" y="16" size="21">
+			<parameter component-id="p1" alt="wrap mod" />
+		</knob>
+		<knob x="121" y="12" size="29">
+			<parameter component-id="p2" alt="wrap" />
+		</knob>
+		<label x="126" y="2">Wrap</label>
+		<image x="211" y="26" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<wavewrap-display x="156" y="4" width="38" height="38">
+			<wavewrap component-id="p2" alt="wrap" />
+		</wavewrap-display>
+	</module>
+	<module component-id="m46" width="255" height="75">
+		<name>AHD</name>
+		<connector x="7" y="30" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="trig" />
+		</connector>
+		<connector x="53" y="55" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="A mod" />
+		</connector>
+		<connector x="100" y="55" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="H mod" />
+		</connector>
+		<connector x="149" y="55" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="D mod" />
+		</connector>
+		<connector x="198" y="59" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="in" />
+		</connector>
+		<connector x="7" y="57" size="13" class="cCONTROL">
+			<connector component-id="c6" alt="amp" />
+		</connector>
+		<connector x="238" y="39" size="13" class="cCONTROL">
+			<connector component-id="c7" alt="env" />
+		</connector>
+		<connector x="238" y="59" size="13" class="cAUDIO">
+			<connector component-id="c8" alt="out" />
+		</connector>
+		<knob x="50" y="32" size="21">
+			<parameter component-id="p1" alt="A" />
+		</knob>
+		<knob x="98" y="32" size="21">
+			<parameter component-id="p2" alt="H" />
+		</knob>
+		<knob x="146" y="32" size="21">
+			<parameter component-id="p3" alt="D" />
+		</knob>
+		<knob x="72" y="51" size="21">
+			<parameter component-id="p4" alt="A mod" />
+		</knob>
+		<knob x="120" y="51" size="21">
+			<parameter component-id="p5" alt="H mod" />
+		</knob>
+		<knob x="168" y="51" size="21">
+			<parameter component-id="p6" alt="D mod" />
+		</knob>
+		<image x="211" y="53" width="27" height="19" xlink:href="./images/single/decoration-15.png" />
+		<textDisplay x="40" y="15" width="34" height="16">
+			<parameter component-id="p1" alt="A" />
+		</textDisplay>
+		<textDisplay x="87" y="15" width="34" height="16">
+			<parameter component-id="p2" alt="H" />
+		</textDisplay>
+		<textDisplay x="136" y="15" width="34" height="16">
+			<parameter component-id="p3" alt="D" />
+		</textDisplay>
+		<label x="40" y="34">A</label>
+		<label x="87" y="34">H</label>
+		<label x="136" y="34">D</label>
+		<ahd-envelope x="181" y="3" width="70" height="27">
+			<hold component-id="p2" alt="H" />
+			<attack component-id="p1" alt="A" />
+			<decay component-id="p3" alt="D" />
+		</ahd-envelope>
+				
+		<light component-id="ledTriggerIn" type="led" x="20" y="32" width="7" height="7" /> 
+	</module>
+	<module component-id="m25" width="255" height="75">
+		<name>LFOB</name>
+		<image x="159" y="33" width="74" height="38" xlink:href="url(#groupbox)" />
+		<connector x="24" y="54" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="rate" />
+		</connector>
+		<connector x="5" y="26" size="13" class="cSLAVE">
+			<connector component-id="c2" alt="rst" />
+		</connector>
+		<connector x="163" y="49" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="PWmod" />
+		</connector>
+		<connector x="237" y="57" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<connector x="5" y="58" size="13" class="cSLAVE">
+			<connector component-id="c5" alt="slv" />
+		</connector>
+		<knob x="68" y="40" size="29">
+			<parameter component-id="p1" alt="rate" />
+		</knob>
+		<knob x="172" y="6" size="21">
+			<parameter component-id="p3" alt="phase" />
+		</knob>
+		<knob x="42" y="48" size="21">
+			<parameter component-id="p4" alt="rate mod" />
+		</knob>
+		<knob x="133" y="48" size="21">
+			<parameter component-id="p6" alt="rate kbt" />
+		</knob>
+		<knob x="179" y="43" size="21">
+			<parameter component-id="p7" alt="PW mod" />
+		</knob>
+		<knob x="206" y="43" size="21">
+			<parameter component-id="p8" alt="PW" />
+		</knob>
+		<textDisplay x="46" y="18" width="48" height="16">
+			<parameter component-id="p1" alt="rate" />
+		</textDisplay>
+		<textDisplay x="136" y="14" width="30" height="16">
+			<parameter component-id="p3" alt="phase" />
+		</textDisplay>
+		<label x="4" y="14">Rst</label>
+		<label x="5" y="44">Slv</label>
+		<label x="23" y="19">Rate</label>
+		<label x="21" y="40">Rate</label>
+		<label x="134" y="30">KBT</label>
+		<label x="137" y="3">Phase</label>
+		<label x="162" y="34">PW</label>
+		<button x="102" y="3" width="26" height="18" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mono" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Mono</btn>
+		</button>
+		<button x="103" y="23" width="24" height="46" cyclic="false" landscape="false" reverse="true">
+			<parameter component-id="p2" alt="range" />
+			<btn index="0">Hi</btn>
+			<btn index="1">Lo</btn>
+			<btn index="2">Sub</btn>
+		</button>
+		<resetButton x="138" y="41" width="9" height="6">
+			<parameter component-id="p6" alt="rate kbt" />
+		</resetButton>
+		<resetButton x="211" y="37" width="9" height="6">
+			<parameter component-id="p8" alt="PW" />
+		</resetButton>
+		<LFODisplay x="200" y="7" width="46" height="20">
+			<phase component-id="p3" alt="phase" />
+			<waveform value="4" />
+		</LFODisplay>
+		<light component-id="ledControlOut" type="led" x="240" y="50" width="7" height="7" /> 
+	</module>
+	<module component-id="m5" width="255" height="45">
+		<name>1Output</name>
+		<label x="8" y="24">Dest</label>
+		<label x="129" y="9">-CVA-</label>
+		<label x="193" y="8">Mix</label>
+		<label x="219" y="1">Level</label>
+		<connector x="193" y="24" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="out" />
+		</connector>
+		<knob x="216" y="12" size="29">
+			<parameter component-id="p1" alt="level" />
+		</knob>
+		<button x="171" y="22" width="20" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<button x="33" y="22" width="134" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p2" alt="dest" />
+			<btn index="0">1</btn>
+			<btn index="1">2</btn>
+			<btn index="2">3</btn>
+			<btn index="3">4</btn>
+			<btn index="4">L</btn>
+			<btn index="5">R</btn>
+		</button>
+	</module>
+	<module component-id="m15" width="255" height="105">
+		<name>NoteSeqA</name>
+		<connector x="6" y="33" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="sync" />
+		</connector>
+		<connector x="6" y="60" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="238" y="89" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<connector x="6" y="89" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="sync" />
+		</connector>
+		<connector x="238" y="59" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="link" />
+		</connector>
+		<connector x="238" y="74" size="13" class="cLOGIC">
+			<connector component-id="c6" alt="gclk" />
+		</connector>
+	        <button x="194" y="5" width="24" height="14" cyclic="false" landscape="true" mode="increment">
+	            <parameter component-id="p17" alt="step" />
+        	    <btn index="0"><image xlink:href="url(#btn-left-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
+        	</button>
+		<button x="228" y="32" width="24" height="13" cyclic="false" landscape="true" mode="increment">
+	            <parameter component-id="p18" alt="currentstep" />
+        	    <btn index="0"><image xlink:href="url(#btn-left-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
+        	</button>
+		<button x="228" y="5" width="24" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p19" alt="record" />
+			<btn index="0"><image xlink:href="./images/slice/rec_off.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/rec_on.png" /></btn>
+		</button>
+		<button x="228" y="19" width="24" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p20" alt="play" />
+			<btn index="0"><image xlink:href="./images/slice/start.png" /></btn>
+			<btn index="1"> <image xlink:href="./images/slice/stop.png" /></btn>
+		</button> 
+		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p21" alt="loop" />			
+			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
+			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
+		</button> 
+		<label x="152" y="5">Step</label>
+		<textDisplay x="174" y="5" width="20" height="14">
+			<parameter component-id="p17" alt="step count" />
+		</textDisplay>
+		<label x="5" y="20">Clk</label>
+		<label x="5" y="47">Rst</label>
+		<label x="2" y="74">Sync</label>
+		<label x="217" y="60">Link</label>
+		<label x="217" y="75">Gclk</label>
+		<label x="218" y="90">Out</label>
+		<label x="28" y="19">1</label>
+		<label x="39" y="19">2</label>
+		<label x="52" y="19">3</label>
+		<label x="63" y="19">4</label>
+		<label x="74" y="19">5</label>
+		<label x="87" y="19">6</label>
+		<label x="98" y="19">7</label>
+		<label x="109" y="19">8</label>
+		<label x="121" y="19">9</label>
+		<label x="132" y="19">10</label>
+		<label x="145" y="19">11</label>
+		<label x="158" y="19">12</label>
+		<label x="169" y="19">13</label>
+		<label x="181" y="19">14</label>
+		<label x="193" y="19">15</label>
+		<label x="205" y="19">16</label>
+		
+		
+		<light component-id="ledStep1-16" type="led-array" x="27" y="30" width="190" height="7" /> 
+		
+		
+		<slider x="24" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p1" alt="xy" />
+		</slider>
+		<slider x="36" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p2" alt="xy" />
+		</slider>
+		<slider x="48" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p3" alt="xy" />
+		</slider>
+		<slider x="60" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p4" alt="xy" />
+		</slider>
+		<slider x="72" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p5" alt="xy" />
+		</slider>
+		<slider x="84" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p6" alt="xy" />
+		</slider>
+		<slider x="96" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p7" alt="xy" />
+		</slider>
+		<slider x="108" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p8" alt="xy" />
+		</slider>
+		<slider x="120" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p9" alt="xy" />
+		</slider>
+		<slider x="132" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p10" alt="xy" />
+		</slider>
+		<slider x="144" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p11" alt="xy" />
+		</slider>
+		<slider x="156" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p12" alt="xy" />
+		</slider>
+		<slider x="168" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p13" alt="xy" />
+		</slider>
+		<slider x="180" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p14" alt="xy" />
+		</slider>
+		<slider x="192" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p15" alt="xy" />
+		</slider>
+		<slider x="204" y="39" width="11" height="50" orientation="vertical">
+			<parameter component-id="p16" alt="xy" />
+		</slider>
+	</module>
+	<module component-id="m107" width="255" height="75">
+		<name>SpectralOsc</name>
+		<image x="157" y="4" width="48" height="72" xlink:href="url(#groupbox)" />
+		<connector x="90" y="57" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="fma" />
+		</connector>
+		<connector x="5" y="55" size="13" class="cSLAVE">
+			<connector component-id="c2" alt="pitch mod 1" />
+		</connector>
+		<connector x="47" y="55" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="pitch mod 2" />
+		</connector>
+		<connector x="160" y="55" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="spectral shape mod" />
+		</connector>
+		<connector x="238" y="56" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<connector x="5" y="26" size="13" class="cSLAVE">
+			<connector component-id="c6" alt="slave" />
+		</connector>
+		<knob x="77" y="18" size="29">
+			<parameter component-id="p2" alt="freq coarse" />
+		</knob>
+		<knob x="113" y="22" size="21">
+			<parameter component-id="p3" alt="freq fine" />
+		</knob>
+		<knob x="167" y="25" size="21">
+			<parameter component-id="p4" alt="spectral shape" />
+		</knob>
+		<button x="203" y="34" width="48" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p5" alt="partials" />
+			<btn index="0">Odd</btn>
+			<btn index="1">All</btn>
+		</button>
+		<knob x="21" y="50" size="21">
+			<parameter component-id="p6" alt="pitch mod 1" />
+		</knob>
+		<knob x="63" y="50" size="21">
+			<parameter component-id="p7" alt="pitch mod 2" />
+		</knob>
+		<knob x="106" y="50" size="21">
+			<parameter component-id="p8" alt="fma" />
+		</knob>
+		<knob x="177" y="48" size="21">
+			<parameter component-id="p9" alt="spectral shape mod" />
+		</knob>
+		<button x="132" y="52" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p10" alt="kbt" />
+			<btn index="0">KBT</btn>
+			<btn index="1">KBT</btn>
+		</button>
+		<button x="217" y="55" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p11" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="24" y="25" width="50" height="16">
+			<parameter component-id="p2" alt="freq coarse" />
+		</textDisplay>
+		<label x="4" y="14">Slv</label>
+		<label x="38" y="13">Freq</label>
+		<label x="76" y="6">Coarse</label>
+		<label x="114" y="6">Fine</label>
+		<label x="162" y="4">Spectral\n Shape</label>
+		<label x="211" y="24">Partials</label>
+		<label x="1" y="42">Pitch</label>
+		<label x="41" y="43">Pitch</label>
+		<label x="85" y="46">FMA</label>
+		<resetButton x="118" y="16" width="9" height="6">
+			<parameter component-id="p3" alt="freq fine" />
+		</resetButton>
+	</module>
+	<module component-id="m79" width="255" height="45">
+		<name>4-1Switch</name>
+		<connector x="34" y="25" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in 1" />
+		</connector>
+		<connector x="83" y="25" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in 2" />
+		</connector>
+		<connector x="132" y="25" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="in 3" />
+		</connector>
+		<connector x="182" y="25" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="in 4" />
+		</connector>
+		<connector x="236" y="25" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<button x="170" y="2" width="80" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="in" />
+			<btn index="0">1</btn>
+			<btn index="1">2</btn>
+			<btn index="2">3</btn>
+			<btn index="3">4</btn>
+		</button>
+		<knob x="8" y="19" size="21">
+			<parameter component-id="p2" alt="level 1" />
+		</knob>
+		<knob x="57" y="19" size="21">
+			<parameter component-id="p3" alt="level 2" />
+		</knob>
+		<knob x="106" y="19" size="21">
+			<parameter component-id="p4" alt="level 3" />
+		</knob>
+		<knob x="156" y="19" size="21">
+			<parameter component-id="p5" alt="level 4" />
+		</knob>
+		<button x="217" y="24" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<label x="49" y="24">1</label>
+		<label x="98" y="24">2</label>
+		<label x="147" y="24">3</label>
+		<label x="198" y="24">4</label>
+		<label x="145" y="4">Input</label>
+	</module>
+	<module component-id="m43" width="255" height="30">
+		<name>Constant</name>
+		<connector x="237" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="out" />
+		</connector>
+		<knob x="191" y="2" size="21">
+			<parameter component-id="p1" alt="value" />
+		</knob>
+		<button x="81" y="7" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="unipolar" />
+			<btn index="0">Uni</btn>
+			<btn index="1">Uni</btn>
+		</button>
+		<textDisplay x="119" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="value" />
+		</textDisplay>
+	</module>
+	<module component-id="m16" width="255" height="30">
+		<name>PortamentoB</name>
+		<connector x="197" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="174" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="jmp" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="124" y="2" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<label x="99" y="7">Time</label>
+		<label x="154" y="8">Jmp</label>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+	</module>
+	<module component-id="m48" width="255" height="30">
+		<name>PortamentoA</name>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<connector x="197" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="174" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="on" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="124" y="5" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<label x="99" y="9">Time</label>
+		<label x="159" y="9">On</label>
+	</module>
+	<module component-id="m112" width="255" height="30">
+		<name>LevAdd</name>
+		<image x="171" y="4" width="65" height="16" xlink:href="./images/single/decoration-11.png" />
+		<connector x="195" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="126" y="4" size="21">
+			<parameter component-id="p1" alt="offset" />
+		</knob>
+		<button x="93" y="7" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="unipolar" />
+			<btn index="0">Uni</btn>
+			<btn index="1">Uni</btn>
+		</button>
+		<textDisplay x="157" y="7" width="30" height="16">
+			<parameter component-id="p1" alt="offset" />
+		</textDisplay>
+	</module>
+	<module component-id="m80" width="255" height="60">
+		<name>LFOSlvA</name>
+		<connector x="7" y="19" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="master" />
+		</connector>
+		<connector x="7" y="40" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="237" y="41" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="93" y="24" size="29">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<knob x="167" y="7" size="21">
+			<parameter component-id="p3" alt="phase" />
+		</knob>
+		<textDisplay x="41" y="19" width="50" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>
+		<textDisplay x="130" y="15" width="30" height="16">
+			<parameter component-id="p3" alt="phase" />
+		</textDisplay>
+		<label x="23" y="20">Mst</label>
+		<label x="22" y="42">Rst</label>
+		<label x="96" y="11">Rate</label>
+		<label x="130" y="3">Phase</label>
+		<button x="53" y="37" width="26" height="18" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mono" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Mono</btn>
+		</button>
+		<button x="124" y="38" width="90" height="15" cyclic="false" landscape="true">
+			<parameter component-id="p4" alt="waveform" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/wf_tri.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/wf_saw_inv.png" /></btn>
+			<btn index="4"><image xlink:href="./images/slice/wf_square.png" /></btn>
+		</button>
+		<button x="216" y="39" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<LFODisplay x="200" y="7" width="46" height="20">
+			<phase component-id="p3" alt="phase" />
+			<shape component-id="p4" alt="waveform" />
+		</LFODisplay>
+		<light component-id="ledControlOut" type="led" x="240" y="30" width="7" height="7" /> 
+	</module>
+	<module component-id="m73" width="255" height="30">
+		<name>LogicProc</name>
+		<connector x="178" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in1" />
+		</connector>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="in2" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<button x="60" y="7" width="100" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0">AND</btn>
+			<btn index="1">OR</btn>
+			<btn index="2">XOR</btn>
+		</button>
+		<image x="184" y="5" width="-1" height="-1" xlink:href="./images/single/decoration-10.png" />
+	</module>
+	<module component-id="m97" width="255" height="45">
+		<name>MasterOsc</name>
+		<connector x="151" y="23" size="13" class="cSLAVE">
+			<connector component-id="c1" alt="pitch mod 1" />
+		</connector>
+		<connector x="192" y="23" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="pitch mod 2" />
+		</connector>
+		<connector x="3" y="27" size="13" class="cSLAVE">
+			<connector component-id="c3" alt="slave" />
+		</connector>
+		<knob x="76" y="13" size="29">
+			<parameter component-id="p2" alt="pitch" />
+		</knob>
+		<knob x="112" y="18" size="21">
+			<parameter component-id="p3" alt="pitch fine" />
+		</knob>
+		<button x="224" y="2" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="kbt" />
+			<btn index="0">KBT</btn>
+			<btn index="1">KBT</btn>
+		</button>
+		<knob x="166" y="18" size="21">
+			<parameter component-id="p5" alt="pitch mod 1" />
+		</knob>
+		<knob x="207" y="18" size="21">
+			<parameter component-id="p6" alt="pitch mod 2" />
+		</knob>
+		<textDisplay x="23" y="19" width="50" height="16">
+			<parameter component-id="p2" alt="pitch" />
+		</textDisplay>
+		<label x="3" y="14">Slv</label>
+		<label x="76" y="2">Coarse</label>
+		<label x="113" y="1">Fine</label>
+		<label x="146" y="7">Pitch</label>
+		<label x="188" y="7">Pitch</label>
+		<resetButton x="118" y="11" width="9" height="6">
+			<parameter component-id="p3" alt="pitch fine" />
+		</resetButton>
+	</module>
+	<module component-id="m70" width="255" height="30">
+		<name>LogicInv</name>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<image x="176" y="7" width="-1" height="16" xlink:href="./images/slice/ds-2-6.png" />
+		<image x="215" y="7" width="-1" height="16" xlink:href="./images/slice/ds-2-5.png" />
+	</module>
+	<module component-id="m106" width="255" height="150">
+		<name>OscSineBank</name>
+		<connector x="59" y="132" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="master" />
+		</connector>
+		<connector x="149" y="132" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="mixin" />
+		</connector>
+		<connector x="105" y="132" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="sync" />
+		</connector>
+		<connector x="2" y="111" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="osc1 am" />
+		</connector>
+		<connector x="43" y="111" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="osc2 am" />
+		</connector>
+		<connector x="84" y="111" size="13" class="cAUDIO">
+			<connector component-id="c6" alt="osc3 am" />
+		</connector>
+		<connector x="127" y="111" size="13" class="cAUDIO">
+			<connector component-id="c7" alt="osc4 am" />
+		</connector>
+		<connector x="171" y="111" size="13" class="cAUDIO">
+			<connector component-id="c8" alt="osc5 am" />
+		</connector>
+		<connector x="210" y="111" size="13" class="cAUDIO">
+			<connector component-id="c9" alt="osc6 am" />
+		</connector>
+		<connector x="236" y="132" size="13" class="cAUDIO">
+			<connector component-id="c10" alt="out" />
+		</connector>
+		<knob x="11" y="50" size="21">
+			<parameter component-id="p1" alt="osc1 coarse" />
+		</knob>
+		<knob x="18" y="74" size="21">
+			<parameter component-id="p2" alt="osc1 fine" />
+		</knob>
+		<knob x="17" y="107" size="21">
+			<parameter component-id="p3" alt="osc1 level" />
+		</knob>
+		<knob x="51" y="50" size="21">
+			<parameter component-id="p4" alt="osc2 coarse" />
+		</knob>
+		<knob x="58" y="74" size="21">
+			<parameter component-id="p5" alt="osc2 fine" />
+		</knob>
+		<knob x="58" y="107" size="21">
+			<parameter component-id="p6" alt="osc2 level" />
+		</knob>
+		<knob x="92" y="50" size="21">
+			<parameter component-id="p7" alt="osc3 coarse" />
+		</knob>
+		<knob x="102" y="74" size="21">
+			<parameter component-id="p8" alt="osc3 fine" />
+		</knob>
+		<knob x="99" y="107" size="21">
+			<parameter component-id="p9" alt="osc3 level" />
+		</knob>
+		<knob x="135" y="50" size="21">
+			<parameter component-id="p10" alt="osc4 coarse" />
+		</knob>
+		<knob x="143" y="74" size="21">
+			<parameter component-id="p11" alt="osc4 fine" />
+		</knob>
+		<knob x="143" y="107" size="21">
+			<parameter component-id="p12" alt="osc4 level" />
+		</knob>
+		<knob x="177" y="50" size="21">
+			<parameter component-id="p13" alt="osc5 coarse" />
+		</knob>
+		<knob x="187" y="74" size="21">
+			<parameter component-id="p14" alt="osc5 fine" />
+		</knob>
+		<knob x="186" y="107" size="21">
+			<parameter component-id="p15" alt="osc5 level" />
+		</knob>
+		<knob x="219" y="50" size="21">
+			<parameter component-id="p16" alt="osc6 coarse" />
+		</knob>
+		<knob x="227" y="74" size="21">
+			<parameter component-id="p17" alt="osc6 fine" />
+		</knob>
+		<knob x="225" y="107" size="21">
+			<parameter component-id="p18" alt="osc6 level" />
+		</knob>
+		<button x="1" y="79" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p19" alt="osc1 mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<button x="42" y="79" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p20" alt="osc2 mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<button x="83" y="79" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p21" alt="osc3 mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<button x="126" y="79" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p22" alt="osc4 mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<button x="168" y="79" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p23" alt="osc5 mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<button x="210" y="79" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p24" alt="osc6 mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="3" y="23" width="36" height="16">
+			<parameter component-id="p1" alt="osc1 coarse" />
+		</textDisplay>
+		<textDisplay x="42" y="23" width="36" height="16">
+			<parameter component-id="p4" alt="osc2 coarse" />
+		</textDisplay>
+		<textDisplay x="84" y="23" width="36" height="16">
+			<parameter component-id="p7" alt="osc3 coarse" />
+		</textDisplay>
+		<textDisplay x="128" y="23" width="36" height="16">
+			<parameter component-id="p10" alt="osc4 coarse" />
+		</textDisplay>
+		<textDisplay x="170" y="23" width="36" height="16">
+			<parameter component-id="p13" alt="osc5 coarse" />
+		</textDisplay>
+		<textDisplay x="211" y="23" width="36" height="16">
+			<parameter component-id="p16" alt="osc6 coarse" />
+		</textDisplay>
+		<label x="105" y="1">Sine slave oscillator bank</label>
+		<label x="9" y="12">Osc1</label>
+		<label x="47" y="12">Osc2</label>
+		<label x="89" y="12">Osc3</label>
+		<label x="134" y="12">Osc4</label>
+		<label x="176" y="12">Osc5</label>
+		<label x="216" y="12">Osc6</label>
+		<label x="9" y="38">Tune</label>
+		<label x="48" y="38">Tune</label>
+		<label x="90" y="38">Tune</label>
+		<label x="134" y="38">Tune</label>
+		<label x="176" y="38">Tune</label>
+		<label x="216" y="38">Tune</label>
+		<label x="75" y="133">Mst</label>
+		<label x="120" y="133">Sync</label>
+		<label x="165" y="133">Mix in</label>
+		<label x="2" y="99">am</label>
+		<label x="43" y="99">am</label>
+		<label x="83" y="99">am</label>
+		<label x="127" y="99">am</label>
+		<label x="171" y="99">am</label>
+		<label x="211" y="99">am</label>
+		<label x="18" y="95">level</label>
+		<label x="59" y="95">level</label>
+		<label x="103" y="95">level</label>
+		<label x="144" y="95">level</label>
+		<label x="188" y="95">level</label>
+		<label x="227" y="95">level</label>
+	</module>
+	<module component-id="m14" width="255" height="60">
+		<name>OscSlvA</name>
+		<connector x="3" y="43" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="157" y="37" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="FMA" />
+		</connector>
+		<connector x="14" y="24" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="sync" />
+		</connector>
+		<connector x="219" y="23" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="AM" />
+		</connector>
+		<connector x="238" y="43" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<knob x="94" y="21" size="29">
+			<parameter component-id="p2" alt="detune coarse" />
+		</knob>
+		<knob x="126" y="29" size="21">
+			<parameter component-id="p3" alt="detune fine" />
+		</knob>
+		<button x="159" y="3" width="90" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p4" alt="shape" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/wf_tri.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/wf_square.png" /></btn>
+		</button>
+		<knob x="176" y="32" size="21">
+			<parameter component-id="p5" alt="FMA mod" />
+		</knob>
+		<button x="217" y="41" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="35" y="19" width="50" height="16">
+			<parameter component-id="p2" alt="detune coarse" />
+		</textDisplay>
+		<label x="10" y="9">Sync</label>
+		<label x="20" y="45">Mst</label>
+		<label x="92" y="6">Detune</label>
+		<label x="127" y="7">Fine</label>
+		<label x="153" y="24">FMA</label>
+		<label x="203" y="24">AM</label>
+		<resetButton x="132" y="20" width="9" height="6">
+			<parameter component-id="p3" alt="detune fine" />
+		</resetButton>
+	</module>
+	<module component-id="m83" width="255" height="30">
+		<name>Shaper</name>
+		<connector x="197" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<button x="59" y="7" width="100" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0"><image xlink:href="./images/slice/shaper_log2.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/shaper_log1.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/shaper_lin.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/shaper_exp1.png" /></btn>
+			<btn index="4"><image xlink:href="./images/slice/shaper_exp2.png" /></btn>
+		</button>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+	</module>
+	<module component-id="m47" width="255" height="45">
+		<name>Pan</name>
+		<image x="66" y="2" width="120" height="40" xlink:href="url(#groupbox)" />
+		<connector x="194" y="16" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="70" y="16" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="panmod" />
+		</connector>
+		<connector x="235" y="7" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="outL" />
+		</connector>
+		<connector x="235" y="24" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="outR" />
+		</connector>
+		<knob x="89" y="10" size="21">
+			<parameter component-id="p1" alt="pan mod" />
+		</knob>
+		<knob x="149" y="10" size="21">
+			<parameter component-id="p2" alt="pan" />
+		</knob>
+		<image x="207" y="13" width="-1" height="19" xlink:href="./images/single/decoration-18.png" />
+		<label x="69" y="3">Pan</label>
+		<label x="144" y="29">L</label>
+		<label x="171" y="29">R</label>
+		<label x="226" y="8">L</label>
+		<label x="226" y="25">R</label>
+		<resetButton x="154" y="3" width="9" height="6">
+			<parameter component-id="p2" alt="pan" />
+		</resetButton>
+	</module>
+	<module component-id="m75" width="255" height="30">
+		<name>NoteQuant</name>
+		<connector x="197" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="125" y="7" size="19">
+			<parameter component-id="p1" alt="range" />
+		</knob>
+		<knob x="163" y="7" size="19">
+			<parameter component-id="p2" alt="notes" />
+		</knob>
+		<textDisplay x="91" y="10" width="30" height="16">
+			<parameter component-id="p1" alt="range" />
+		</textDisplay>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<label x="92" y="1">Range</label>
+		<label x="159" y="1">Notes</label>
+	</module>
+	<module component-id="m18" width="255" height="45">
+		<name>X-Fade</name>
+		<image x="44" y="2" width="120" height="40" xlink:href="url(#groupbox)" />
+		<connector x="198" y="6" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in1" />
+		</connector>
+		<connector x="198" y="25" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in2" />
+		</connector>
+		<connector x="58" y="19" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="modulation" />
+		</connector>
+		<connector x="236" y="16" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="78" y="13" size="21">
+			<parameter component-id="p1" alt="modulation" />
+		</knob>
+		<knob x="125" y="12" size="21">
+			<parameter component-id="p2" alt="crossfade" />
+		</knob>
+		<label x="50" y="3">X-fade</label>
+		<label x="118" y="26">1</label>
+		<label x="150" y="26">2</label>
+		<label x="190" y="6">1</label>
+		<label x="190" y="26">2</label>
+		<image x="211" y="13" width="25" height="19" xlink:href="./images/single/decoration-13.png" />
+		<resetButton x="131" y="5" width="9" height="6">
+			<parameter component-id="p2" alt="crossfade" />
+		</resetButton>
+	</module>
+	<module component-id="m66" width="255" height="30">
+		<name>ControlMixer</name>
+		<connector x="113" y="10" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in1" />
+		</connector>
+		<connector x="191" y="10" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="in2" />
+		</connector>
+		<connector x="234" y="10" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<button x="81" y="11" width="26" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="inv 1" />
+			<btn index="0">Inv</btn>
+			<btn index="1">Inv</btn>
+		</button>
+		<knob x="129" y="4" size="22">
+			<parameter component-id="p2" alt="level 1" />
+		</knob>
+		<button x="159" y="11" width="26" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="inv 2" />
+			<btn index="0">Inv</btn>
+			<btn index="1">Inv</btn>
+		</button>
+		<knob x="207" y="5" size="22">
+			<parameter component-id="p4" alt="level 2" />
+		</knob>
+		<button x="43" y="11" width="26" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mode" />
+			<btn index="0">Lin</btn>
+			<btn index="1">Lin</btn>
+		</button>
+	</module>
+	<module component-id="m103" width="255" height="60">
+		<name>EqMid</name>
+		<connector x="189" y="44" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="237" y="44" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="7" y="24" size="29">
+			<parameter component-id="p1" alt="freq" />
+		</knob>
+		<knob x="91" y="32" size="21">
+			<parameter component-id="p2" alt="gain" />
+		</knob>
+		<knob x="131" y="32" size="21">
+			<parameter component-id="p3" alt="bandwidth" />
+		</knob>
+		<button x="215" y="42" width="16" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<knob x="163" y="35" size="22">
+			<parameter component-id="p5" alt="in level" />
+		</knob>
+		<textDisplay x="40" y="27" width="40" height="16">
+			<parameter component-id="p1" alt="freq" />
+		</textDisplay>
+		<textDisplay x="86" y="14" width="34" height="16">
+			<parameter component-id="p2" alt="gain" />
+		</textDisplay>
+		<textDisplay x="126" y="14" width="34" height="16">
+			<parameter component-id="p3" alt="bandwidth" />
+		</textDisplay>
+		<label x="50" y="12">Freq</label>
+		<label x="93" y="1">Gain</label>
+		<label x="137" y="1">BW</label>
+		<eq-mid-display x="195" y="2" width="55" height="35">
+			<frequency component-id="p1" alt="freq" />
+			<gain component-id="p2" alt="gain" />
+			<bandwidth component-id="p3" alt="bandwidth" />
+	    </eq-mid-display>
+
+   		<light component-id="ledAudioOut" type="led" x="240" y="38" width="7" height="7" /> 
+	</module>
+	<module component-id="m98" width="255" height="60">
+		<name>KeyQuant</name>
+		<image x="210" y="42" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<connector x="197" y="41" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="41" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="226" y="4" size="21">
+			<parameter component-id="p1" alt="range" />
+		</knob>
+		<button x="191" y="22" width="28" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="cont" />
+			<btn index="0">Cont</btn>
+			<btn index="1">Cont</btn>
+		</button>
+		<button x="51" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="E" />
+			<btn index="0">E</btn>
+			<btn index="1">E</btn>
+		</button>
+		<button x="73" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="F" />
+			<btn index="0">F</btn>
+			<btn index="1">F</btn>
+		</button>
+		<button x="85" y="18" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="F#" />
+			<btn index="0">F#</btn>
+			<btn index="1">F#</btn>
+		</button>
+		<button x="95" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="G" />
+			<btn index="0">G</btn>
+			<btn index="1">G</btn>
+		</button>
+		<button x="107" y="18" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p7" alt="G#" />
+			<btn index="0">G#</btn>
+			<btn index="1">G#</btn>
+		</button>
+		<button x="117" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="A" />
+			<btn index="0">A</btn>
+			<btn index="1">A</btn>
+		</button>
+		<button x="129" y="18" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p9" alt="Bb" />
+			<btn index="0">Bb</btn>
+			<btn index="1">Bb</btn>
+		</button>
+		<button x="139" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p10" alt="B" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<button x="7" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p11" alt="C" />
+			<btn index="0">C</btn>
+			<btn index="1">C</btn>
+		</button>
+		<button x="19" y="18" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p12" alt="C#" />
+			<btn index="0">C#</btn>
+			<btn index="1">C#</btn>
+		</button>
+		<button x="29" y="34" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p13" alt="D" />
+			<btn index="0">D</btn>
+			<btn index="1">D</btn>
+		</button>
+		<button x="41" y="18" width="21" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p14" alt="D#" />
+			<btn index="0">D#</btn>
+			<btn index="1">D#</btn>
+		</button>
+		<textDisplay x="191" y="4" width="30" height="16">
+			<parameter component-id="p1" alt="range" />
+		</textDisplay>
+		<label x="160" y="5">Range</label>
+	</module>
+	<module component-id="m12" width="255" height="45">
+		<name>OscSlvD</name>
+		<image x="238" y="2" width="11" height="9" xlink:href="./images/slice/wf_tri.png" />
+		<label x="2" y="13">Mst</label>
+		<label x="72" y="2">Detune</label>
+		<label x="107" y="2">Fine</label>
+		<label x="149" y="2">FMA</label>
+		<connector x="4" y="26" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="152" y="14" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="FMA" />
+		</connector>
+		<connector x="238" y="26" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="73" y="13" size="29">
+			<parameter component-id="p2" alt="detune coarse" />
+		</knob>
+		<knob x="106" y="21" size="21">
+			<parameter component-id="p3" alt="detune fine" />
+		</knob>
+		<knob x="169" y="9" size="21">
+			<parameter component-id="p4" alt="FMA mod" />
+		</knob>
+		<button x="210" y="23" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="22" y="14" width="50" height="16">
+			<parameter component-id="p2" alt="detune coarse" />
+		</textDisplay>
+		<resetButton x="111" y="12" width="9" height="6">
+			<parameter component-id="p3" alt="detune fine" />
+		</resetButton>
+	</module>
+	<module component-id="m44" width="255" height="30">
+		<name>GainControl</name>
+		<image x="140" y="4" width="91" height="18" xlink:href="./images/single/decoration-2.svg" />
+		<connector x="127" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="control" />
+		</connector>
+		<connector x="193" y="10" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="231" y="10" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<button x="148" y="7" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="shift" />
+			<btn index="0"><image xlink:href="./images/slice/lev_shift_up.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/lev_shift_up.png" /></btn>
+		</button>
+		<label x="85" y="7">Control</label>
+	</module>
+	<module component-id="m17" width="255" height="75">
+		<name>EventSeq</name>
+		<connector x="5" y="13" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<connector x="5" y="35" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="236" y="36" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="out1" />
+		</connector>
+		<connector x="236" y="56" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="out2" />
+		</connector>
+		<connector x="5" y="57" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="sync" />
+		</connector>
+		<connector x="237" y="3" size="13" class="cLOGIC">
+			<connector component-id="c6" alt="link" />
+		</connector>
+  			<button x="194" y="5" width="24" height="14" cyclic="false" landscape="true" mode="increment">
+	            <parameter component-id="p1" alt="step" />
+        	    <btn index="0"><image xlink:href="url(#btn-left-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
+        	</button>
+		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="loop/active" />			
+			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
+			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
+		</button> 
+		<button x="217" y="35" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="gate1" />
+			<btn index="0">G</btn>
+			<btn index="1">G</btn>
+		</button>
+		<button x="217" y="54" width="14" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="gate2" />
+			<btn index="0">G</btn>
+			<btn index="1">G</btn>
+		</button>
+		
+		<button x="23" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="seq 1, step 1" />			
+		</button>
+		<button x="35" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="seq 1, step 2" />
+		</button>
+		<button x="47" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p7" alt="seq 1, step 3" />
+		</button>
+		<button x="59" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="seq 1, step 4" />
+		</button>
+		<button x="71" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p9" alt="seq 1, step 5" />
+		</button>
+		<button x="83" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p10" alt="seq 1, step 6" />
+		</button>
+		<button x="95" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p11" alt="seq 1, step 7" />
+		</button>
+		<button x="107" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p12" alt="seq 1, step 8" />
+		</button>
+		<button x="119" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p13" alt="seq 1, step 9" />
+		</button>
+		<button x="131" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p14" alt="seq 1, step 10" />
+		</button>
+		<button x="143" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p15" alt="seq 1, step 11" />
+		</button>
+		<button x="155" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p16" alt="seq 1, step 12" />
+		</button>
+		<button x="167" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p17" alt="seq 1, step 13" />
+		</button>
+		<button x="179" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p18" alt="seq 1, step 14" />
+		</button>
+		<button x="191" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p19" alt="seq 1, step 15" />
+		</button>
+		<button x="203" y="35" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p20" alt="seq 1, step 16" />
+		</button>
+		<button x="23" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p21" alt="seq 2, step 1" />
+		</button>
+		<button x="35" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p22" alt="seq 2, step 2" />
+		</button>
+		<button x="47" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p23" alt="seq 2, step 3" />
+		</button>
+		<button x="59" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p24" alt="seq 2, step 4" />
+		</button>
+		<button x="71" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p25" alt="seq 2, step 5" />
+		</button>
+		<button x="83" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p26" alt="seq 2, step 6" />
+		</button>
+		<button x="95" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p27" alt="seq 2, step 7" />
+		</button>
+		<button x="107" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p28" alt="seq 2, step 8" />
+		</button>
+		<button x="119" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p29" alt="seq 2, step 9" />
+		</button>
+		<button x="131" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p30" alt="seq 2, step 10" />
+		</button>
+		<button x="143" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p31" alt="seq 2, step 11" />
+		</button>
+		<button x="155" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p32" alt="seq 2, step 12" />
+		</button>
+		<button x="167" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p33" alt="seq 2, step 13" />
+		</button>
+		<button x="179" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p34" alt="seq 2, step 14" />
+		</button>
+		<button x="191" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p35" alt="seq 2, step 15" />
+		</button> 
+		<button x="203" y="54" width="12" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p36" alt="seq 2, step 16" />
+		</button>
+		<label x="20" y="13">Clk</label>
+		<label x="5" y="25">Rst</label>
+		<label x="5" y="45">Snc</label>
+		<label x="234" y="23">Out</label>
+		<label x="217" y="4">Link</label>
+		
+		<light component-id="ledStep1-16" type="led-array" x="27" y="28" width="190" height="7" /> 
+		<label x="152" y="5">Step</label>
+		<textDisplay x="174" y="5" width="20" height="14">
+			<parameter component-id="p1" alt="stepcount" />
+		</textDisplay>
+	</module>
+	<module component-id="m13" width="255" height="45">
+		<name>OscSlvE</name>
+		<connector x="2" y="28" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="141" y="15" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="FMA" />
+		</connector>
+		<connector x="189" y="15" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="AM" />
+		</connector>
+		<connector x="238" y="26" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="73" y="13" size="29">
+			<parameter component-id="p2" alt="detune coarse" />
+		</knob>
+		<knob x="107" y="21" size="21">
+			<parameter component-id="p3" alt="detune fine" />
+		</knob>
+		<knob x="157" y="9" size="21">
+			<parameter component-id="p4" alt="FMA mod" />
+		</knob>
+		<button x="216" y="25" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="23" y="14" width="50" height="16">
+			<parameter component-id="p2" alt="detune coarse" />
+		</textDisplay>
+		<image x="237" y="5" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
+		<label x="2" y="13">Mst</label>
+		<label x="72" y="2">Detune</label>
+		<label x="109" y="2">Fine</label>
+		<label x="136" y="2">FMA</label>
+		<label x="189" y="3">AM</label>
+		<resetButton x="113" y="13" width="9" height="6">
+			<parameter component-id="p3" alt="detune fine" />
+		</resetButton>
+	</module>
+	<module component-id="m77" width="255" height="30">
+		<name>ClkDivFix</name>
+		<connector x="122" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="reset" />
+		</connector>
+		<connector x="84" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="midiclock" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="16" />
+		</connector>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="T8" />
+		</connector>
+		<connector x="160" y="8" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="8" />
+		</connector>
+		<label x="51" y="10">Midi cl</label>
+		<label x="105" y="10">Rst</label>
+		<label x="152" y="9">8</label>
+		<label x="184" y="9">T8</label>
+		<label x="223" y="9">16</label>
+	</module>
+	<module component-id="m102" width="255" height="105">
+		<name>Phaser</name>
+		<image x="3" y="15" width="82" height="82" xlink:href="url(#groupbox)" />
+		<image x="167" y="38" width="82" height="39" xlink:href="url(#groupbox)" />
+		<connector x="197" y="88" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="91" y="84" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="center freq mod" />
+		</connector>
+		<connector x="207" y="56" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="spread mod" />
+		</connector>
+		<connector x="237" y="88" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="10" y="58" size="29">
+			<parameter component-id="p1" alt="rate" />
+		</knob>
+		<button x="54" y="74" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="lfo" />
+			<btn index="0">LFO</btn>
+			<btn index="1">LFO</btn>
+		</button>
+		<knob x="107" y="82" size="19">
+			<parameter component-id="p3" alt="center freq mod" />
+		</knob>
+		<knob x="94" y="43" size="29">
+			<parameter component-id="p4" alt="center freq" />
+		</knob>
+		<knob x="138" y="32" size="21">
+			<parameter component-id="p6" alt="feedback" />
+		</knob>
+		<knob x="139" y="82" size="19">
+			<parameter component-id="p7" alt="peaks" />
+		</knob>
+		<knob x="173" y="46" size="26">
+			<parameter component-id="p8" alt="spread" />
+		</knob>
+		<knob x="222" y="50" size="19">
+			<parameter component-id="p5" alt="spread mod" />
+		</knob>
+		<button x="216" y="87" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p9" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<knob x="54" y="34" size="21">
+			<parameter component-id="p10" alt="depth" />
+		</knob>
+		<knob x="170" y="82" size="19">
+			<parameter component-id="p11" alt="inlevel" />
+		</knob>
+		<textDisplay x="6" y="39" width="40" height="16">
+			<parameter component-id="p1" alt="rate" />
+		</textDisplay>
+		<textDisplay x="90" y="22" width="40" height="16">
+			<parameter component-id="p3" alt="center freq mod" />
+		</textDisplay>
+		<label x="14" y="19">Rate</label>
+		<label x="52" y="19">Depth</label>
+		<label x="83" y="5">Center Freq</label>
+		<label x="134" y="13">FeedBk</label>
+		<label x="139" y="69">Peaks</label>
+		<label x="170" y="37">Spread</label>
+		<resetButton x="144" y="24" width="9" height="6">
+			<parameter component-id="p6" alt="feedback" />
+		</resetButton>
+		<phaser-display x="180" y="2" width="65" height="35">
+			<feedback component-id="p6" alt="feedback" />
+			<peaks component-id="p7" alt="peaks" />
+			<spread component-id="p8" alt="spread" />
+	    </phaser-display>
+   		<light component-id="ledAudioOut" type="led" x="240" y="80" width="7" height="7" /> 
+	</module>
+	<module component-id="m84" width="255" height="45">
+		<name>AD-Env</name>
+		<image x="211" y="22" width="27" height="19" xlink:href="./images/single/decoration-15.png" />
+		<connector x="7" y="29" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="trigger" />
+		</connector>
+		<connector x="198" y="29" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="40" y="28" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="amp" />
+		</connector>
+		<connector x="238" y="13" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="envelope" />
+		</connector>
+		<connector x="238" y="29" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<knob x="101" y="21" size="21">
+			<parameter component-id="p1" alt="attack" />
+		</knob>
+		<knob x="152" y="21" size="21">
+			<parameter component-id="p2" alt="decay" />
+		</knob>
+		<button x="5" y="13" width="25" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="gate" />
+			<btn index="0">Gate</btn>
+			<btn index="1">Gate</btn>
+		</button>
+		<label x="37" y="15">Amp</label>
+		<label x="71" y="24">Attack</label>
+		<label x="132" y="25">Dcy</label>
+		<textDisplay x="94" y="4" width="34" height="16">
+			<parameter component-id="p1" alt="attack" />
+		</textDisplay>
+		<textDisplay x="145" y="4" width="34" height="16">
+			<parameter component-id="p2" alt="decay" />
+		</textDisplay>
+		<ad-envelope x="194" y="4" width="40" height="24">
+			<attack component-id="p1" alt="attack" />
+			<decay component-id="p2" alt="decay" />
+		</ad-envelope>
+		<light component-id="ledGateIn" type="led" x="23" y="32" width="7" height="7" /> 
+	</module>
+	<module component-id="m37" width="255" height="30">
+		<name>LogicDelay</name>
+		<connector x="198" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="144" y="5" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<textDisplay x="90" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="time" />
+		</textDisplay>
+		<image x="215" y="7" width="-1" height="16" xlink:href="./images/slice/ds-2-2.png" />
+	</module>
+	<module component-id="m51" width="255" height="90">
+		<name>FilterE</name>
+		<image x="135" y="3" width="56" height="85" xlink:href="url(#groupbox)" />
+		<image x="3" y="13" width="104" height="74" xlink:href="url(#groupbox)" />
+		<connector x="6" y="39" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="freq mod 1" />
+		</connector>
+		<connector x="144" y="65" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="res mod" />
+		</connector>
+		<connector x="195" y="70" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="in" />
+		</connector>
+		<connector x="6" y="65" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="freq mod 2" />
+		</connector>
+		<connector x="237" y="70" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<button x="106" y="16" width="24" height="60" cyclic="false" landscape="false">
+			<parameter component-id="p2" alt="filter type" />
+			<btn index="3">BR</btn>
+			<btn index="2">HP</btn>
+			<btn index="1">BP</btn>
+			<btn index="0">LP</btn>
+		</button>
+		
+		<button x="138" y="14" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="gain control" />
+			<btn index="0">GC</btn>
+			<btn index="1">GC</btn>
+		</button>
+		<knob x="23" y="34" size="20">
+			<parameter component-id="p4" alt="frequency mod 1" />
+		</knob>
+		<knob x="49" y="34" size="28">
+			<parameter component-id="p5" alt="frequency" />
+		</knob>
+		<knob x="78" y="61" size="20">
+			<parameter component-id="p6" alt="kbt" />
+		</knob>
+		<knob x="163" y="61" size="20">
+			<parameter component-id="p7" alt="resonance mod" />
+		</knob>
+		<knob x="148" y="31" size="28">
+			<parameter component-id="p8" alt="resonance" />
+		</knob>
+		<button x="200" y="49" width="44" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p9" alt="slope" />
+			<btn index="0">12</btn>
+			<btn index="1">24</btn>
+		</button>
+		<knob x="23" y="61" size="20">
+			<parameter component-id="p10" alt="frequency mod 2" />
+		</knob>
+		<button x="217" y="69" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p11" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<textDisplay x="44" y="16" width="40" height="16">
+			<parameter component-id="p5" alt="frequency" />
+		</textDisplay>
+		<textDisplay x="163" y="14" width="24" height="16">
+			<parameter component-id="p8" alt="resonance" />
+		</textDisplay>
+		<label x="153" y="3">Res</label>
+		<resetButton x="83" y="54" width="9" height="6">
+			<parameter component-id="p6" alt="kbt" />
+		</resetButton>
+		<label x="20" y="16">Freq</label>
+		<label x="81" y="43">Kbt</label>
+		<label x="206" y="37">dB/Oct</label>
+		<filter-e-display x="192" y="2" width="60" height="34">
+			<cutoff component-id="p5" alt="frequency" />
+			<resonance component-id="p8" alt="resonance" />
+			<type component-id="p2" alt="type" />
+			<slope component-id="p9" alt="slope" />
+			<gain-control component-id="p3" alt="gain control" />
+	    </filter-e-display>
+	</module>
+	<module component-id="m8" width="255" height="90">
+		<name>OscB</name>
+		<image x="163" y="7" width="50" height="50" xlink:href="url(#groupbox)" />
+		<connector x="95" y="69" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="FMA" />
+		</connector>
+		<connector x="7" y="68" size="13" class="cSLAVE">
+			<connector component-id="c2" alt="pitch 1" />
+		</connector>
+		<connector x="49" y="68" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="pitch 2" />
+		</connector>
+		<connector x="169" y="28" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="PW mod" />
+		</connector>
+		<connector x="238" y="71" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<connector x="7" y="41" size="13" class="cSLAVE">
+			<connector component-id="c6" alt="slv" />
+		</connector>
+		<knob x="61" y="20" size="29">
+			<parameter component-id="p2" alt="Freq coarse" />
+		</knob>
+		<knob x="98" y="25" size="21">
+			<parameter component-id="p3" alt="Freq fine" />
+		</knob>
+		<knob x="129" y="25" size="21">
+			<parameter component-id="p4" alt="Freq KBT" />
+		</knob>
+		<button x="219" y="3" width="26" height="60" cyclic="false" landscape="false">
+			<parameter component-id="p5" alt="waveform" />
+			<btn index="0"><image xlink:href="./images/slice/wf_sine.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/wf_tri.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
+			<btn index="3"><image xlink:href="./images/slice/wf_square.png" /></btn>
+		</button>
+		<knob x="22" y="65" size="21">
+			<parameter component-id="p6" alt="pitch mod 1" />
+		</knob>
+		<knob x="66" y="65" size="21">
+			<parameter component-id="p7" alt="pitch mod 2" />
+		</knob>
+		<knob x="112" y="65" size="21">
+			<parameter component-id="p8" alt="fma mod" />
+		</knob>
+		<knob x="182" y="23" size="22">
+			<parameter component-id="p9" alt="PWidth" />
+		</knob>
+		<button x="218" y="70" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p10" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="7" y="23" width="50" height="16">
+			<parameter component-id="p2" alt="Freq coarse" />
+		</textDisplay>
+		<label x="23" y="40">Slv</label>
+		<label x="3" y="54">Pitch</label>
+		<label x="45" y="55">Pitch</label>
+		<label x="91" y="55">FMA</label>
+		<label x="61" y="6">Coarse</label>
+		<label x="100" y="6">Fine</label>
+		<label x="132" y="6">KBT</label>
+		<label x="171" y="12">PWidth</label>
+		<resetButton x="104" y="18" width="9" height="6">
+			<parameter component-id="p3" alt="Freq fine" />
+		</resetButton>
+		<resetButton x="135" y="18" width="9" height="6">
+			<parameter component-id="p4" alt="Freq KBT" />
+		</resetButton>
+	</module>
+	<module component-id="m40" width="255" height="60">
+		<name>Mixer</name>
+		<connector x="9" y="13" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in 1" />
+		</connector>
+		<connector x="38" y="13" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in 2" />
+		</connector>
+		<connector x="63" y="13" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="in 3" />
+		</connector>
+		<connector x="90" y="13" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="in 4" />
+		</connector>
+		<connector x="118" y="13" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="in 5" />
+		</connector>
+		<connector x="146" y="13" size="13" class="cAUDIO">
+			<connector component-id="c6" alt="in 6" />
+		</connector>
+		<connector x="173" y="13" size="13" class="cAUDIO">
+			<connector component-id="c7" alt="in 7" />
+		</connector>
+		<connector x="201" y="13" size="13" class="cAUDIO">
+			<connector component-id="c8" alt="in 8" />
+		</connector>
+		<connector x="234" y="42" size="13" class="cAUDIO">
+			<connector component-id="c9" alt="out" />
+		</connector>
+		<knob x="6" y="32" size="21">
+			<parameter component-id="p1" alt="in sense 1" />
+		</knob>
+		<knob x="34" y="32" size="21">
+			<parameter component-id="p2" alt="in sense 2" />
+		</knob>
+		<knob x="61" y="32" size="21">
+			<parameter component-id="p3" alt="in sense 3" />
+		</knob>
+		<knob x="88" y="32" size="21">
+			<parameter component-id="p4" alt="in sense 4" />
+		</knob>
+		<knob x="116" y="32" size="21">
+			<parameter component-id="p5" alt="in sense 5" />
+		</knob>
+		<knob x="143" y="32" size="21">
+			<parameter component-id="p6" alt="in sense 6" />
+		</knob>
+		<knob x="170" y="32" size="21">
+			<parameter component-id="p7" alt="in sense 7" />
+		</knob>
+		<knob x="197" y="32" size="21">
+			<parameter component-id="p8" alt="in sense 8" />
+		</knob>
+		<button x="222" y="11" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p9" alt="-6dB" />
+			<btn index="0">-6dB</btn>
+			<btn index="1">-6dB</btn>
+		</button>
+		<label x="2" y="12">1</label>
+		<label x="30" y="12">2</label>
+		<label x="57" y="12">3</label>
+		<label x="83" y="12">4</label>
+		<label x="109" y="12">5</label>
+		<label x="137" y="12">6</label>
+		<label x="164" y="12">7</label>
+		<label x="193" y="12">8</label>
+		<light component-id="ledAudioOut" type="led" x="225" y="45" width="7" height="7" /> 
+	</module>
+	<module component-id="m99" width="255" height="60">
+		<name>PatternGen</name>
+		<connector x="8" y="41" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<connector x="31" y="41" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="75" y="20" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="pattern &amp; bank" />
+		</connector>
+		<connector x="236" y="45" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="98" y="33" size="21">
+			<parameter component-id="p1" alt="pattern" />
+		</knob>
+		<knob x="137" y="33" size="21">
+			<parameter component-id="p2" alt="bank" />
+		</knob>
+		<button x="221" y="16" width="32" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="low delta" />
+			<btn index="0">High</btn>
+			<btn index="1">Low</btn>
+		</button>
+		<knob x="180" y="14" size="21">
+			<parameter component-id="p4" alt="step" />
+		</knob>
+		<button x="176" y="40" width="34" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mono" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Mono</btn>
+		</button>
+		<label x="7" y="27">Clk</label>
+		<label x="29" y="27">Rst</label>
+		<label x="92" y="3">Pattern</label>
+		<label x="137" y="3">Bank</label>
+		<label x="181" y="1">Step</label>
+		<label x="226" y="4">Delta</label>
+		<label x="235" y="32">Out</label>
+		<textDisplay x="95" y="15" width="27" height="16">
+			<parameter component-id="p1" alt="pattern" />
+		</textDisplay>
+		<textDisplay x="134" y="15" width="27" height="16">
+			<parameter component-id="p2" alt="bank" />
+		</textDisplay>
+	</module>
+	<module component-id="m104" width="255" height="60">
+		<name>EqShelving</name>
+		<connector x="189" y="44" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="237" y="44" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="12" y="23" size="29">
+			<parameter component-id="p1" alt="freq" />
+		</knob>
+		<knob x="102" y="31" size="21">
+			<parameter component-id="p2" alt="gain" />
+		</knob>
+		<button x="141" y="4" width="22" height="32" cyclic="false" landscape="false">
+			<parameter component-id="p3" alt="mode" />
+			<btn index="0">Hi</btn>
+			<btn index="1">Lo</btn>
+		</button>
+		<button x="215" y="41" width="16" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<knob x="161" y="35" size="22">
+			<parameter component-id="p5" alt="in level" />
+		</knob>
+		<textDisplay x="45" y="26" width="40" height="16">
+			<parameter component-id="p1" alt="freq" />
+		</textDisplay>
+		<textDisplay x="93" y="13" width="40" height="16">
+			<parameter component-id="p2" alt="gain" />
+		</textDisplay>
+		<label x="55" y="11">Freq</label>
+		<label x="103" y="0">Gain</label>
+		<eq-shelving-display x="192" y="2" width="55" height="35">
+			<frequency component-id="p1" alt="freq" />
+			<gain component-id="p2" alt="gain" />
+	    </eq-shelving-display>
+   		<light component-id="ledAudioOut" type="led" x="240" y="37" width="7" height="7" /> 
+	</module>
+	<module component-id="m72" width="255" height="30">
+		<name>NoteScaler</name>
+		<connector x="197" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="154" y="4" size="21">
+			<parameter component-id="p1" alt="transpose" />
+		</knob>
+		<textDisplay x="91" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="transpose" />
+		</textDisplay>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+	</module>
+	<module component-id="m71" width="255" height="45">
+		<name>EnvFollower</name>
+		<connector x="198" y="26" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="236" y="26" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="101" y="20" size="21">
+			<parameter component-id="p1" alt="attack" />
+		</knob>
+		<knob x="154" y="20" size="21">
+			<parameter component-id="p2" alt="release" />
+		</knob>
+		<label x="83" y="24">Atk</label>
+		<label x="136" y="25">Rel</label>
+		<image x="211" y="27" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<textDisplay x="96" y="2" width="30" height="16">
+			<parameter component-id="p1" alt="attack" />
+		</textDisplay>
+		<textDisplay x="151" y="2" width="30" height="16">
+			<parameter component-id="p2" alt="release" />
+		</textDisplay>
+	</module>
+	<module component-id="m49" width="255" height="75">
+		<name>FilterD</name>
+		<image x="4" y="16" width="130" height="52" xlink:href="url(#groupbox)" />
+		<connector x="21" y="50" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="freq mod" />
+		</connector>
+		<connector x="200" y="39" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="236" y="24" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="hp" />
+		</connector>
+		<connector x="236" y="40" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="bp" />
+		</connector>
+		<connector x="236" y="56" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="lp" />
+		</connector>
+		<knob x="69" y="35" size="29">
+			<parameter component-id="p2" alt="freq" />
+		</knob>
+		<knob x="103" y="34" size="21">
+			<parameter component-id="p3" alt="kbt" />
+		</knob>
+		<knob x="148" y="43" size="29">
+			<parameter component-id="p4" alt="resonance" />
+		</knob>
+		<knob x="43" y="43" size="22">
+			<parameter component-id="p5" alt="freqmod" />
+		</knob>
+		<textDisplay x="9" y="28" width="40" height="16">
+			<parameter component-id="p2" alt="freq" />
+		</textDisplay>
+		<textDisplay x="148" y="27" width="30" height="16">
+			<parameter component-id="p4" alt="resonance" />
+		</textDisplay>
+		<label x="15" y="16">Freq</label>
+		<label x="104" y="16">KBT</label>
+		<label x="139" y="13">Resonance</label>
+		<label x="107" y="1">12dB multimode filter</label>
+		<label x="221" y="23">HP</label>
+		<label x="221" y="39">BP</label>
+		<label x="221" y="55">LP</label>
+		<resetButton x="109" y="27" width="9" height="6">
+			<parameter component-id="p3" alt="kbt" />
+		</resetButton>
+	</module>
+	<module component-id="m22" width="255" height="30">
+		<name>PartialGen</name>
+		<connector x="197" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="152" y="3" size="21">
+			<parameter component-id="p1" alt="range" />
+		</knob>
+		<image x="210" y="9" width="25" height="11" xlink:href="./images/single/decoration-6.png" />
+		<textDisplay x="98" y="7" width="46" height="16">
+			<parameter component-id="p1" alt="range" />
+		</textDisplay>
+	</module>
+	<module component-id="m9" width="255" height="60">
+		<name>OscC</name>
+		<image x="2" y="7" width="140" height="50" xlink:href="url(#groupbox)" />
+		<connector x="165" y="37" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="FMA" />
+		</connector>
+		<connector x="35" y="38" size="13" class="cSLAVE">
+			<connector component-id="c2" alt="pitch" />
+		</connector>
+		<connector x="165" y="9" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="AM" />
+		</connector>
+		<connector x="236" y="40" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<connector x="5" y="40" size="13" class="cSLAVE">
+			<connector component-id="c5" alt="slv" />
+		</connector>
+		<knob x="80" y="23" size="29">
+			<parameter component-id="p2" alt="pitch coarse" />
+		</knob>
+		<knob x="112" y="31" size="21">
+			<parameter component-id="p3" alt="pitch fine" />
+		</knob>
+		<button x="195" y="9" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="pitch KBT" />
+			<btn index="0">KBT</btn>
+			<btn index="1">KBT</btn>
+		</button>
+		<knob x="50" y="31" size="21">
+			<parameter component-id="p5" alt="pitch mod amount" />
+		</knob>
+		<knob x="182" y="32" size="21">
+			<parameter component-id="p6" alt="FMA" />
+		</knob>
+		<button x="215" y="39" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p7" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="27" y="13" width="50" height="16">
+			<parameter component-id="p2" alt="pitch coarse" />
+		</textDisplay>
+		<label x="5" y="13">Freq</label>
+		<label x="19" y="39">Slv</label>
+		<label x="80" y="10">Coarse</label>
+		<label x="115" y="10">Fine</label>
+		<label x="148" y="9">AM</label>
+		<label x="143" y="38">FMA</label>
+		<resetButton x="118" y="24" width="9" height="6">
+			<parameter component-id="p3" alt="pitch fine" />
+		</resetButton>
+	</module>
+	<module component-id="m21" width="255" height="105">
+		<name>Compressor</name>
+		<connector x="5" y="17" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="left" />
+		</connector>
+		<connector x="5" y="34" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="right" />
+		</connector>
+		<connector x="30" y="17" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="side" />
+		</connector>
+		<connector x="236" y="66" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="left" />
+		</connector>
+		<connector x="236" y="85" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="right" />
+		</connector>
+		<light component-id="lightGainReduction" type="meter" x="150" y="15" width="92" height="5" /> 
+		
+		<light component-id="lightGainReduction" type="led" x="220" y="32" width="7" height="7" ledOnValue="127" /> 
+		
+		<knob x="8" y="79" size="21">
+			<parameter component-id="p1" alt="attack" />
+		</knob>
+		<knob x="45" y="79" size="21">
+			<parameter component-id="p2" alt="release" />
+		</knob>
+		<knob x="80" y="80" size="21">
+			<parameter component-id="p3" alt="treshold" />
+		</knob>
+		<knob x="118" y="80" size="21">
+			<parameter component-id="p4" alt="ratio" />
+		</knob>
+		<knob x="153" y="80" size="21">
+			<parameter component-id="p5" alt="ref level" />
+		</knob>
+		<knob x="190" y="80" size="21">
+			<parameter component-id="p6" alt="limiter" />
+		</knob>
+		<button x="31" y="35" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p7" alt="act" />
+			<btn index="0">Act</btn>
+			<btn index="1">Act</btn>
+		</button>
+		<button x="64" y="35" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="mon" />
+			<btn index="0">Mon</btn>
+			<btn index="1">Mon</btn>
+		</button>
+		<button x="233" y="48" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p9" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<textDisplay x="4" y="62" width="30" height="16">
+			<parameter component-id="p1" alt="attack" />
+		</textDisplay>
+		<textDisplay x="40" y="62" width="30" height="16">
+			<parameter component-id="p2" alt="release" />
+		</textDisplay>
+		<textDisplay x="76" y="62" width="30" height="16">
+			<parameter component-id="p3" alt="treshold" />
+		</textDisplay>
+		<textDisplay x="113" y="62" width="30" height="16">
+			<parameter component-id="p4" alt="ratio" />
+		</textDisplay>
+		<textDisplay x="148" y="62" width="30" height="16">
+			<parameter component-id="p5" alt="ref level" />
+		</textDisplay>
+		<textDisplay x="185" y="62" width="30" height="16">
+			<parameter component-id="p6" alt="limiter" />
+		</textDisplay>
+		<label x="19" y="16">L</label>
+		<label x="19" y="33">R</label>
+		<label x="45" y="17">Side chain</label>
+		<label x="156" y="4">Gain reduction dB</label>
+		<label x="168" y="28">Lim active</label>
+		<label x="5" y="50">Attack</label>
+		<label x="38" y="50">Release</label>
+		<label x="78" y="50">Tresh.</label>
+		<label x="115" y="50">Ratio</label>
+		<label x="147" y="50">Ref Lvl</label>
+		<label x="185" y="50">Limiter</label>
+		<label x="227" y="65">L</label>
+		<label x="227" y="84">R</label>
+		<compressor-display x="91" y="4" width="46" height="46">
+			<threshold component-id="p3" alt="threshold" />
+			<ratio component-id="p4" alt="ratio" />
+			<ref-level component-id="p5" alt="ref level" />
+			<limiter component-id="p6" alt="limiter" />						
+	    	</compressor-display>
+	</module>
+	<module component-id="m78" width="255" height="45">
+		<name>Delay</name>
+		<connector x="197" y="27" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="39" y="24" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="modulation" />
+		</connector>
+		<connector x="235" y="4" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="2" />
+		</connector>
+		<connector x="235" y="27" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="variable delay out" />
+		</connector>
+		<knob x="58" y="18" size="21">
+			<parameter component-id="p1" alt="modulation" />
+		</knob>
+		<knob x="157" y="12" size="21">
+			<parameter component-id="p2" alt="time" />
+		</knob>
+		<textDisplay x="95" y="15" width="50" height="16">
+			<parameter component-id="p2" alt="time" />
+		</textDisplay>
+		<label x="109" y="3">Time</label>
+		<image x="210" y="15" width="-1" height="-1" xlink:href="./images/single/decoration-5.png" />
+		<label x="196" y="5">2.65 ms</label>
+	</module>
+	<module component-id="m52" width="255" height="105">
+		<name>Multi-Env</name>
+		<connector x="5" y="28" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="gate" />
+		</connector>
+		<connector x="196" y="86" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<connector x="5" y="82" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="amp" />
+		</connector>
+		<connector x="236" y="63" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="env" />
+		</connector>
+		<connector x="236" y="86" size="13" class="cAUDIO">
+			<connector component-id="c5" alt="out" />
+		</connector>
+		<knob x="36" y="36" size="21">
+			<parameter component-id="p1" alt="level 1" />
+		</knob>
+		<knob x="69" y="36" size="21">
+			<parameter component-id="p2" alt="level 2" />
+		</knob>
+		<knob x="104" y="36" size="21">
+			<parameter component-id="p3" alt="level 3" />
+		</knob>
+		<knob x="138" y="36" size="21">
+			<parameter component-id="p4" alt="level 4" />
+		</knob>
+		<knob x="36" y="79" size="21">
+			<parameter component-id="p5" alt="time 1" />
+		</knob>
+		<knob x="71" y="79" size="21">
+			<parameter component-id="p6" alt="time 2" />
+		</knob>
+		<knob x="105" y="79" size="21">
+			<parameter component-id="p7" alt="time 3" />
+		</knob>
+		<knob x="140" y="79" size="21">
+			<parameter component-id="p8" alt="time 4" />
+		</knob>
+		<knob x="173" y="79" size="21">
+			<parameter component-id="p9" alt="time 5" />
+		</knob>
+		<button x="200" y="38" width="34" height="19" cyclic="true" landscape="false">
+			<parameter component-id="p10" alt="sustain" />
+			<btn index="0">--</btn>
+			<btn index="1">1</btn>
+			<btn index="2">2</btn>
+			<btn index="3">3</btn>
+			<btn index="4">4</btn>
+		</button>
+		<button x="90" y="2" width="68" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p11" alt="curve" />
+			<btn index="0"><image xlink:href="./images/slice/env_multi_bipolar.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/env_multi_uni-exp.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/env_multi_uni-lin.png" /></btn>
+		</button>
+		<textDisplay x="26" y="19" width="30" height="16">
+			<parameter component-id="p1" alt="level 1" />
+		</textDisplay>
+		<textDisplay x="60" y="19" width="30" height="16">
+			<parameter component-id="p2" alt="level 2" />
+		</textDisplay>
+		<textDisplay x="94" y="19" width="30" height="16">
+			<parameter component-id="p3" alt="level 3" />
+		</textDisplay>
+		<textDisplay x="128" y="19" width="30" height="16">
+			<parameter component-id="p4" alt="level 4" />
+		</textDisplay>
+		<textDisplay x="26" y="62" width="30" height="16">
+			<parameter component-id="p5" alt="time 1" />
+		</textDisplay>
+		<textDisplay x="60" y="62" width="30" height="16">
+			<parameter component-id="p6" alt="time 2" />
+		</textDisplay>
+		<textDisplay x="94" y="62" width="30" height="16">
+			<parameter component-id="p7" alt="time 3" />
+		</textDisplay>
+		<textDisplay x="128" y="62" width="30" height="16">
+			<parameter component-id="p8" alt="time 4" />
+		</textDisplay>
+		<textDisplay x="162" y="62" width="30" height="16">
+			<parameter component-id="p9" alt="time 5" />
+		</textDisplay>
+		<label x="3" y="13">Gate</label>
+		<label x="3" y="66">Amp</label>
+		<label x="26" y="34">L1</label>
+		<label x="58" y="34">L2</label>
+		<label x="93" y="34">L3</label>
+		<label x="127" y="35">L4</label>
+		<label x="26" y="78">T1</label>
+		<label x="60" y="78">T2</label>
+		<label x="94" y="78">T3</label>
+		<label x="128" y="78">T4</label>
+		<label x="162" y="78">T5</label>
+		<label x="167" y="40">Sustain</label>
+		<label x="213" y="61">Env</label>
+		<image x="209" y="80" width="27" height="19" xlink:href="./images/single/decoration-15.png" />
+		<multi-env-display x="162" y="2" width="85" height="33">
+			<l0 component-id="p1" alt="Level 1" />
+			<l1 component-id="p2" alt="Level 2" />
+			<l2 component-id="p3" alt="Level 3" />
+			<l3 component-id="p4" alt="Level 4" />
+			<t0 component-id="p5" alt="Time  1" />
+			<t1 component-id="p6" alt="Time  2" />
+			<t2 component-id="p7" alt="Time  3" />
+			<t3 component-id="p8" alt="Time  4" />
+			<t4 component-id="p9" alt="Time  5" />
+			<sustain component-id="p10" alt="Sustain seg." />
+			<curve component-id="p11" alt="Curve type" />
+   	    </multi-env-display>
+        <light component-id="ledGateIn" type="led" x="8" y="44" width="7" height="7" /> 
+	</module>
+	<module component-id="m90" width="255" height="135">
+		<name>NoteSeqB</name>
+		
+		<label x="3" y="13">Clk</label>
+		<connector x="3" y="25" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		
+		<label x="3" y="40">Rst</label>
+		<connector x="3" y="52" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		
+		<label x="3" y="103">Snc</label>
+		<connector x="3" y="115" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="sync" />
+		</connector>
+		
+		<label x="232" y="49">Link</label>
+		<connector x="235" y="61" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="link" />
+		</connector>
+		
+		<label x="228" y="77">Gclck</label>
+		<connector x="235" y="88" size="13" class="cLOGIC">
+			<connector component-id="c6" alt="gclk" />
+		</connector>
+		
+		<label x="234" y="103">Out</label>
+		<connector x="235" y="115" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		
+		 <button x="80" y="5" width="14" height="14" cyclic="true" landscape="true">
+	            <call component="note-seq-display" method="zoomIn" />
+        	    <btn index="0">Z</btn>
+	            <btn index="1">Z</btn> 
+	        </button>
+	        
+	         <button x="94" y="5" width="14" height="14" cyclic="true" landscape="true">
+	            <call component="note-seq-display" method="zoomOut" />
+        	    <btn index="0">z</btn>
+	            <btn index="1">z</btn> 
+	        </button>		
+		
+		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p23" alt="loop" />			
+			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
+			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
+		</button> 
+		
+		<label x="152" y="5">Step</label>
+	    <textDisplay x="174" y="5" width="20" height="14">
+			<parameter component-id="p19" alt="step" />
+		</textDisplay>
+		
+	        <button x="194" y="5" width="24" height="14" cyclic="false" landscape="true" mode="increment">
+	            <parameter component-id="p19" alt="step" />
+        	    <btn index="0"><image xlink:href="url(#btn-left-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
+        	</button>
+		
+		<button x="228" y="32" width="24" height="13" cyclic="false" landscape="true" mode="increment">
+	            <parameter component-id="p20" alt="currentstep" />
+        	    <btn index="0"><image xlink:href="url(#btn-left-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
+        	</button>
+        	
+		
+		<button x="228" y="5" width="24" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p21" alt="record" />
+			<btn index="0"><image xlink:href="./images/slice/rec_off.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/rec_on.png" /></btn>
+		</button>
+		
+		<button x="228" y="19" width="24" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p22" alt="play" />
+			<btn index="0"><image xlink:href="./images/slice/start.png" /></btn>
+			<btn index="1"> <image xlink:href="./images/slice/stop.png" /></btn>
+		</button> 
+		
+		<note-seq-editor name="note-seq-display" x="25" y="37" width="192" height="74">
+			<step0 component-id="p3" alt="note 1" />
+			<step1 component-id="p4" alt="note 2" />
+			<step2 component-id="p5" alt="note 3" />
+			<step3 component-id="p6" alt="note 4" />
+			<step4 component-id="p7" alt="note 5" />
+			<step5 component-id="p8" alt="note 6" />
+			<step6 component-id="p9" alt="note 7" />
+			<step7 component-id="p10" alt="note 8" />
+			<step8 component-id="p11" alt="note 9" />
+			<step9 component-id="p12" alt="note 10" />
+			<step10 component-id="p13" alt="note 11" />
+			<step11 component-id="p14" alt="note 12" />
+			<step12 component-id="p15" alt="note 13" />
+			<step13 component-id="p16" alt="note 14" />
+			<step14 component-id="p17" alt="note 15" />
+			<step15 component-id="p18" alt="note 16" />
+		</note-seq-editor>
+		
+		<button x="25" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p3" alt="note 1" />
+        	    <btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+
+		<scrollbar x="217" y="37" width="11" height="74" note-sequencer="note-seq-display" />
+		
+		<button x="37" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p4" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 		<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="49" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p5" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="61" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p6" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="73" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p7" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="85" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p8" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="97" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p9" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="109" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p10" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="121" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p11" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="133" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p12" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="145" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p13" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="157" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p14" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="169" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p15" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="181" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p16" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="193" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p17" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+        	
+        	<button x="205" y="110" width="12" height="23" cyclic="false" landscape="false" mode="increment">
+	            <parameter component-id="p18" alt="note 1" />
+			 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+			 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+        	</button>
+		
+		
+		<button x="1" y="70" width="22" height="14" cyclic="true" landscape="true">
+	            <call component="note-seq-display" method="randomize" />
+        	    <btn index="1">Rnd</btn>
+	            <btn index="0">Rnd</btn> 
+	        </button>
+
+		<button x="1" y="84" width="22" height="14" cyclic="true" landscape="true">
+	            <call component="note-seq-display" method="clear" />
+        	    <btn index="1">Clr</btn>
+	            <btn index="0">Clr</btn> 
+	        </button>			
+	   
+	        
+		<light component-id="ledStep1-16" type="led-array" x="25" y="28" width="192" height="7" /> 
+		
+	</module>
+	<module component-id="m111" width="255" height="30">
+		<name>LevMult</name>
+		<connector x="195" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="235" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="126" y="4" size="21">
+			<parameter component-id="p1" alt="multiplier" />
+		</knob>
+		<button x="93" y="7" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="unipolar" />
+			<btn index="0">Uni</btn>
+			<btn index="1">Uni</btn>
+		</button>
+		<textDisplay x="157" y="7" width="30" height="16">
+			<parameter component-id="p1" alt="multiplier" />
+		</textDisplay>
+		<image x="171" y="4" width="64" height="16" xlink:href="./images/single/decoration-12.png" />
+	</module>
+	<module component-id="m19" width="255" height="30">
+		<name>Mixer</name>
+		<connector x="53" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in1" />
+		</connector>
+		<connector x="103" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="in2" />
+		</connector>
+		<connector x="154" y="8" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="in3" />
+		</connector>
+		<connector x="234" y="8" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="70" y="4" size="21">
+			<parameter component-id="p1" alt="in sense 1" />
+		</knob>
+		<knob x="120" y="4" size="21">
+			<parameter component-id="p2" alt="in sense 2" />
+		</knob>
+		<knob x="171" y="4" size="21">
+			<parameter component-id="p3" alt="in sense 3" />
+		</knob>
+	</module>
+	<module component-id="m11" width="255" height="45">
+		<name>OscSlvC</name>
+		<connector x="3" y="27" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="155" y="15" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="FMA" />
+		</connector>
+		<connector x="238" y="26" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="75" y="13" size="29">
+			<parameter component-id="p2" alt="detune coarse" />
+		</knob>
+		<knob x="108" y="21" size="21">
+			<parameter component-id="p3" alt="detune fine" />
+		</knob>
+		<knob x="171" y="9" size="21">
+			<parameter component-id="p4" alt="FMA mod" />
+		</knob>
+		<button x="215" y="27" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p5" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="22" y="14" width="50" height="16">
+			<parameter component-id="p2" alt="detune coarse" />
+		</textDisplay>
+		<label x="2" y="12">Mst</label>
+		<label x="74" y="2">Detune</label>
+		<label x="110" y="2">Fine</label>
+		<label x="151" y="2">FMA</label>
+		<image x="238" y="3" width="11" height="9" xlink:href="./images/slice/wf_saw.png" />
+		<resetButton x="114" y="12" width="9" height="6">
+			<parameter component-id="p3" alt="detune fine" />
+		</resetButton>
+	</module>
+	<module component-id="m50" width="255" height="60">
+		<name>FilterC</name>
+		<image x="6" y="15" width="80" height="40" xlink:href="url(#groupbox)" />
+		<connector x="189" y="28" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="237" y="43" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="LP" />
+		</connector>
+		<connector x="237" y="28" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="BP" />
+		</connector>
+		<connector x="237" y="13" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="HP" />
+		</connector>
+		<knob x="51" y="21" size="29">
+			<parameter component-id="p2" alt="freq" />
+		</knob>
+		<knob x="137" y="23" size="29">
+			<parameter component-id="p3" alt="resonance" />
+		</knob>
+		<button x="100" y="41" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p4" alt="gain control" />
+			<btn index="0">GC</btn>
+			<btn index="1">GC</btn>
+		</button>
+		<label x="17" y="17">Freq</label>
+		<label x="89" y="11">Resonance</label>
+		<label x="70" y="0">12db static multimode filter</label>
+		<label x="221" y="14">HP</label>
+		<label x="223" y="28">BP</label>
+		<label x="223" y="42">LP</label>
+		<textDisplay x="9" y="33" width="40" height="16">
+			<parameter component-id="p2" alt="freq" />
+		</textDisplay>
+		<textDisplay x="100" y="23" width="25" height="16">
+			<parameter component-id="p3" alt="resonance" />
+		</textDisplay>
+	</module>
+	<module component-id="m91" width="255" height="105">
+		<name>CtrlSeq</name>
+		<connector x="6" y="33" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<connector x="6" y="60" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="238" y="89" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<connector x="6" y="89" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="sync" />
+		</connector>
+		<connector x="238" y="40" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="link" />
+		</connector>
+	        <button x="194" y="5" width="24" height="14" cyclic="false" landscape="true" mode="increment">
+	            <parameter component-id="p17" alt="step" />
+        	    <btn index="0"><image xlink:href="url(#btn-left-arrow)" /></btn>
+	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
+        	</button>
+		<button x="229" y="57" width="24" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p18" alt="uni" />
+			<btn index="0">Uni</btn>
+			<btn index="1">Uni</btn>
+		</button>
+		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
+			<parameter component-id="p19" alt="loop" />			
+			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
+			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
+		</button> 
+		<label x="152" y="5">Step</label>
+		<textDisplay x="174" y="5" width="20" height="14">
+			<parameter component-id="p17" alt="step" />
+		</textDisplay>
+		<label x="5" y="20">Clk</label>
+		<label x="4" y="47">Rst</label>
+		<label x="2" y="75">Sync</label>
+		<label x="219" y="41">Link</label>
+		<label x="235" y="75">Out</label>
+		<label x="27" y="19">1</label>
+		<label x="38" y="19">2</label>
+		<label x="50" y="19">3</label>
+		<label x="63" y="19">4</label>
+		<label x="74" y="19">5</label>
+		<label x="86" y="19">6</label>
+		<label x="98" y="19">7</label>
+		<label x="110" y="19">8</label>
+		<label x="122" y="19">9</label>
+		<label x="132" y="19">10</label>
+		<label x="145" y="19">11</label>
+		<label x="156" y="19">12</label>
+		<label x="169" y="19">13</label>
+		<label x="181" y="19">14</label>
+		<label x="192" y="19">15</label>
+		<label x="204" y="19">16</label>
+		
+		<light component-id="ledStep1-16" type="led-array" x="28" y="30" width="190" height="7" /> 
+		
+		<slider x="24" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p1" alt="xy" />
+		</slider>
+		<slider x="36" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p2" alt="xy" />
+		</slider>
+		<slider x="48" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p3" alt="xy" />
+		</slider>
+		<slider x="60" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p4" alt="xy" />
+		</slider>
+		<slider x="72" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p5" alt="xy" />
+		</slider>
+		<slider x="84" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p6" alt="xy" />
+		</slider>
+		<slider x="96" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p7" alt="xy" />
+		</slider>
+		<slider x="108" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p8" alt="xy" />
+		</slider>
+		<slider x="120" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p9" alt="xy" />
+		</slider>
+		<slider x="132" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p10" alt="xy" />
+		</slider>
+		<slider x="144" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p11" alt="xy" />
+		</slider>
+		<slider x="156" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p12" alt="xy" />
+		</slider>
+		<slider x="168" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p13" alt="xy" />
+		</slider>
+		<slider x="180" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p14" alt="xy" />
+		</slider>
+		<slider x="192" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p15" alt="xy" />
+		</slider>
+		<slider x="204" y="37" width="11" height="47" orientation="vertical">
+			<parameter component-id="p16" alt="xy" />
+		</slider>
+		
+		
+		<button x="24" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p1" alt="ctrl 1" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="35" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p2" alt="ctrl 2" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="47" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p3" alt="ctrl 3" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="59" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p4" alt="ctrl 4" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="71" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p5" alt="ctrl 5" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="83" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p6" alt="ctrl 6" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="95" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p7" alt="ctrl 7" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="107" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p8" alt="ctrl 8" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="119" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p9" alt="ctrl 9" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="131" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p10" alt="ctrl 10" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="143" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p11" alt="ctrl 11" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="155" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p12" alt="ctrl 12" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="167" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p13" alt="ctrl 13" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="179" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p14" alt="ctrl 14" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="191" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p15" alt="ctrl 15" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		<button x="203" y="84" width="12" height="19" cyclic="false" landscape="false" mode="increment">
+			<parameter component-id="p16" alt="ctrl 16" />
+		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
+		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
+		</button>
+		
+	</module>
+	<module component-id="m39" width="255" height="30">
+		<name>Smooth</name>
+		<connector x="195" y="8" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="233" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="143" y="4" size="21">
+			<parameter component-id="p1" alt="time" />
+		</knob>
+		<textDisplay x="90" y="7" width="50" height="16">
+			<parameter component-id="p1" alt="time" />
+		</textDisplay>
+		<image x="212" y="10" width="18" height="10" xlink:href="./images/single/decoration-17.png" />
+	</module>
+	<module component-id="m92" width="255" height="90">
+		<name>FilterF</name>
+		<image x="130" y="19" width="46" height="68" xlink:href="url(#groupbox)" />
+		<image x="8" y="19" width="120" height="68" xlink:href="url(#groupbox)" />
+		<connector x="11" y="38" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="freq mod 1" />
+		</connector>
+		<connector x="11" y="67" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="freq mod 2" />
+		</connector>
+		<connector x="184" y="71" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="in" />
+		</connector>
+		<connector x="237" y="71" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="61" y="52" size="29">
+			<parameter component-id="p2" alt="frequency" />
+		</knob>
+		<knob x="98" y="60" size="21">
+			<parameter component-id="p3" alt="kbt" />
+		</knob>
+		<knob x="138" y="52" size="29">
+			<parameter component-id="p4" alt="resonance" />
+		</knob>
+		<knob x="30" y="32" size="22">
+			<parameter component-id="p5" alt="freq mod 1" />
+		</knob>
+		<knob x="30" y="60" size="22">
+			<parameter component-id="p6" alt="freq mod 2" />
+		</knob>
+		<button x="184" y="49" width="60" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p7" alt="slope" />
+			<btn index="0">12</btn>
+			<btn index="1">18</btn>
+			<btn index="2">24</btn>
+		</button>
+		<button x="217" y="70" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p8" alt="bypass" />
+			<btn index="0">B</btn>
+			<btn index="1">B</btn>
+		</button>
+		<textDisplay x="56" y="32" width="40" height="16">
+			<parameter component-id="p2" alt="frequency" />
+		</textDisplay>
+		<textDisplay x="138" y="32" width="30" height="16">
+			<parameter component-id="p4" alt="resonance" />
+		</textDisplay>
+		<label x="89" y="1">Classic LP filter</label>
+		<label x="62" y="20">Freq</label>
+		<label x="99" y="39">KBT</label>
+		<label x="144" y="20">Res</label>
+		<label x="204" y="37">dB/Oct</label>
+		<resetButton x="104" y="53" width="9" height="6">
+			<parameter component-id="p3" alt="kbt" />
+		</resetButton>
+		<filter-f-display x="192" y="2" width="55" height="35">
+			<cutoff component-id="p2" alt="frequency" />
+			<resonance component-id="p4" alt="resonance" />
+			<slope component-id="p7" alt="slope" />
+	    </filter-f-display>
+	</module>
+	<module component-id="m89" width="255" height="30">
+		<name>CompareAB</name>
+		<connector x="152" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="A" />
+		</connector>
+		<connector x="190" y="8" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="B" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="A&gt;=B" />
+		</connector>
+		<label x="141" y="9">A</label>
+		<label x="180" y="9">B</label>
+		<label x="209" y="9">A&gt;=B</label>
+	</module>
+	<module component-id="m20" width="255" height="75">
+		<name>ADSR</name>
+		<connector x="198" y="57" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="6" y="26" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="gate" />
+		</connector>
+		<connector x="6" y="42" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="retrig" />
+		</connector>
+		<connector x="6" y="58" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="amp" />
+		</connector>
+		<connector x="238" y="38" size="13" class="cCONTROL">
+			<connector component-id="c5" alt="env" />
+		</connector>
+		<connector x="238" y="57" size="13" class="cAUDIO">
+			<connector component-id="c6" alt="out" />
+		</connector>
+		<button x="54" y="14" width="68" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="attack shape" />
+			<btn index="0"><image xlink:href="./images/slice/env_log.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/env_lin.png" /></btn>
+			<btn index="2"><image xlink:href="./images/slice/env_exp.png" /></btn>
+		</button>
+		<knob x="64" y="51" size="21">
+			<parameter component-id="p2" alt="attack" />
+		</knob>
+		<knob x="101" y="51" size="21">
+			<parameter component-id="p3" alt="decay" />
+		</knob>
+		<knob x="137" y="51" size="21">
+			<parameter component-id="p4" alt="sustain" />
+		</knob>
+		<knob x="174" y="51" size="21">
+			<parameter component-id="p5" alt="release" />
+		</knob>
+		<button x="150" y="14" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="invert" />
+			<btn index="0">Inv</btn>
+			<btn index="1">Inv</btn>
+		</button>
+		<label x="23" y="27">Gate</label>
+		<label x="23" y="43">Retrig</label>
+		<label x="23" y="59">Amp</label>
+		<label x="53" y="54">A</label>
+		<label x="91" y="54">D</label>
+		<label x="127" y="54">S</label>
+		<label x="164" y="54">R</label>
+		<label x="218" y="38">Env</label>
+		<image x="211" y="50" width="-1" height="-1" xlink:href="./images/single/decoration-15.png" />
+		<textDisplay x="54" y="33" width="33" height="16">
+			<parameter component-id="p2" alt="attack" />
+		</textDisplay>
+		<textDisplay x="91" y="33" width="33" height="16">
+			<parameter component-id="p3" alt="decay" />
+		</textDisplay>
+		<textDisplay x="128" y="33" width="33" height="16">
+			<parameter component-id="p4" alt="sustain" />
+		</textDisplay>
+		<textDisplay x="165" y="33" width="33" height="16">
+			<parameter component-id="p5" alt="release" />
+		</textDisplay>
+		<adsr-envelope x="182" y="3" width="69" height="27">
+			<release component-id="p5" alt="release" />
+			<sustain component-id="p4" alt="sustain" />
+			<attack-type component-id="p1" alt="attack shape" />
+			<attack component-id="p2" alt="attack" />
+			<decay component-id="p3" alt="decay" />
+			<inverse component-id="p6" alt="invert" />
+		</adsr-envelope>
+		<light component-id="ledGateIn" type="led" x="9" y="18" width="7" height="7" /> 
+	</module>
+	<module component-id="m110" width="255" height="30">
+		<name>RandomGen</name>
+		<connector x="118" y="12" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="master" />
+		</connector>
+		<connector x="235" y="12" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+		<knob x="184" y="5" size="21">
+			<parameter component-id="p2" alt="rate" />
+		</knob>
+		<label x="100" y="12">Mst</label>
+		<image x="212" y="9" width="17" height="11" xlink:href="./images/slice/decorator_rndgen.png" />
+		<textDisplay x="140" y="6" width="36" height="16">
+			<parameter component-id="p2" alt="rate" />
+		</textDisplay>
+   		<light component-id="ledGateOut" type="led" x="238" y="4" width="7" height="7" /> 
+	</module>
+	<module component-id="m10" width="255" height="45">
+		<name>OscSlvB</name>
+		<connector x="2" y="27" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="mst" />
+		</connector>
+		<connector x="150" y="21" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="PWmod" />
+		</connector>
+		<connector x="238" y="28" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="78" y="13" size="29">
+			<parameter component-id="p2" alt="detune coarse" />
+		</knob>
+		<knob x="111" y="19" size="21">
+			<parameter component-id="p3" alt="detune fine" />
+		</knob>
+		<knob x="191" y="16" size="21">
+			<parameter component-id="p4" alt="PW" />
+		</knob>
+		<knob x="166" y="16" size="21">
+			<parameter component-id="p5" alt="PW mod" />
+		</knob>
+		<button x="216" y="24" width="18" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p6" alt="mute" />
+			<btn index="0">M</btn>
+			<btn index="1">M</btn>
+		</button>
+		<textDisplay x="24" y="14" width="50" height="16">
+			<parameter component-id="p2" alt="detune coarse" />
+		</textDisplay>
+		<label x="1" y="12">Mst</label>
+		<label x="75" y="1">Detune</label>
+		<label x="109" y="1">Fine</label>
+		<label x="149" y="7">PW</label>
+		<image x="239" y="4" width="11" height="9" xlink:href="./images/slice/wf_square.png" />
+		<resetButton x="117" y="11" width="9" height="6">
+			<parameter component-id="p3" alt="detune fine" />
+		</resetButton>
+		<resetButton x="196" y="9" width="9" height="6">
+			<parameter component-id="p4" alt="PW" />
+		</resetButton>
+	</module>
+	<module component-id="m69" width="255" height="30">
+		<name>ClkDiv</name>
+		<connector x="84" y="8" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<connector x="122" y="8" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<connector x="236" y="8" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<knob x="186" y="6" size="21">
+			<parameter component-id="p1" alt="divider" />
+		</knob>
+		<textDisplay x="150" y="10" width="30" height="16">
+			<parameter component-id="p1" alt="divider" />
+		</textDisplay>
+		<label x="58" y="9">Clock</label>
+		<label x="106" y="9">Rst</label>
+		<label x="150" y="1">Divider</label>
+	</module>
+</modules>

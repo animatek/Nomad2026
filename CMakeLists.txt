@@ -66,6 +66,12 @@ target_sources(Nomad2026 PRIVATE
     source/help/ModuleHelpPopup.cpp
 )
 
+juce_add_binary_data(NomadData SOURCES
+    data/modules.xml
+    data/transformations.xml
+    data/classic-theme.xml
+)
+
 target_include_directories(Nomad2026 PRIVATE source)
 
 target_compile_definitions(Nomad2026 PRIVATE
@@ -76,6 +82,7 @@ target_compile_definitions(Nomad2026 PRIVATE
 )
 
 target_link_libraries(Nomad2026 PRIVATE
+    NomadData
     juce::juce_core
     juce::juce_events
     juce::juce_data_structures

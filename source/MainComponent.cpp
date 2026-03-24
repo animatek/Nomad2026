@@ -4,6 +4,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "protocol/StorePatchMessage.h"
+#include "BinaryData.h"
 #include <iostream>
 
 MainComponent::MainComponent(juce::ApplicationProperties &props)
@@ -32,27 +33,27 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     return {}; // not found
   };
 
-  // Load module descriptions
-  auto xmlPath = findDataFile(
-      "nmedit/libs/nordmodular/data/module-descriptions/modules.xml");
-  if (xmlPath.existsAsFile())
-    moduleDescs.loadFromFile(xmlPath);
-  else
-    DBG("WARNING: modules.xml not found!");
+  // Load module descriptions — prefer embedded BinaryData, fall back to disk
+  if (BinaryData::modules_xmlSize > 0)
+    moduleDescs.loadFromXmlString(juce::String(BinaryData::modules_xml, BinaryData::modules_xmlSize));
+  else {
+    auto xmlPath = findDataFile("nmedit/libs/nordmodular/data/module-descriptions/modules.xml");
+    if (xmlPath.existsAsFile()) moduleDescs.loadFromFile(xmlPath);
+    else DBG("WARNING: modules.xml not found!");
+  }
 
-  DBG("Loaded " + juce::String(moduleDescs.getModuleCount()) +
-      " module descriptions from: " + xmlPath.getFullPathName());
+  DBG("Loaded " + juce::String(moduleDescs.getModuleCount()) + " module descriptions");
 
-  // Load classic theme
-  auto themePath = findDataFile(
-      "nmedit/libs/nordmodular/data/classic-theme/classic-theme.xml");
-  if (themePath.existsAsFile())
-    themeData.loadFromFile(themePath);
-  else
-    DBG("WARNING: classic-theme.xml not found!");
+  // Load classic theme — prefer embedded BinaryData, fall back to disk
+  if (BinaryData::classictheme_xmlSize > 0)
+    themeData.loadFromXmlString(juce::String(BinaryData::classictheme_xml, BinaryData::classictheme_xmlSize));
+  else {
+    auto themePath = findDataFile("nmedit/libs/nordmodular/data/classic-theme/classic-theme.xml");
+    if (themePath.existsAsFile()) themeData.loadFromFile(themePath);
+    else DBG("WARNING: classic-theme.xml not found!");
+  }
 
-  DBG("Loaded " + juce::String(themeData.getModuleThemeCount()) +
-      " module themes from: " + themePath.getFullPathName());
+  DBG("Loaded " + juce::String(themeData.getModuleThemeCount()) + " module themes");
 
   // Menu bar
   menuBar = std::make_unique<juce::MenuBarComponent>(this);

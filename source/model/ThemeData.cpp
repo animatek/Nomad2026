@@ -7,8 +7,16 @@ bool ThemeData::loadFromFile(const juce::File& xmlFile)
         DBG("ThemeData: file not found: " + xmlFile.getFullPathName());
         return false;
     }
+    return loadFromXml(juce::XmlDocument::parse(xmlFile));
+}
 
-    auto xml = juce::XmlDocument::parse(xmlFile);
+bool ThemeData::loadFromXmlString(const juce::String& xmlString)
+{
+    return loadFromXml(juce::XmlDocument::parse(xmlString));
+}
+
+bool ThemeData::loadFromXml(std::unique_ptr<juce::XmlElement> xml)
+{
     if (xml == nullptr)
     {
         DBG("ThemeData: failed to parse XML");
