@@ -142,6 +142,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Poly/Common default split**: 90/10 default divider position (poly dominant)
 
 ### Next Up
+- [x] **macOS menu bar**: File/Edit/Device/Help/About now appear in the system menu bar; Device menu items enable correctly on synth connect
 - [ ] Mac SysEx communication bug (CoreMIDI fragmentation)
 
 ## Roadmap
@@ -241,19 +242,29 @@ This section outlines all planned features to achieve feature parity with the or
 ## Building
 
 ```bash
+# Clone with submodules (JUCE is a git submodule)
+git clone --recurse-submodules https://github.com/animatek/Nomad2026.git
+# Or if already cloned:
+git submodule update --init --recursive
+
 # Configure (Debug mode recommended for development)
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
 # Build
 cmake --build build -j$(nproc)
 
-# Run
+# Run (Linux/Windows)
 ./build/Nomad2026_artefacts/Debug/Nomad2026
+
+# Run (macOS)
+build/Nomad2026_artefacts/Debug/Nomad2026.app/Contents/MacOS/Nomad2026
 ```
 
 **Note:** Currently using Debug builds during active development. Some features (like URL opening in Help/About menus) require Debug mode to work correctly on all platforms.
 
-Requires JUCE (included in `JUCE/` directory) and a C++17 compiler.
+Nord Modular data files (modules, theme) are embedded in the binary via JUCE BinaryData — no external data files required.
+
+Requires JUCE (included as a git submodule in `JUCE/`) and a C++17 compiler.
 
 ## Technical Documentation
 
