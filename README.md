@@ -260,6 +260,14 @@ cmake --build build -j$(nproc)
 build/Nomad2026_artefacts/Debug/Nomad2026.app/Contents/MacOS/Nomad2026
 ```
 
+**macOS Universal Binary** (Intel + Apple Silicon, for distribution):
+```bash
+cmake -B build-universal -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+cmake --build build-universal -j$(sysctl -n hw.logicalcpu)
+# Result: build-universal/Nomad2026_artefacts/Release/Nomad2026.app
+```
+
 **Note:** Currently using Debug builds during active development. Some features (like URL opening in Help/About menus) require Debug mode to work correctly on all platforms.
 
 Nord Modular data files (modules, theme) are embedded in the binary via JUCE BinaryData — no external data files required.
