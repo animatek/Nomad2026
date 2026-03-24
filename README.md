@@ -143,7 +143,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 
 ### Next Up
 - [x] **macOS menu bar**: File/Edit/Device/Help/About now appear in the system menu bar; Device menu items enable correctly on synth connect
-- [ ] Mac SysEx communication bug (CoreMIDI fragmentation)
+- [x] **macOS SysEx communication**: working correctly — previous issues were caused by a faulty USB hub, not a software bug
 
 ## Roadmap
 
