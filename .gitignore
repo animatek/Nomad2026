@@ -42,6 +42,9 @@ Thumbs.db
 # Legacy notes (not part of the project)
 Info.md
 
+# Beta app builds
+Apps/
+
 # Claude Code local data
 .claude/
 
