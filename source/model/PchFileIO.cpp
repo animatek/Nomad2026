@@ -211,8 +211,6 @@ void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
         int srcConn  = tokens[5].getIntValue();
         int srcType  = tokens[6].getIntValue();  // 0=input, 1=output
         (void)color;
-        (void)dstType;
-        (void)srcType;
 
         auto* srcModule = container.getModuleByIndex(srcMod);
         auto* dstModule = container.getModuleByIndex(dstMod);
@@ -224,8 +222,8 @@ void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
             continue;
         }
 
-        auto* srcConnector = srcModule->getConnector(srcConn);
-        auto* dstConnector = dstModule->getConnector(dstConn);
+        auto* srcConnector = srcModule->getConnector(srcConn, srcType != 0);
+        auto* dstConnector = dstModule->getConnector(dstConn, dstType != 0);
 
         if (srcConnector == nullptr || dstConnector == nullptr)
         {

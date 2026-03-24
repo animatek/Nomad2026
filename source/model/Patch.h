@@ -89,6 +89,7 @@ public:
 
     Parameter* getParameter(int index);
     Connector* getConnector(int index);
+    Connector* getConnector(int index, bool isOutput);
 
     int getContainerIndex() const { return containerIndex; }
     void setContainerIndex(int idx) { containerIndex = idx; }

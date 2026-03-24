@@ -28,6 +28,9 @@ public:
     void setQuickSaveCallback(QuickSaveCallback cb) { quickSaveCallback = std::move(cb); }
     void setShakeCablesCallback(ShakeCablesCallback cb) { shakeCablesCallback = std::move(cb); }
 
+    using ReportBugCallback = std::function<void()>;
+    void setReportBugCallback(ReportBugCallback cb) { reportBugCallback = std::move(cb); }
+
     // Set the current bank/position for quick save button
     void setCurrentLocation(int section, int position);
     void clearCurrentLocation();
@@ -79,9 +82,12 @@ private:
     NameChangeCallback nameChangeCallback;
     QuickSaveCallback quickSaveCallback;
     ShakeCablesCallback shakeCablesCallback;
+    ReportBugCallback reportBugCallback;
 
     juce::Rectangle<float> getShakeButtonBounds() const;
     bool isShakeButtonAt(juce::Point<int> pos) const;
+    juce::Rectangle<float> getBugButtonBounds() const;
+    bool isBugButtonAt(juce::Point<int> pos) const;
 
     std::unique_ptr<juce::Label> patchNameEditor;
     std::unique_ptr<juce::DrawableButton> quickSaveButton;

@@ -203,7 +203,10 @@ void PatchParser::parseCableDump(BitStream& bs, Patch& patch)
         int destination = static_cast<int>(bs.readBits(7));
         int input       = static_cast<int>(bs.readBits(6));
         (void)color; // stored implicitly through connector signal types
-        (void)type;
+
+        // type=1: source is output connector, destination is input (normal)
+        // type=0: source is input connector, destination is output
+        bool srcIsOutput = (type != 0);
 
         auto* srcModule = container.getModuleByIndex(source);
         auto* dstModule = container.getModuleByIndex(destination);
@@ -215,8 +218,8 @@ void PatchParser::parseCableDump(BitStream& bs, Patch& patch)
             continue;
         }
 
-        auto* srcConn = srcModule->getConnector(inputOutput);
-        auto* dstConn = dstModule->getConnector(input);
+        auto* srcConn = srcModule->getConnector(inputOutput, srcIsOutput);
+        auto* dstConn = dstModule->getConnector(input, false);  // destination is always input
 
         if (srcConn == nullptr || dstConn == nullptr)
         {

@@ -31,8 +31,16 @@ PatchCanvas::~PatchCanvas()
 
 void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td)
 {
-    // Reset drag state — raw pointers into the old patch would become stale
+    // Reset all raw pointers into the old patch to avoid dangling refs
     dragState = DragState();
+    selection.clear();
+    selectedModule = nullptr;
+    selectedSection = -1;
+    cableSagOffsets.clear();
+    activeQuickAdd = nullptr;
+    showCablePreview = false;
+    showModuleDropPreview = false;
+    showRubberBand = false;
 
     patch = p;
     moduleDescs = md;
@@ -182,20 +190,26 @@ void PatchCanvas::paint(juce::Graphics& g)
         g.drawHorizontalLine(y, static_cast<float>(clip.getX()), static_cast<float>(clip.getRight()));
 
     if (patch == nullptr)
+    {
+        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.setFont(juce::FontOptions(28.0f));
+        g.drawText("Press Enter to add modules", clip, juce::Justification::centred, false);
         return;
+    }
 
     // Each canvas instance is section-specific (mySection 0=common, 1=poly).
     // yOffset is always 0 since each canvas starts from the top.
-    if (mySection == 1)
+    auto& container = (mySection == 1) ? patch->getPolyVoiceArea() : patch->getCommonArea();
+
+    if (container.getModules().empty())
     {
-        paintModules(g, patch->getPolyVoiceArea(), 0);
-        paintCables(g, patch->getPolyVoiceArea(), 0);
+        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.setFont(juce::FontOptions(28.0f));
+        g.drawText("Press Enter to add modules", clip, juce::Justification::centred, false);
     }
-    else
-    {
-        paintModules(g, patch->getCommonArea(), 0);
-        paintCables(g, patch->getCommonArea(), 0);
-    }
+
+    paintModules(g, container, 0);
+    paintCables(g, container, 0);
 
     // Cable creation preview (rubber-band cable)
     if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
@@ -2992,9 +3006,9 @@ PatchCanvasComponent::PatchCanvasComponent()
 
     // StretchableLayout: [polyViewport | resizerBar | commonViewport]
     // Initial 50/50 split
-    layout.setItemLayout(0, 60, -1.0, -0.5);   // poly  (min 60px, preferred 50%)
+    layout.setItemLayout(0, 60, -1.0, -0.9);   // poly  (min 60px, preferred 90%)
     layout.setItemLayout(1, resizerThick, resizerThick, resizerThick);  // resizer
-    layout.setItemLayout(2, 60, -1.0, -0.5);   // common (min 60px, preferred 50%)
+    layout.setItemLayout(2, 60, -1.0, -0.1);   // common (min 60px, preferred 10%)
 }
 
 void PatchCanvasComponent::resized()

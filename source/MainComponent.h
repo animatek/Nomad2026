@@ -38,6 +38,7 @@ private:
     bool savePatchToFile(const juce::File& file);
 
     void showMidiSettingsDialog();
+    void showBetaWarning(bool forceShow = false);
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
     void onConnectionStatusChanged(const ConnectionManager::Status& status);
@@ -52,13 +53,25 @@ private:
     std::unique_ptr<MainLayout> mainLayout;
     std::unique_ptr<juce::MenuBarComponent> menuBar;
 
-    std::unique_ptr<Patch> currentPatch;
-    juce::File currentPatchFile;
-    std::unique_ptr<PatchSynchronizer> patchSynchronizer;
+    // Multi-slot state (4 slots: A/B/C/D)
+    static constexpr int numSlots = 4;
+    std::unique_ptr<Patch> slotPatches[numSlots];
+    juce::File slotPatchFiles[numSlots];
+    std::unique_ptr<PatchSynchronizer> slotSynchronizers[numSlots];
+    juce::UndoManager slotUndoManagers[numSlots];
+    std::unique_ptr<UndoContext> slotUndoContexts[numSlots];
 
-    juce::UndoManager undoManager;
-    std::unique_ptr<UndoContext> undoContext;
-    void rebuildUndoContext();  // call after patch change
+    int activeSlot = 0;  // Which slot is currently displayed in the UI
+
+    // Convenience accessors for current slot
+    std::unique_ptr<Patch>& currentPatch() { return slotPatches[activeSlot]; }
+    juce::File& currentPatchFile() { return slotPatchFiles[activeSlot]; }
+    std::unique_ptr<PatchSynchronizer>& currentSynchronizer() { return slotSynchronizers[activeSlot]; }
+    juce::UndoManager& undoManager() { return slotUndoManagers[activeSlot]; }
+    std::unique_ptr<UndoContext>& undoContext() { return slotUndoContexts[activeSlot]; }
+
+    void switchToSlot(int slot);
+    void rebuildUndoContext(int slot);  // call after patch change
 
     juce::String lastInputId;
     juce::String lastOutputId;

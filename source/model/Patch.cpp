@@ -35,6 +35,14 @@ Connector* Module::getConnector(int index)
     return nullptr;
 }
 
+Connector* Module::getConnector(int index, bool isOutput)
+{
+    for (auto& c : connectors)
+        if (c.getDescriptor()->index == index && c.getDescriptor()->isOutput == isOutput)
+            return &c;
+    return nullptr;
+}
+
 void Module::setPosition(juce::Point<int> p)
 {
     auto oldPos = position;

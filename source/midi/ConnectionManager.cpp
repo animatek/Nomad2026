@@ -135,6 +135,24 @@ int ConnectionManager::getCurrentSlot() const
     return currentSlot;
 }
 
+void ConnectionManager::selectSlot(int slot)
+{
+    if (!isConnected() || slot < 0 || slot > 3)
+        return;
+
+    // PDL2: ActivateSlot := 0:1 slot:7
+    // cc=0x17, pp=0x41, sc=0x09
+    std::vector<uint8_t> payload;
+    payload.push_back(0x41);  // pp = PatchManagerCommand
+    payload.push_back(0x09);  // sc = ActivateSlot
+    payload.push_back(static_cast<uint8_t>(slot & 0x7F));  // 0:1 slot:7
+
+    protocol.sendMessage(NmCmd::PatchHandling, slot, payload, false, true);
+    currentSlot = slot;
+
+    std::cout << "[SLOT] Sent ActivateSlot: " << slot << std::endl;
+}
+
 void ConnectionManager::loadPatchFromBank(int section, int position, int targetSlot)
 {
     if (!isConnected())
@@ -662,6 +680,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         lastLoadedSection = -1;
         lastLoadedPosition = -1;
         suppressNextLocationClear = false;
+
+        // Notify UI of slot change
+        if (slotChangedCallback)
+            slotChangedCallback(activeSlot);
 
         // Auto-load patch from the active slot (unless already loading or uploading)
         if (isConnected() && !waitingForPatchAck && !collectingSections && !waitingForUploadAck)

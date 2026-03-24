@@ -1,27 +1,176 @@
 #include "MainLayout.h"
 
+// ============================================================
+// SlotBar implementation
+// ============================================================
+
+constexpr const char* SlotBar::slotLetters[];
+
+SlotBar::SlotBar()
+{
+    setInterceptsMouseClicks(true, false);
+}
+
+void SlotBar::setCurrentTab(int index)
+{
+    if (index >= 0 && index < numSlots && index != activeIndex)
+    {
+        activeIndex = index;
+        repaint();
+    }
+}
+
+void SlotBar::setSlotName(int slot, const juce::String& patchName)
+{
+    if (slot >= 0 && slot < numSlots)
+    {
+        slotNames[slot] = patchName;
+        repaint();
+    }
+}
+
+void SlotBar::resized()
+{
+    auto area = getLocalBounds();
+    static constexpr int rowH = 24;
+    for (int i = 0; i < numSlots; ++i)
+        slotBounds[i] = area.removeFromTop(rowH);
+}
+
+void SlotBar::drawSlotIcon(juce::Graphics& g, juce::Rectangle<int> area, bool active)
+{
+    // Simple synth/keyboard icon
+    auto iconArea = area.toFloat().reduced(1.0f);
+    float x = iconArea.getX(), y = iconArea.getY();
+    float w = iconArea.getWidth(), h = iconArea.getHeight();
+
+    // Body
+    g.setColour(active ? juce::Colour(0xffcc3333) : juce::Colour(0xff555577));
+    g.fillRoundedRectangle(x, y, w, h, 2.0f);
+
+    // Keys (bottom half)
+    float keyY = y + h * 0.55f;
+    float keyH = h * 0.35f;
+    int nKeys = 5;
+    float keyW = (w - 4.0f) / nKeys;
+    g.setColour(juce::Colours::white.withAlpha(active ? 0.9f : 0.5f));
+    for (int k = 0; k < nKeys; ++k)
+    {
+        float kx = x + 2.0f + k * keyW;
+        g.fillRect(kx + 0.5f, keyY, keyW - 1.0f, keyH);
+    }
+
+    // Knobs (top half)
+    float knobY = y + h * 0.15f;
+    float knobR = juce::jmin(keyW * 0.3f, h * 0.12f);
+    g.setColour(juce::Colours::white.withAlpha(active ? 0.7f : 0.35f));
+    for (int k = 0; k < 3; ++k)
+    {
+        float kx = x + w * 0.2f + k * w * 0.25f;
+        g.fillEllipse(kx - knobR, knobY - knobR, knobR * 2, knobR * 2);
+    }
+}
+
+void SlotBar::paint(juce::Graphics& g)
+{
+    g.fillAll(juce::Colour(0xff1e1e38));
+
+    for (int i = 0; i < numSlots; ++i)
+    {
+        auto bounds = slotBounds[i];
+        bool active = (i == activeIndex);
+
+        // Background
+        if (active)
+            g.setColour(juce::Colour(0xff2a2a55));
+        else
+            g.setColour(juce::Colour(0xff1e1e38));
+        g.fillRect(bounds);
+
+        // Left border highlight for active
+        if (active)
+        {
+            g.setColour(juce::Colour(0xff6666cc));
+            g.fillRect(bounds.getX(), bounds.getY(), 3, bounds.getHeight());
+        }
+
+        // Icon (small fixed-size synth)
+        auto iconArea = bounds.removeFromLeft(20).reduced(2);
+        drawSlotIcon(g, iconArea, active);
+
+        // Text: "A : PatchName"
+        auto textArea = bounds.reduced(4, 0);
+        juce::String label = juce::String(slotLetters[i]) + " : ";
+        if (slotNames[i].isNotEmpty())
+            label += slotNames[i];
+
+        g.setColour(active ? juce::Colours::white : juce::Colour(0xff999999));
+        g.setFont(juce::FontOptions(12.0f));
+        g.drawText(label, textArea, juce::Justification::centredLeft, true);
+
+        // Bottom separator
+        g.setColour(juce::Colour(0xff333355));
+        g.drawHorizontalLine(slotBounds[i].getBottom() - 1,
+                             static_cast<float>(slotBounds[i].getX()),
+                             static_cast<float>(slotBounds[i].getRight()));
+    }
+}
+
+void SlotBar::mouseDown(const juce::MouseEvent& e)
+{
+    auto pos = e.getPosition();
+    for (int i = 0; i < numSlots; ++i)
+    {
+        if (slotBounds[i].contains(pos))
+        {
+            if (i != activeIndex)
+            {
+                activeIndex = i;
+                repaint();
+                if (onSlotChanged)
+                    onSlotChanged(i);
+            }
+            break;
+        }
+    }
+}
+
+// ============================================================
+// MainLayout implementation
+// ============================================================
+
 MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
 {
-    // Slot tabs (1-4)
-    auto tabColour = juce::Colour(0xff2a2a4a);
-    slotTabs.addTab("Slot 1", tabColour, -1);
-    slotTabs.addTab("Slot 2", tabColour, -1);
-    slotTabs.addTab("Slot 3", tabColour, -1);
-    slotTabs.addTab("Slot 4", tabColour, -1);
-    slotTabs.setColour(juce::TabbedButtonBar::tabOutlineColourId,  juce::Colour(0xff333355));
-    slotTabs.setColour(juce::TabbedButtonBar::frontOutlineColourId, juce::Colour(0xff5555aa));
+    slotBar.onSlotChanged = [this](int idx) {
+        if (onSlotChanged)
+            onSlotChanged(idx);
+    };
 
-    addAndMakeVisible(slotTabs);
+    // Toolbar buttons
+    midiButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a2a4a));
+    midiButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
+    midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };
+
+    storeButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a2a4a));
+    storeButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
+    storeButton.onClick = [this]() { if (onStoreToBankClicked) onStoreToBankClicked(); };
+
+    // Left column: inspector + toolbar + slots
+    leftColumn.addAndMakeVisible(inspectorPanel);
+    leftColumn.addAndMakeVisible(midiButton);
+    leftColumn.addAndMakeVisible(storeButton);
+    leftColumn.addAndMakeVisible(slotBar);
+
+    addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
-    addAndMakeVisible(inspectorPanel);
     addAndMakeVisible(canvasComponent);
     addAndMakeVisible(patchBrowserPanel);
     addAndMakeVisible(statusBar);
     addAndMakeVisible(resizerBar1);
     addAndMakeVisible(resizerBar2);
 
-    // Layout: [inspector | bar | canvas | bar | patchBrowser]
-    layoutManager.setItemLayout(0, 150, 350, 210);   // inspector (left)
+    // Layout: [leftColumn | bar | canvas | bar | patchBrowser]
+    layoutManager.setItemLayout(0, 150, 350, 210);   // left column
     layoutManager.setItemLayout(1, 4, 4, 4);          // resizer
     layoutManager.setItemLayout(2, 200, -1.0, -0.6);  // canvas (most space)
     layoutManager.setItemLayout(3, 4, 4, 4);          // resizer
@@ -38,14 +187,22 @@ void MainLayout::resized()
     auto area = getLocalBounds();
 
     statusBar.setBounds(area.removeFromBottom(statusBarHeight));
-    slotTabs.setBounds(area.removeFromTop(slotTabHeight));
     headerBar.setBounds(area.removeFromTop(headerBarHeight));
 
     juce::Component* comps[] = {
-        &inspectorPanel, &resizerBar1, &canvasComponent, &resizerBar2, &patchBrowserPanel
+        &leftColumn, &resizerBar1, &canvasComponent, &resizerBar2, &patchBrowserPanel
     };
     layoutManager.layOutComponents(comps, 5,
                                    area.getX(), area.getY(),
                                    area.getWidth(), area.getHeight(),
                                    false, true);
+
+    // Layout left column: inspector | toolbar buttons | slot bar
+    auto leftArea = leftColumn.getLocalBounds();
+    slotBar.setBounds(leftArea.removeFromBottom(slotBarHeight));
+    auto toolRow = leftArea.removeFromBottom(toolbarHeight);
+    auto halfW = toolRow.getWidth() / 2;
+    midiButton.setBounds(toolRow.removeFromLeft(halfW).reduced(2));
+    storeButton.setBounds(toolRow.reduced(2));
+    inspectorPanel.setBounds(leftArea);
 }

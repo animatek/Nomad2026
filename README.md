@@ -130,9 +130,19 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Displays module description and per-parameter documentation from the original Nord Modular Editor v3.03 help file (157 modules)
   - Fuzzy name matching (fullname, short name, normalized hyphens/spaces)
   - Draggable popup, close with Escape/F1/X button
+- [x] **Multi-slot support (A/B/C/D)**:
+  - 4 independent slots with separate patches, undo managers, synchronizers
+  - Slot bar in left column (below inspector) with synth icons and patch names
+  - Switching slots sends ActivateSlot to synth and requests patch if empty
+  - New Patch uploads empty patch to synth to reset the slot
+- [x] **Beta warning popup**: Styled floating popup at startup (matches F1 help style), "Don't show again" option, re-show from Help menu
+- [x] **Bug reporting**: "Report a bug" button in header bar linking to GitHub Issues
+- [x] **MIDI Connect and Store to Bank buttons**: Toolbar buttons in left column above slot bar
+- [x] **Canvas hint watermark**: "Press Enter to add modules" shown on empty canvas sections
+- [x] **Poly/Common default split**: 90/10 default divider position (poly dominant)
 
 ### Next Up
-- [ ] Multi-slot support (load/save per slot using slot tabs)
+- [ ] Mac SysEx communication bug (CoreMIDI fragmentation)
 
 ## Roadmap
 
@@ -153,7 +163,7 @@ This section outlines all planned features to achieve feature parity with the or
 - [x] **Send Patch to Slot** - Upload editor patch to synth working slot (full 16-section PDL2 upload)
 - [x] **Save Patch in Synth** - Store uploaded patch to a bank location
 - [x] **New Patch** - Create a new empty patch in the editor
-- [ ] **Multi-Slot Support** - Support all 4 slots (A, B, C, D) instead of just slot 0
+- [x] **Multi-Slot Support** - All 4 slots (A, B, C, D) with independent patches, undo, and sync
 
 ### Synth Communication
 - [ ] **Synth Settings Dialog** (Ctrl+G) - Configure synth parameters:

@@ -94,54 +94,54 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire inspector morph group remove
   mainLayout->getInspector().onMorphGroupChanged = [this](int section, Module* module,
                                                            int paramIndex, int morphGroup) {
-    if (!currentPatch || !module || !undoContext) return;
+    if (!currentPatch() || !module || !undoContext()) return;
     int moduleId = module->getContainerIndex();
     int oldGroup = -1, oldRange = 0;
-    for (auto& ma : currentPatch->morphAssignments)
+    for (auto& ma : currentPatch()->morphAssignments)
         if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
         { oldGroup = ma.morph; oldRange = ma.range; break; }
-    undoManager.beginNewTransaction("Morph Assign");
-    undoManager.perform(new MorphAssignAction(*undoContext, section, moduleId, paramIndex, morphGroup, oldGroup, oldRange));
+    undoManager().beginNewTransaction("Morph Assign");
+    undoManager().perform(new MorphAssignAction(*undoContext(), section, moduleId, paramIndex, morphGroup, oldGroup, oldRange));
   };
 
   // Wire inspector morph range change
   mainLayout->getInspector().onMorphRangeChanged = [this](int section, Module* module,
                                                            int paramIndex, int span, int dir) {
-    if (!module || !currentPatch || !undoContext) return;
+    if (!module || !currentPatch() || !undoContext()) return;
     int moduleId = module->getContainerIndex();
     int newRange = (dir == 0) ? span : -span;
     int oldRange = 0;
-    for (auto& ma : currentPatch->morphAssignments)
+    for (auto& ma : currentPatch()->morphAssignments)
         if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
         { oldRange = ma.range; break; }
-    undoManager.beginNewTransaction("Morph Range");
-    undoManager.perform(new MorphRangeChangeAction(*undoContext, section, moduleId, paramIndex, oldRange, newRange));
+    undoManager().beginNewTransaction("Morph Range");
+    undoManager().perform(new MorphRangeChangeAction(*undoContext(), section, moduleId, paramIndex, oldRange, newRange));
   };
 
   // Wire knob/CC removal from inspector X buttons
   mainLayout->getInspector().onKnobRemoved = [this](int section, int moduleId, int paramId, int /*knobIndex*/) {
-    if (!currentPatch || !undoContext) return;
+    if (!currentPatch() || !undoContext()) return;
     int prevKnob = -1;
     for (int k = 0; k < 23; ++k)
     {
-        auto& ka = currentPatch->knobAssignments[static_cast<size_t>(k)];
+        auto& ka = currentPatch()->knobAssignments[static_cast<size_t>(k)];
         if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
         { prevKnob = k; break; }
     }
     if (prevKnob < 0) return;
-    undoManager.beginNewTransaction("Knob Deassign");
-    undoManager.perform(new KnobAssignAction(*undoContext, section, moduleId, paramId, -1, prevKnob));
+    undoManager().beginNewTransaction("Knob Deassign");
+    undoManager().perform(new KnobAssignAction(*undoContext(), section, moduleId, paramId, -1, prevKnob));
   };
 
   mainLayout->getInspector().onMidiCtrlRemoved = [this](int section, int moduleId, int paramId, int /*midiCC*/) {
-    if (!currentPatch || !undoContext) return;
+    if (!currentPatch() || !undoContext()) return;
     int prevCtrl = -1;
-    for (auto& ca : currentPatch->ctrlAssignments)
+    for (auto& ca : currentPatch()->ctrlAssignments)
         if (ca.section == section && ca.module == moduleId && ca.param == paramId)
         { prevCtrl = ca.control; break; }
     if (prevCtrl < 0) return;
-    undoManager.beginNewTransaction("MIDI CC Deassign");
-    undoManager.perform(new MidiCtrlAssignAction(*undoContext, section, moduleId, paramId, -1, prevCtrl));
+    undoManager().beginNewTransaction("MIDI CC Deassign");
+    undoManager().perform(new MidiCtrlAssignAction(*undoContext(), section, moduleId, paramId, -1, prevCtrl));
   };
 
   // Wire patch list updates to patch browser panel
@@ -223,40 +223,51 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         DBG("Patch data received: " + juce::String(sections.size()) +
             " sections — parsing...");
 
+        int targetSlot = connectionManager.getCurrentSlot();
         PatchParser parser(moduleDescs);
         auto patch = parser.parse(sections);
 
-        juce::MessageManager::callAsync([this, p = std::move(patch)]() mutable {
-          // CRITICAL: Destroy synchronizer BEFORE replacing patch to avoid dangling reference
-          patchSynchronizer.reset();
-          connectionManager.setSuppressNewPatchInSlot(false);
-          // Clear inspector before replacing patch — its currentModule points into the old patch
-          mainLayout->getInspector().clearModule();
+        juce::MessageManager::callAsync([this, p = std::move(patch), targetSlot]() mutable {
+          // Store patch in the correct slot
+          slotSynchronizers[targetSlot].reset();
 
-          currentPatch = std::move(p);
-          if (currentPatch) {
-            mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs,
-                                             &themeData);
-            mainLayout->getHeaderBar().setPatch(currentPatch.get());
-            mainLayout->getInspector().setPatch(currentPatch.get());
-            mainLayout->getStatusBar().setConnectionStatus(
-                "Connected - " + currentPatch->getName(), true);
+          // If replacing the active slot, clear UI refs BEFORE destroying old patch
+          if (targetSlot == activeSlot) {
+            mainLayout->getInspector().clearModule();
+          }
 
+          slotPatches[targetSlot] = std::move(p);
+          if (slotPatches[targetSlot]) {
             if (connectionManager.isConnected()) {
-              patchSynchronizer = std::make_unique<PatchSynchronizer>(
-                  *currentPatch, connectionManager);
-              connectionManager.setSuppressNewPatchInSlot(true);
-              std::cout << "[SYNC] Patch synchronizer enabled after patch load from synth" << std::endl;
+              slotSynchronizers[targetSlot] = std::make_unique<PatchSynchronizer>(
+                  *slotPatches[targetSlot], connectionManager);
             }
 
-            undoManager.clearUndoHistory();
-            rebuildUndoContext();
+            slotUndoManagers[targetSlot].clearUndoHistory();
+            rebuildUndoContext(targetSlot);
 
-            // Update browser indicator to show which patch is currently loaded
-            int ls = connectionManager.getLastLoadedSection();
-            int lp = connectionManager.getLastLoadedPosition();
-            if (ls >= 0 && lp >= 0)
-                mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
+            // If this is the currently viewed slot, update the UI
+            if (targetSlot == activeSlot) {
+              connectionManager.setSuppressNewPatchInSlot(false);
+              mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
+              mainLayout->getHeaderBar().setPatch(currentPatch().get());
+              mainLayout->getInspector().setPatch(currentPatch().get());
+              mainLayout->getStatusBar().setConnectionStatus(
+                  "Connected - " + currentPatch()->getName(), true);
+              connectionManager.setSuppressNewPatchInSlot(true);
+
+              int ls = connectionManager.getLastLoadedSection();
+              int lp = connectionManager.getLastLoadedPosition();
+              if (ls >= 0 && lp >= 0)
+                  mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
+            }
+
+            // Update slot bar with patch name
+            mainLayout->getSlotBar().setSlotName(targetSlot, slotPatches[targetSlot]->getName());
+
+            const char* slotLetters[] = {"A", "B", "C", "D"};
+            std::cout << "[SYNC] Patch loaded into slot " << slotLetters[targetSlot]
+                      << ": " << slotPatches[targetSlot]->getName().toStdString() << std::endl;
           }
         });
       });
@@ -270,16 +281,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire parameter drag complete for undo (fires once on mouseUp with old+new)
   mainLayout->getCanvas().setParameterDragCompleteCallback(
       [this](int section, int moduleId, int parameterId, int oldValue, int newValue) {
-        if (!undoContext) return;
-        undoManager.beginNewTransaction("Parameter Change");
-        undoManager.perform(new ParameterChangeAction(*undoContext, section, moduleId, parameterId, oldValue, newValue));
+        if (!undoContext()) return;
+        undoManager().beginNewTransaction("Parameter Change");
+        undoManager().perform(new ParameterChangeAction(*undoContext(), section, moduleId, parameterId, oldValue, newValue));
       });
 
   // Wire module drops from browser to patch model
   mainLayout->getCanvas().setModuleDropCallback(
       [this](int typeId, int section, int gridX, int gridY, const juce::String& name) {
-        if (!currentPatch || !undoContext) return;
-        if (!undoManager.perform(new AddModuleAction(*undoContext, section, typeId, gridX, gridY, name)))
+        if (!currentPatch() || !undoContext()) return;
+        if (!undoManager().perform(new AddModuleAction(*undoContext(), section, typeId, gridX, gridY, name)))
           mainLayout->getStatusBar().setConnectionStatus(
             "Failed to add module - check synth memory/limits", true);
       });
@@ -287,15 +298,15 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire module delete from canvas context menu
   mainLayout->getCanvas().setDeleteModuleCallback(
       [this](int section, Module* module) {
-        if (!currentPatch || !undoContext || !module) return;
-        undoManager.perform(new DeleteModuleAction(*undoContext, section, module));
+        if (!currentPatch() || !undoContext() || !module) return;
+        undoManager().perform(new DeleteModuleAction(*undoContext(), section, module));
       });
 
   // Wire module move undo from canvas
   mainLayout->getCanvas().setModuleMoveCallback(
       [this](int section, int moduleIndex, juce::Point<int> oldPos, juce::Point<int> newPos) {
-        if (!currentPatch || !undoContext) return;
-        undoManager.perform(new MoveModuleAction(*undoContext, section, moduleIndex, oldPos, newPos));
+        if (!currentPatch() || !undoContext()) return;
+        undoManager().perform(new MoveModuleAction(*undoContext(), section, moduleIndex, oldPos, newPos));
       });
 
   // Wire module rename from canvas context menu
@@ -309,64 +320,64 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire morph group assignment from parameter context menu
   mainLayout->getCanvas().setMorphAssignCallback(
       [this](int section, int moduleId, int paramId, int morphGroup) {
-        if (!currentPatch || !undoContext) return;
+        if (!currentPatch() || !undoContext()) return;
         // Find previous assignment
         int oldGroup = -1, oldRange = 0;
-        for (auto& ma : currentPatch->morphAssignments)
+        for (auto& ma : currentPatch()->morphAssignments)
             if (ma.section == section && ma.module == moduleId && ma.param == paramId)
             { oldGroup = ma.morph; oldRange = ma.range; break; }
-        undoManager.beginNewTransaction("Morph Assign");
-        undoManager.perform(new MorphAssignAction(*undoContext, section, moduleId, paramId, morphGroup, oldGroup, oldRange));
+        undoManager().beginNewTransaction("Morph Assign");
+        undoManager().perform(new MorphAssignAction(*undoContext(), section, moduleId, paramId, morphGroup, oldGroup, oldRange));
       });
 
   // Wire zero morph / Ctrl+drag (MorphRangeChange) from canvas
   mainLayout->getCanvas().setMorphRangeChangeCallback(
       [this](int section, int moduleId, int paramId, int span, int direction) {
-        if (!currentPatch || !undoContext) return;
+        if (!currentPatch() || !undoContext()) return;
         int newSignedRange = (direction == 0) ? span : -span;
         int oldSignedRange = 0;
-        for (auto& ma : currentPatch->morphAssignments)
+        for (auto& ma : currentPatch()->morphAssignments)
             if (ma.section == section && ma.module == moduleId && ma.param == paramId)
             { oldSignedRange = ma.range; break; }
-        undoManager.beginNewTransaction("Morph Range");
-        undoManager.perform(new MorphRangeChangeAction(*undoContext, section, moduleId, paramId, oldSignedRange, newSignedRange));
+        undoManager().beginNewTransaction("Morph Range");
+        undoManager().perform(new MorphRangeChangeAction(*undoContext(), section, moduleId, paramId, oldSignedRange, newSignedRange));
       });
 
   // Wire knob assignment from parameter context menu
   mainLayout->getCanvas().setKnobAssignCallback(
       [this](int section, int moduleId, int paramId, int knobIndex) {
-        if (!currentPatch || !undoContext) return;
+        if (!currentPatch() || !undoContext()) return;
         int prevKnob = -1;
         for (int k = 0; k < 23; ++k)
         {
-            auto& ka = currentPatch->knobAssignments[static_cast<size_t>(k)];
+            auto& ka = currentPatch()->knobAssignments[static_cast<size_t>(k)];
             if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
             { prevKnob = k; break; }
         }
         if (knobIndex == prevKnob) return; // no-op
-        undoManager.beginNewTransaction("Knob Assign");
-        undoManager.perform(new KnobAssignAction(*undoContext, section, moduleId, paramId, knobIndex, prevKnob));
+        undoManager().beginNewTransaction("Knob Assign");
+        undoManager().perform(new KnobAssignAction(*undoContext(), section, moduleId, paramId, knobIndex, prevKnob));
       });
 
   // Wire MIDI controller assignment from parameter context menu
   mainLayout->getCanvas().setMidiCtrlAssignCallback(
       [this](int section, int moduleId, int paramId, int midiCC) {
-        if (!currentPatch || !undoContext) return;
+        if (!currentPatch() || !undoContext()) return;
         int prevCtrl = -1;
-        for (auto& ca : currentPatch->ctrlAssignments)
+        for (auto& ca : currentPatch()->ctrlAssignments)
             if (ca.section == section && ca.module == moduleId && ca.param == paramId)
             { prevCtrl = ca.control; break; }
         if (midiCC == prevCtrl) return; // no-op
-        undoManager.beginNewTransaction("MIDI CC Assign");
-        undoManager.perform(new MidiCtrlAssignAction(*undoContext, section, moduleId, paramId, midiCC, prevCtrl));
+        undoManager().beginNewTransaction("MIDI CC Assign");
+        undoManager().perform(new MidiCtrlAssignAction(*undoContext(), section, moduleId, paramId, midiCC, prevCtrl));
       });
 
   // Wire cable creation undo from canvas
   mainLayout->getCanvas().setCableCreatedCallback(
       [this](int section, int outModIdx, int outConnIdx, bool outIsOut,
              int inModIdx, int inConnIdx, bool inIsOut) {
-        if (!currentPatch || !undoContext) return;
-        undoManager.perform(new AddCableAction(*undoContext, section,
+        if (!currentPatch() || !undoContext()) return;
+        undoManager().perform(new AddCableAction(*undoContext(), section,
             outModIdx, outConnIdx, outIsOut, inModIdx, inConnIdx, inIsOut, true));
       });
 
@@ -374,8 +385,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getCanvas().setCableDeletedCallback(
       [this](int section, int outModIdx, int outConnIdx, bool outIsOut,
              int inModIdx, int inConnIdx, bool inIsOut) {
-        if (!currentPatch || !undoContext) return;
-        undoManager.perform(new DeleteCableAction(*undoContext, section,
+        if (!currentPatch() || !undoContext()) return;
+        undoManager().perform(new DeleteCableAction(*undoContext(), section,
             outModIdx, outConnIdx, outIsOut, inModIdx, inConnIdx, inIsOut, true));
       });
 
@@ -390,11 +401,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire patch name changes to send to synth
   mainLayout->getHeaderBar().setNameChangeCallback(
       [this](const juce::String& newName) {
-        if (!currentPatch || !undoContext) return;
-        juce::String oldName = currentPatch->getName();
+        if (!currentPatch() || !undoContext()) return;
+        juce::String oldName = currentPatch()->getName();
         if (oldName == newName) return;
-        undoManager.beginNewTransaction("Rename Patch");
-        undoManager.perform(new RenamePatchAction(*undoContext, oldName, newName));
+        undoManager().beginNewTransaction("Rename Patch");
+        undoManager().perform(new RenamePatchAction(*undoContext(), oldName, newName));
+        mainLayout->getSlotBar().setSlotName(activeSlot, newName);
       });
 
   // Wire quick save button
@@ -441,9 +453,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this]() { mainLayout->getCanvas().shakeCables(); });
 
   // Wire undo/redo keyboard shortcuts from canvas
-  mainLayout->getCanvas().setUndoCallback([this]() { undoManager.undo(); });
-  mainLayout->getCanvas().setRedoCallback([this]() { undoManager.redo(); });
-  mainLayout->getCanvas().setUndoManager(&undoManager);
+  mainLayout->getCanvas().setUndoCallback([this]() { undoManager().undo(); });
+  mainLayout->getCanvas().setRedoCallback([this]() { undoManager().redo(); });
+  mainLayout->getCanvas().setUndoManager(&undoManager());
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
   connectionManager.setParameterChangeCallback([this](int section, int moduleId,
@@ -451,13 +463,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
                                                       int value) {
     juce::MessageManager::callAsync([this, section, moduleId, parameterId,
                                      value]() {
-      if (currentPatch == nullptr)
+      if (currentPatch() == nullptr)
         return;
 
       // Morph section (section=2, module=1, parameter=0-3)
       if (section == 2 && moduleId == 1 && parameterId >= 0 &&
           parameterId < 4) {
-        currentPatch->morphValues[static_cast<size_t>(parameterId)] = value;
+        currentPatch()->morphValues[static_cast<size_t>(parameterId)] = value;
         mainLayout->getHeaderBar().repaint();
         return;
       }
@@ -467,7 +479,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       if (mainLayout->getCanvas().isDragging(section, moduleId, parameterId))
         return;
 
-      auto &container = currentPatch->getContainer(section);
+      auto &container = currentPatch()->getContainer(section);
       auto *module = container.getModuleByIndex(moduleId);
       if (module == nullptr)
         return;
@@ -491,10 +503,34 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         + " — check console for details", 8000);
   });
 
+  // Wire toolbar buttons
+  mainLayout->onMidiSettingsClicked = [this]() { showMidiSettingsDialog(); };
+  mainLayout->onStoreToBankClicked = [this]() { storePatchToBank(); };
+  // Wire bug report button on header bar
+  mainLayout->getHeaderBar().setReportBugCallback([this]() {
+    openURL("https://github.com/animatek/Nomad2026/issues");
+  });
+
+  // Wire slot tab changes (user clicks tab)
+  mainLayout->onSlotChanged = [this](int slot) {
+    switchToSlot(slot);
+  };
+
+  // Wire synth slot changes (user presses slot button on hardware)
+  connectionManager.setSlotChangedCallback([this](int slot) {
+    juce::MessageManager::callAsync([this, slot]() {
+      mainLayout->getSlotBar().setCurrentTab(slot);
+      switchToSlot(slot);
+    });
+  });
+
   setSize(1280, 800);
 
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
   juce::Timer::callAfterDelay(500, [this]() { attemptAutoConnect(); });
+
+  // Show beta warning dialog (after UI is ready)
+  juce::Timer::callAfterDelay(800, [this]() { showBetaWarning(); });
 }
 
 MainComponent::~MainComponent() { menuBar.reset(); }
@@ -527,10 +563,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(10, "Quit");
   } else if (menuIndex == 1) // Edit
   {
-    menu.addItem(20, "Undo " + undoManager.getUndoDescription(),
-                 undoManager.canUndo(), false);
-    menu.addItem(21, "Redo " + undoManager.getRedoDescription(),
-                 undoManager.canRedo(), false);
+    menu.addItem(20, "Undo " + undoManager().getUndoDescription(),
+                 undoManager().canUndo(), false);
+    menu.addItem(21, "Redo " + undoManager().getRedoDescription(),
+                 undoManager().canRedo(), false);
   } else if (menuIndex == 2) // Device
   {
     menu.addItem(30, "MIDI Settings...");
@@ -545,6 +581,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(40, "Nord Modular Forum", true);
     menu.addItem(41, "Nord Modular Facebook Group", true);
     menu.addItem(42, "Nord Modular Patches Archive", true);
+    menu.addSeparator();
+    menu.addItem(43, "Report a Bug...", true);
+    menu.addItem(44, "Show Beta Warning...", true);
   }
   else if (menuIndex == 4) // About
   {
@@ -593,10 +632,10 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
     break;
   case 20:
-    undoManager.undo();
+    undoManager().undo();
     break;
   case 21:
-    undoManager.redo();
+    undoManager().redo();
     break;
   case 30:
     showMidiSettingsDialog();
@@ -621,6 +660,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 42:  // Patches Archive
     openURL("https://electro-music.com/nm_classic/");
     break;
+  case 43:  // Report Bug
+    openURL("https://github.com/animatek/Nomad2026/issues");
+    break;
+  case 44:  // Show Beta Warning
+    showBetaWarning(true);
+    break;
 
   // About menu
   case 50:  // Patreon
@@ -638,28 +683,74 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   }
 }
 
+void MainComponent::switchToSlot(int slot) {
+  if (slot < 0 || slot >= numSlots || slot == activeSlot)
+    return;
+
+  activeSlot = slot;
+
+  // Tell synth to switch active slot
+  if (connectionManager.isConnected())
+    connectionManager.selectSlot(slot);
+
+  // Clear inspector (points into old slot's patch)
+  mainLayout->getInspector().clearModule();
+
+  if (currentPatch()) {
+    mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
+    mainLayout->getHeaderBar().setPatch(currentPatch().get());
+    mainLayout->getInspector().setPatch(currentPatch().get());
+    mainLayout->getCanvas().setUndoManager(&undoManager());
+
+    const char* slotNames[] = {"A", "B", "C", "D"};
+    mainLayout->getStatusBar().setConnectionStatus(
+        juce::String("Slot ") + slotNames[slot] + " - " + currentPatch()->getName(),
+        connectionManager.isConnected());
+  } else {
+    mainLayout->getCanvas().setPatch(nullptr, nullptr, nullptr);
+    mainLayout->getHeaderBar().setPatch(nullptr);
+    mainLayout->getInspector().setPatch(nullptr);
+
+    const char* slotNames[] = {"A", "B", "C", "D"};
+    mainLayout->getStatusBar().setConnectionStatus(
+        juce::String("Slot ") + slotNames[slot] + " - empty",
+        connectionManager.isConnected());
+
+    // If connected, request this slot's patch from synth
+    if (connectionManager.isConnected())
+      connectionManager.requestPatch(slot);
+  }
+
+  // Suppress synth notifications for non-active slot synchronizers
+  connectionManager.setSuppressNewPatchInSlot(currentSynchronizer() != nullptr);
+
+  std::cout << "[SLOT] Switched to slot " << slot << std::endl;
+}
+
 void MainComponent::newPatch() {
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
-  patchSynchronizer.reset();
+  currentSynchronizer().reset();
   connectionManager.setSuppressNewPatchInSlot(false);
   mainLayout->getInspector().clearModule();
 
-  currentPatch = std::make_unique<Patch>();
-  currentPatchFile = juce::File();
-  mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
-  mainLayout->getHeaderBar().setPatch(currentPatch.get());
-  mainLayout->getInspector().setPatch(currentPatch.get());
+  currentPatch() = std::make_unique<Patch>();
+  currentPatchFile() = juce::File();
+  mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
+  mainLayout->getHeaderBar().setPatch(currentPatch().get());
+  mainLayout->getInspector().setPatch(currentPatch().get());
   mainLayout->getHeaderBar().clearCurrentLocation();
+  mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
 
   if (connectionManager.isConnected()) {
-    patchSynchronizer = std::make_unique<PatchSynchronizer>(*currentPatch, connectionManager);
+    // Upload empty patch to synth so it resets too
+    connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
+    currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), connectionManager);
     connectionManager.setSuppressNewPatchInSlot(true);
-    std::cout << "[SYNC] Patch synchronizer enabled for new patch" << std::endl;
   }
 
-  undoManager.clearUndoHistory();
-  rebuildUndoContext();
+  undoManager().clearUndoHistory();
+  rebuildUndoContext(activeSlot);
 }
 
 void MainComponent::openPatch() {
@@ -677,18 +768,18 @@ void MainComponent::openPatch() {
 }
 
 void MainComponent::savePatch() {
-  if (currentPatch == nullptr)
+  if (currentPatch() == nullptr)
     return;
 
-  if (currentPatchFile.existsAsFile()) {
-    savePatchToFile(currentPatchFile);
+  if (currentPatchFile().existsAsFile()) {
+    savePatchToFile(currentPatchFile());
   } else {
     savePatchAs();
   }
 }
 
 void MainComponent::savePatchAs() {
-  if (currentPatch == nullptr)
+  if (currentPatch() == nullptr)
     return;
 
   auto chooser = std::make_shared<juce::FileChooser>(
@@ -704,7 +795,7 @@ void MainComponent::savePatchAs() {
                           ? result
                           : result.withFileExtension("pch");
           if (savePatchToFile(file))
-            currentPatchFile = file;
+            currentPatchFile() = file;
         }
       });
 }
@@ -719,27 +810,28 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   }
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
-  patchSynchronizer.reset();
+  currentSynchronizer().reset();
   connectionManager.setSuppressNewPatchInSlot(false);
   // Clear inspector before replacing patch — its currentModule points into the old patch
   mainLayout->getInspector().clearModule();
 
-  currentPatch = std::move(patch);
-  currentPatchFile = file;
-  mainLayout->getCanvas().setPatch(currentPatch.get(), &moduleDescs, &themeData);
-  mainLayout->getHeaderBar().setPatch(currentPatch.get());
-  mainLayout->getInspector().setPatch(currentPatch.get());
+  currentPatch() = std::move(patch);
+  currentPatchFile() = file;
+  mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
+  mainLayout->getHeaderBar().setPatch(currentPatch().get());
+  mainLayout->getInspector().setPatch(currentPatch().get());
+  mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
 
   if (connectionManager.isConnected()) {
-    patchSynchronizer = std::make_unique<PatchSynchronizer>(
-        *currentPatch, connectionManager);
+    currentSynchronizer() = std::make_unique<PatchSynchronizer>(
+        *currentPatch(), connectionManager);
     connectionManager.setSuppressNewPatchInSlot(true);
     std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
 
-  undoManager.clearUndoHistory();
-  rebuildUndoContext();
+  undoManager().clearUndoHistory();
+  rebuildUndoContext(activeSlot);
 }
 
 void MainComponent::uploadToActiveSlot() {
@@ -750,7 +842,7 @@ void MainComponent::uploadToActiveSlot() {
         "Please connect to the Nord Modular first.");
     return;
   }
-  if (currentPatch == nullptr) {
+  if (currentPatch() == nullptr) {
     juce::AlertWindow::showMessageBoxAsync(
         juce::MessageBoxIconType::WarningIcon,
         "No Patch",
@@ -765,22 +857,22 @@ void MainComponent::uploadToActiveSlot() {
 
   // Suppress synchronizer during upload to prevent redundant SysEx
   // (the upload replaces the entire patch, individual sync messages are wasteful and cause race conditions)
-  if (patchSynchronizer)
-    patchSynchronizer->setSuppressed(true);
+  if (currentSynchronizer())
+    currentSynchronizer()->setSuppressed(true);
 
   juce::Component::SafePointer<MainComponent> safeThis(this);
   connectionManager.setUploadCompleteCallback([safeThis, slot]() {
     if (safeThis == nullptr) return;
     safeThis->connectionManager.setUploadCompleteCallback(nullptr);
     // Re-enable synchronizer after upload
-    if (safeThis->patchSynchronizer)
-      safeThis->patchSynchronizer->setSuppressed(false);
+    if (safeThis->currentSynchronizer())
+      safeThis->currentSynchronizer()->setSuppressed(false);
     const char* names[] = {"A", "B", "C", "D"};
     safeThis->mainLayout->getStatusBar().showMessage(
         juce::String("Patch uploaded to slot ") + names[slot], 3000);
   });
 
-  connectionManager.uploadPatch(slot, *currentPatch);
+  connectionManager.uploadPatch(slot, *currentPatch());
 }
 
 void MainComponent::storePatchToBank() {
@@ -791,7 +883,7 @@ void MainComponent::storePatchToBank() {
         "Please connect to the Nord Modular first.");
     return;
   }
-  if (currentPatch == nullptr) {
+  if (currentPatch() == nullptr) {
     juce::AlertWindow::showMessageBoxAsync(
         juce::MessageBoxIconType::WarningIcon,
         "No Patch",
@@ -845,11 +937,11 @@ void MainComponent::storePatchToBank() {
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {
-  if (currentPatch == nullptr)
+  if (currentPatch() == nullptr)
     return false;
 
   PchFileIO io(moduleDescs);
-  bool ok = io.writeFile(*currentPatch, file);
+  bool ok = io.writeFile(*currentPatch(), file);
 
   if (ok) {
     mainLayout->getStatusBar().showMessage("Saved: " + file.getFileName(), 3000);
@@ -893,19 +985,20 @@ void MainComponent::onConnectionStatusChanged(
     // with a fallback timer in ConnectionManager if no slot message arrives.
 
     // Enable synchronizer if we have a patch loaded
-    if (currentPatch && !patchSynchronizer) {
-      patchSynchronizer = std::make_unique<PatchSynchronizer>(
-          *currentPatch, connectionManager);
+    if (currentPatch() && !currentSynchronizer()) {
+      currentSynchronizer() = std::make_unique<PatchSynchronizer>(
+          *currentPatch(), connectionManager);
       connectionManager.setSuppressNewPatchInSlot(true);
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
     connectionManager.requestPatchList();
   } else {
-    // Disable synchronizer on disconnect
-    patchSynchronizer.reset();
+    // Disable all synchronizers on disconnect
+    for (int s = 0; s < numSlots; ++s)
+      slotSynchronizers[s].reset();
     connectionManager.setSuppressNewPatchInSlot(false);
-    std::cout << "[SYNC] Patch synchronizer disabled on disconnect" << std::endl;
+    std::cout << "[SYNC] All slot synchronizers disabled on disconnect" << std::endl;
   }
 }
 
@@ -1011,38 +1104,146 @@ void MainComponent::saveMidiSettings(const juce::String &inputId,
   DBG("Saved MIDI settings: input=" + inputId + " output=" + outputId);
 }
 
-void MainComponent::rebuildUndoContext()
+// Self-owning beta warning popup using the same style as ModuleHelpPopup
+class BetaWarningPopup : public juce::Component
 {
-    if (!currentPatch) { undoContext.reset(); return; }
-    undoContext = std::make_unique<UndoContext>(UndoContext{
-        *currentPatch, connectionManager, patchSynchronizer,
+public:
+    BetaWarningPopup(juce::Component* relativeTo, juce::ApplicationProperties& props)
+        : appProperties(props)
+    {
+        setOpaque(true);
+
+        titleLabel.setFont(juce::Font(juce::FontOptions(15.0f)).boldened());
+        titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xffffcc44));
+        titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+        titleLabel.setText("Nomad2026 - Beta", juce::dontSendNotification);
+        addAndMakeVisible(titleLabel);
+
+        closeButton.setButtonText("x");
+        closeButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+        closeButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaaaa));
+        closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
+        addAndMakeVisible(closeButton);
+
+        bodyText.setFont(juce::Font(juce::FontOptions(13.0f)));
+        bodyText.setColour(juce::Label::textColourId, juce::Colour(0xffdddddd));
+        bodyText.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+        bodyText.setText(
+            "Welcome to Nomad2026 Beta!\n\n"
+            "This software is under active development and may contain bugs "
+            "that could corrupt patches on your Nord Modular.\n\n"
+            "PLEASE:\n"
+            "  - Use experimental patches only\n"
+            "  - Back up any important patches before using this editor\n"
+            "  - Do NOT use this with patches you rely on for live performance\n\n"
+            "Found a bug? Click 'Report a bug' on the toolbar\n"
+            "or visit: github.com/animatek/Nomad2026/issues",
+            juce::dontSendNotification);
+        bodyText.setJustificationType(juce::Justification::topLeft);
+        bodyText.setMinimumHorizontalScale(1.0f);
+        addAndMakeVisible(bodyText);
+
+        suppressToggle.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffaaaacc));
+        addAndMakeVisible(suppressToggle);
+
+        okButton.setButtonText("I understand, let me in!");
+        okButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff333366));
+        okButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        okButton.onClick = [this]() {
+            if (suppressToggle.getToggleState()) {
+                auto* s = appProperties.getUserSettings();
+                if (s) { s->setValue("hideBetaWarning", true); s->saveIfNeeded(); }
+            }
+            removeFromDesktop();
+            delete this;
+        };
+        addAndMakeVisible(okButton);
+
+        setSize(440, 340);
+
+        if (relativeTo) {
+            auto* top = relativeTo->getTopLevelComponent();
+            auto screen = top->localAreaToGlobal(top->getLocalBounds());
+            setTopLeftPosition(screen.getX() + (screen.getWidth() - 440) / 2,
+                               screen.getY() + (screen.getHeight() - 340) / 2);
+        }
+
+        addToDesktop(juce::ComponentPeer::windowHasDropShadow);
+        setVisible(true);
+        toFront(true);
+        grabKeyboardFocus();
+    }
+
+    void paint(juce::Graphics& g) override {
+        g.fillAll(juce::Colour(0xff14142a));
+        g.setColour(juce::Colour(0xff333355));
+        g.fillRect(0, 31, getWidth(), 1);
+    }
+
+    void resized() override {
+        titleLabel.setBounds(8, 0, getWidth() - 40, 32);
+        closeButton.setBounds(getWidth() - 32, 2, 28, 28);
+        bodyText.setBounds(12, 38, getWidth() - 24, 210);
+        suppressToggle.setBounds(12, getHeight() - 68, getWidth() - 24, 24);
+        okButton.setBounds((getWidth() - 200) / 2, getHeight() - 38, 200, 30);
+    }
+
+    bool keyPressed(const juce::KeyPress& key) override {
+        if (key == juce::KeyPress::escapeKey || key == juce::KeyPress::returnKey) {
+            okButton.triggerClick();
+            return true;
+        }
+        return false;
+    }
+
+    void mouseDown(const juce::MouseEvent& e) override { dragger.startDraggingComponent(this, e); }
+    void mouseDrag(const juce::MouseEvent& e) override { dragger.dragComponent(this, e, nullptr); }
+
+private:
+    juce::ApplicationProperties& appProperties;
+    juce::Label titleLabel, bodyText;
+    juce::TextButton closeButton, okButton;
+    juce::ToggleButton suppressToggle { "Don't show this warning at startup" };
+    juce::ComponentDragger dragger;
+};
+
+void MainComponent::showBetaWarning(bool forceShow)
+{
+    auto* settings = appProperties.getUserSettings();
+    if (!forceShow && settings && settings->getBoolValue("hideBetaWarning", false))
+        return;
+
+    new BetaWarningPopup(this, appProperties);
+}
+
+void MainComponent::rebuildUndoContext(int slot)
+{
+    if (!slotPatches[slot]) { slotUndoContexts[slot].reset(); return; }
+    slotUndoContexts[slot] = std::make_unique<UndoContext>(UndoContext{
+        *slotPatches[slot], connectionManager, slotSynchronizers[slot],
         moduleDescs,
         [this]() {
             mainLayout->getCanvas().repaintCanvas();
             mainLayout->getInspector().refreshMorphList();
             mainLayout->getHeaderBar().repaint();
         },
-        [this, syncGen = std::make_shared<int>(0)]() {
-            // Debounced full patch upload after structural undo (add/delete module).
-            // Multiple undo actions in one grouped transaction each call syncToSynth,
-            // so we wait 80ms for all of them to settle before starting the upload.
-            if (!connectionManager.isConnected() || !currentPatch) return;
+        [this, slot, syncGen = std::make_shared<int>(0)]() {
+            if (!connectionManager.isConnected() || !slotPatches[slot]) return;
             int gen = ++(*syncGen);
             auto capturedGen = syncGen;
             juce::Component::SafePointer<MainComponent> safeThis(this);
-            juce::Timer::callAfterDelay(80, [safeThis, capturedGen, gen]() {
-                if (!safeThis || *capturedGen != gen) return;  // superseded by later call
-                if (!safeThis->connectionManager.isConnected() || !safeThis->currentPatch) return;
-                int slot = safeThis->connectionManager.getCurrentSlot();
-                if (safeThis->patchSynchronizer) safeThis->patchSynchronizer->setSuppressed(true);
-                safeThis->connectionManager.setUploadCompleteCallback([safeThis]() {
+            juce::Timer::callAfterDelay(80, [safeThis, capturedGen, gen, slot]() {
+                if (!safeThis || *capturedGen != gen) return;
+                if (!safeThis->connectionManager.isConnected() || !safeThis->slotPatches[slot]) return;
+                if (safeThis->slotSynchronizers[slot]) safeThis->slotSynchronizers[slot]->setSuppressed(true);
+                safeThis->connectionManager.setUploadCompleteCallback([safeThis, slot]() {
                     if (!safeThis) return;
                     safeThis->connectionManager.setUploadCompleteCallback(nullptr);
-                    if (safeThis->patchSynchronizer)
-                        safeThis->patchSynchronizer->setSuppressed(false);
+                    if (safeThis->slotSynchronizers[slot])
+                        safeThis->slotSynchronizers[slot]->setSuppressed(false);
                     safeThis->mainLayout->getStatusBar().showMessage("Patch synced to synth", 2000);
                 });
-                safeThis->connectionManager.uploadPatch(slot, *safeThis->currentPatch);
+                safeThis->connectionManager.uploadPatch(slot, *safeThis->slotPatches[slot]);
             });
         }
     });

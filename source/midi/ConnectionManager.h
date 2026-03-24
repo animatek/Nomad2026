@@ -49,6 +49,7 @@ public:
     void deletePatchInBank(int section, int position);
 
     int getCurrentSlot() const;
+    void selectSlot(int slot);  // Tell synth to switch active slot
     int getCurrentPatchId() const { return currentPatchId; }
 
     // Bank location of the last loaded patch (-1 = unknown, e.g. synth-side change)
@@ -76,6 +77,10 @@ public:
     // Called when synth sends an error notification (sc=0x7e)
     using SynthErrorCallback = std::function<void(int errorCode)>;
     void setSynthErrorCallback(SynthErrorCallback cb) { synthErrorCallback = std::move(cb); }
+
+    // Called when synth changes active slot (user pressed slot button on hardware)
+    using SlotChangedCallback = std::function<void(int slot)>;
+    void setSlotChangedCallback(SlotChangedCallback cb) { slotChangedCallback = std::move(cb); }
 
     // Called when synth ACKs an uploadPatch() — safe to send StorePatch now
     using UploadCompleteCallback = std::function<void()>;
@@ -121,6 +126,7 @@ private:
     PatchDataCallback patchDataCallback;
     ParameterChangeCallback parameterChangeCallback;
     SynthErrorCallback synthErrorCallback;
+    SlotChangedCallback slotChangedCallback;
     UploadCompleteCallback uploadCompleteCallback;
 
     // Patch request state

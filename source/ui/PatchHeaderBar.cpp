@@ -72,20 +72,7 @@ PatchHeaderBar::PatchHeaderBar()
     addAndMakeVisible(patchNameEditor.get());
     patchNameEditor->setVisible(false);  // Hidden by default
 
-    // Create quick save button (diskette icon)
-    quickSaveButton = std::make_unique<juce::DrawableButton>("QuickSave", juce::DrawableButton::ImageFitted);
-    quickSaveButton->setTooltip("Quick Save - Save to current bank location");
-    quickSaveButton->setClickingTogglesState(false);
-    quickSaveButton->onClick = [this]()
-    {
-        if (quickSaveCallback && currentSection >= 0 && currentPosition >= 0)
-            quickSaveCallback();
-    };
-
-    // Set diskette icon
-    createDisketteIcon();
-
-    addAndMakeVisible(quickSaveButton.get());
+    // Quick save button removed — now in left column toolbar
 }
 
 void PatchHeaderBar::createDisketteIcon()
@@ -121,18 +108,13 @@ void PatchHeaderBar::setCurrentLocation(int section, int position)
     currentSection = section;
     currentPosition = position;
 
-    // Update tooltip with location
-    int displayLocation = (section + 1) * 100 + position + 1;
-    quickSaveButton->setTooltip("Quick Save to location " + juce::String(displayLocation));
-    quickSaveButton->setEnabled(true);
+    (void)section; (void)position;
 }
 
 void PatchHeaderBar::clearCurrentLocation()
 {
     currentSection = -1;
     currentPosition = -1;
-    quickSaveButton->setTooltip("Quick Save - No location set");
-    quickSaveButton->setEnabled(false);
 }
 
 void PatchHeaderBar::setPatch(Patch* p)
@@ -156,14 +138,7 @@ void PatchHeaderBar::resized()
     if (patchNameEditor)
         patchNameEditor->setBounds(getPatchNameBounds());
 
-    // Position quick save button (next to patch name)
-    if (quickSaveButton)
-    {
-        int btnSize = saveBtnW;
-        int btnX = patchSecX_ + patchLblW + patchNameW + 4;
-        int btnY = (getHeight() - btnSize) / 2;
-        quickSaveButton->setBounds(btnX, btnY, btnSize, btnSize);
-    }
+    // (quick save button removed — now in left column toolbar)
 }
 
 juce::Rectangle<int> PatchHeaderBar::getPatchNameBounds() const
@@ -215,6 +190,18 @@ juce::Rectangle<float> PatchHeaderBar::getShakeButtonBounds() const
 bool PatchHeaderBar::isShakeButtonAt(juce::Point<int> pos) const
 {
     return getShakeButtonBounds().expanded(2.0f).contains(pos.toFloat());
+}
+
+juce::Rectangle<float> PatchHeaderBar::getBugButtonBounds() const
+{
+    auto shakeBounds = getShakeButtonBounds();
+    return { shakeBounds.getRight() + 6.0f, shakeBounds.getY(),
+             80.0f, static_cast<float>(cableToggleSize) };
+}
+
+bool PatchHeaderBar::isBugButtonAt(juce::Point<int> pos) const
+{
+    return getBugButtonBounds().expanded(2.0f).contains(pos.toFloat());
 }
 
 PatchHeaderBar::ArrowHit PatchHeaderBar::getVoiceArrowAt(juce::Point<int> pos) const
@@ -466,6 +453,18 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
         g.drawText("S", sb.toNearestInt(), juce::Justification::centred, false);
     }
+
+    // --- Bug Report Button ---
+    {
+        auto bb = getBugButtonBounds();
+        g.setColour(juce::Colour(0xff663333));
+        g.fillRoundedRectangle(bb, 3.0f);
+        g.setColour(juce::Colour(0xffaa6666));
+        g.drawRoundedRectangle(bb.reduced(0.5f), 3.0f, 1.0f);
+        g.setColour(juce::Colour(0xffddaaaa));
+        g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
+        g.drawText("Report a bug", bb.toNearestInt(), juce::Justification::centred, false);
+    }
 }
 
 // --- Mouse interaction ---
@@ -514,6 +513,14 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     {
         if (shakeCablesCallback)
             shakeCablesCallback();
+        return;
+    }
+
+    // Bug report button
+    if (isBugButtonAt(pos))
+    {
+        if (reportBugCallback)
+            reportBugCallback();
         return;
     }
 }
