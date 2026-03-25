@@ -42,6 +42,14 @@ Thumbs.db
 
 # Legacy notes (not part of the project)
 Info.md
+firebase-debug.log
+image.png
+jpf-boot-error.txt
+run_debug.sh
+run_with_logs.sh
+BUGFIX_SYNC_CRASHES.md
+SYNC_IMPLEMENTATION.md
+TESTING_INSTRUCTIONS.md
 
 # Beta app builds
 Apps/
