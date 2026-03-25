@@ -104,6 +104,8 @@ plugins/
 - **96 kHz** internal sample rate, **24-bit** processing
 - DAC: 18-bit / 96 kHz | ADC: 16-bit / 48 kHz
 - Each patch is confined to **one DSP** — cannot span multiple DSPs (G1 limitation vs G2)
+- 4 DSPs maps naturally to 4 slots, but DSP resources are shared dynamically — not a fixed 1:1 assignment
+- With the Voice Expansion (8 DSPs), you still have 4 slots but more DSP headroom per slot
 - Polyphony is dynamic: simple patches up to ~32 voices, complex patches may use a full DSP per voice
 
 ### Variants
