@@ -97,6 +97,47 @@ plugins/
 
 ---
 
+## Hardware Specifications (Nord Modular G1)
+
+### DSP & Processing
+- **4 x Motorola 56303 DSP** chips (standard), expandable to **8 DSPs** via Voice Expansion Board
+- **96 kHz** internal sample rate, **24-bit** processing
+- DAC: 18-bit / 96 kHz | ADC: 16-bit / 48 kHz
+- Each patch is confined to **one DSP** — cannot span multiple DSPs (G1 limitation vs G2)
+- Polyphony is dynamic: simple patches up to ~32 voices, complex patches may use a full DSP per voice
+
+### Variants
+| Model | DSPs | Slots | Knobs | Keys | Notes |
+|-------|------|-------|-------|------|-------|
+| Nord Modular Keyboard | 4 (exp. to 8) | 4 | 23 assignable | 25 (velocity) | Full-size unit |
+| Nord Modular Rack | 4 (exp. to 8) | 4 | 23 assignable | — | Same as Key minus keyboard |
+| Nord Micro Modular | 1 (fixed) | 1 | 4 + 1 button | — | Half-rack, monotimbral |
+
+### Memory & Storage
+- **9 banks x 99 patches** = 891 slots (storage depends on patch complexity)
+- Patches stored in flash memory (no battery backup needed)
+- Performance slots can combine up to 4 patches (one per slot)
+- Micro Modular: reduced storage capacity
+
+### I/O
+- Audio: stereo in/out (line-level), headphone out
+- MIDI: standard In/Out + dedicated "PC" In/Out for editor SysEx traffic
+- Pedal inputs: sustain + expression (Key/Rack only)
+- All knobs and parameters send/receive MIDI CC
+
+### Firmware History
+- OS v2.1, v3.0: added modules, Mac OS 8.6+ support
+- **OS v3.03** (2000, final): added 16-band vocoder, 14-band filter bank, ring modulator, new EQ modules
+- Device types in protocol: `0x00` = Keyboard, `0x01` = Rack, `0x02` = Micro Modular
+
+### G1 vs G2 Limitations
+- No MIDI Out or CV/Gate output modules (G2 added these)
+- No DSP-intensive effects (reverb, long delays) — G2 added them
+- Single-DSP per patch — G2 could allocate multiple DSPs per patch
+- G1 multi-DSP usage requires multiple slots + physical audio cables between them
+
+---
+
 ## 3. Nord Modular MIDI Protocol (v3.03)
 
 ### SysEx Envelope
