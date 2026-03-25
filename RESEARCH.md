@@ -167,6 +167,73 @@ Encoded as `cc=0x1f`, containing embedded patch sections:
 - ACK messages confirm operations (type=0x7f for completion)
 - Patch data split across multiple SysEx messages with first/last flags
 - All data uses 7-bit encoding for MIDI compatibility
+- Checksum = `sum(all bytes from F0 through last payload byte) % 128` — **includes F0 and 0x33**
+- Not all messages have checksums: IAm (cc=0x00) has none; Parameter (0x13), PatchHandling (0x17) do
+
+### Patch Retrieval Flow
+
+To retrieve the full patch currently loaded in a slot:
+
+**Step 1** — Send `RequestPatch` (cc=0x17, pp=0x41, ssc=0x35). Synth ACKs with a `patchId`.
+
+**Step 2** — Send 13 `GetPatch` messages (cc=0x17, PatchModification: pid + section code + payload). The synth responds to each with a `PatchPacket` (cc=0x1c–0x1f, where the 2 LSBs encode first/last packet flags).
+
+| # | Section | sc | Description |
+|---|---------|-----|-------------|
+| 1 | Header | 0x20 or 0x28 | Voice config, portamento, octave shift |
+| 2 | ModuleDump (poly) | 0x4b, section=1 | Module list for poly voice area |
+| 3 | ModuleDump (common) | 0x4b, section=0 | Module list for common voice area |
+| 4 | CableDump (poly) | 0x53, section=1 | Cable connections (poly) |
+| 5 | CableDump (common) | 0x53, section=0 | Cable connections (common) |
+| 6 | ParameterDump (poly) | 0x4c, section=1 | All parameter values (poly) |
+| 7 | ParameterDump (common) | 0x4c, section=0 | All parameter values (common) |
+| 8 | MorphMap | 0x66 | Morph assignments |
+| 9 | KnobMapDump | 0x63 | 23 knob-to-parameter assignments |
+| 10 | ControlMapDump | 0x61 | MIDI CC-to-parameter mappings |
+| 11 | NameDump (poly) | 0x4e, section=1 | Module names (poly) |
+| 12 | NameDump (common) | 0x4e, section=0 | Module names (common) |
+| 13 | NoteDump | 0x68 | Note event data |
+
+**Important**: Each PatchPacket response is independently 7-bit encoded — you cannot concatenate raw bytes across packets. Decode each packet separately. The first PatchPacket (Header request) contains both Header (type=33) and PatchName2 (type=39).
+
+### Section Binary Formats (from PDL2 spec)
+
+**ParameterDump** — all parameter values for one voice area:
+```
+ParameterDump := section:1 nmodules:7 nmodules*Parameter
+Parameter     := index:7 type:7 <type-specific params>
+```
+Each module's parameters are keyed by `type` (77 distinct layouts, types 3–127). **Parameter bit widths vary per module type** — e.g., OscA (type 7) uses `[7,7,7,7,2,7,7,7,7,1]` bits. You must build a lookup table from the PDL2 spec; writing all params as 7-bit will silently corrupt data.
+
+**KnobMapDump** — which parameters are assigned to the 23 physical knobs:
+```
+KnobMapDump    := Knob * 23
+Knob           := assigned:1 assigned*KnobAssignment
+KnobAssignment := section:2 module:7 parameter:7
+```
+Each knob is either unassigned (1 bit = 0) or assigned (1 + 2 + 7 + 7 = 17 bits) to a specific section/module/parameter.
+
+**ControlMapDump** — MIDI CC number to parameter mappings:
+```
+ControlMapDump := ncontrols:7 ncontrols*Control
+Control        := control:7 section:2 module:7 parameter:7
+```
+
+**MorphMap** — morph source assignments:
+```
+MorphMap := 4*MorphValue  KeyboardAssignment  nentries:7 nentries*MorphEntry
+MorphValue := value:7
+MorphEntry := section:2 module:7 parameter:7 morphIndex:2 range:8
+```
+
+### 7-Bit Encoding
+
+All patch data is 7-bit encoded for MIDI compatibility. Every 7 bytes of original data are preceded by 1 MSB byte containing the high bits:
+```
+Encoded: [MSB] [b0] [b1] [b2] [b3] [b4] [b5] [b6]
+MSB bits: bit6=b0.7, bit5=b1.7, bit4=b2.7, ..., bit0=b6.7
+```
+Decode by restoring the MSB of each byte from the corresponding MSB bit. Each PatchPacket must be decoded independently.
 
 ---
 
