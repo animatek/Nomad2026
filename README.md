@@ -279,6 +279,21 @@ cmake --build build-win-release --config Release
 
 Nord Modular data files (modules, theme) are embedded in the binary via JUCE BinaryData — no external data files required.
 
+### Experimental: VST3/CLAP Plugin Build
+
+The editor can also be built as a VST3 or CLAP plugin (for use inside DAWs like Bitwig, Reaper, etc.). This is experimental and not yet production-ready.
+
+```bash
+# Build all plugin formats
+cmake --build build --target Nomad2026Plugin_VST3 Nomad2026Plugin_CLAP -j$(nproc)
+
+# Install plugins
+cp -r build/Nomad2026Plugin_artefacts/Debug/VST3/Nomad2026.vst3 ~/.vst3/
+cp build/Nomad2026Plugin_artefacts/Debug/CLAP/Nomad2026.clap ~/.clap/
+```
+
+**Note:** Plugin builds require the clap-juce-extensions submodule: `git submodule update --init --recursive`
+
 Requires JUCE (included as a git submodule in `JUCE/`) and a C++17 compiler.
 
 ## Technical Documentation

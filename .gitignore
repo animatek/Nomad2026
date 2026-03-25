@@ -46,8 +46,16 @@ Info.md
 # Beta app builds
 Apps/
 
+# Implementation notes (local reference)
+Implementaciones/
+
 # Claude Code local data
 .claude/
 
 # LSP cache
 .cache/
+
+# Plugin build artifacts (experimental, not part of main project yet)
+*.vst3
+*.clap
+*.component
