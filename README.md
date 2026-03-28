@@ -262,7 +262,9 @@ This section outlines all planned features to achieve feature parity with the or
     - Bundled offline packs as initial approach; live scraping as stretch goal
 
 ### Quality of Life
-- [ ] **Module Rendering Polish** - Compare each module type with original editor for pixel-perfect accuracy (see MODULE_CHECKLIST.md)
+- [ ] **Module Rendering Polish** - Systematic review of all 110+ modules against original editor (see [MODULE_CHECKLIST.md](MODULE_CHECKLIST.md))
+  - Per-module verification: layout/size, graphics/custom displays, LEDs/meters, buttons/icons, labels, parameter interaction
+  - Categories: In/Out, Oscillator, Filter, Amplifier, Envelope, LFO, FX, Delay, Mixer, Switch, Logic, Sequencer, MIDI, Random
 - [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search
 - [ ] **Dark/Light Theme** - Switchable color themes (Dark default, Light mode) via configurable palette
 - [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
