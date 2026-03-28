@@ -149,6 +149,14 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **macOS SysEx communication**: working correctly — previous issues were caused by a faulty USB hub, not a software bug
 - [x] **Patch file compatibility fix**: .pch files from new patches now load correctly in original editors (Nomad, NM 3.03) — module indices start at 1, CustomDump generated from descriptors, correct header defaults
 
+- [x] **Canvas Zoom** (Ctrl+scroll, Ctrl++/-, Z, Shift+Z):
+  - Ctrl + mouse wheel: zoom in/out centered on cursor (75%-300%)
+  - Ctrl++ / Ctrl+-: keyboard zoom in/out
+  - Z: zoom-to-selection (fits selected modules in view) or reset to 100%
+  - Shift+Z: always reset to 100%
+  - Middle-click drag: pan canvas (hand tool)
+  - View menu with all zoom controls and current zoom indicator
+
 ### Next Up
 - [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)
 - [ ] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.

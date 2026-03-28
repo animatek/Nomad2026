@@ -612,7 +612,7 @@ void MainComponent::resized() {
 }
 
 juce::StringArray MainComponent::getMenuBarNames() {
-  return {"File", "Edit", "Device", "Help", "About"};
+  return {"File", "Edit", "View", "Device", "Help", "About"};
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
@@ -636,7 +636,20 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                  undoManager().canUndo(), false);
     menu.addItem(21, "Redo " + undoManager().getRedoDescription(),
                  undoManager().canRedo(), false);
-  } else if (menuIndex == 2) // Device
+  } else if (menuIndex == 2) // View
+  {
+    float zoom = mainLayout->getCanvas().getZoomLevel();
+    menu.addItem(60, "Zoom In\tCtrl++");
+    menu.addItem(61, "Zoom Out\tCtrl+-");
+    menu.addItem(62, "Reset Zoom (100%)\tShift+Z");
+    menu.addItem(63, "Zoom to Selection\tZ", !mainLayout->getCanvas().isDragging(0, 0, 0));  // always enabled
+    menu.addSeparator();
+    juce::String zoomLabel = "Zoom: " + juce::String(juce::roundToInt(zoom * 100)) + "%";
+    menu.addItem(-1, zoomLabel, false);
+    menu.addSeparator();
+    menu.addItem(64, "Shake Cables\tS");
+  }
+  else if (menuIndex == 3) // Device
   {
     menu.addItem(30, "MIDI Settings...");
     menu.addSeparator();
@@ -645,7 +658,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(32, "Upload to Active Slot", connected);
     menu.addItem(33, "Store to Bank...", connected);
   }
-  else if (menuIndex == 3) // Help
+  else if (menuIndex == 4) // Help
   {
     menu.addItem(40, "Nord Modular Forum", true);
     menu.addItem(41, "Nord Modular Facebook Group", true);
@@ -654,7 +667,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(43, "Report a Bug...", true);
     menu.addItem(44, "Show Beta Warning...", true);
   }
-  else if (menuIndex == 4) // About
+  else if (menuIndex == 5) // About
   {
     menu.addItem(50, "Support the Project (Patreon)", true);
     menu.addItem(51, "Source Code (GitHub)", true);
@@ -750,6 +763,23 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 52:  // Website
     openURL("https://animatek.net/");
+    break;
+
+  // View menu
+  case 60:  // Zoom In
+    mainLayout->getCanvas().setZoomLevel(mainLayout->getCanvas().getZoomLevel() + 0.1f);
+    break;
+  case 61:  // Zoom Out
+    mainLayout->getCanvas().setZoomLevel(mainLayout->getCanvas().getZoomLevel() - 0.1f);
+    break;
+  case 62:  // Reset Zoom
+    mainLayout->getCanvas().resetZoom();
+    break;
+  case 63:  // Zoom to Selection
+    mainLayout->getCanvas().zoomToSelection();
+    break;
+  case 64:  // Shake Cables
+    mainLayout->getCanvas().shakeCables();
     break;
 
   default:

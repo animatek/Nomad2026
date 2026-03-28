@@ -43,6 +43,13 @@ public:
 
     void shakeCables();
 
+    // Zoom
+    float getZoomLevel() const { return zoomLevel; }
+    void setZoomLevel(float z, juce::Point<int> anchor = {});
+    void zoomToSelection();
+    void resetZoom();
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
@@ -67,6 +74,9 @@ public:
     void setCableDeletedCallback(CableCallback cb) { cableDeletedCallback = std::move(cb); }
     void setUndoCallback(std::function<void()> cb) { undoCallback = std::move(cb); }
     void setRedoCallback(std::function<void()> cb) { redoCallback = std::move(cb); }
+    // File command callback: "new", "open", "save", "close"
+    using FileCommandCallback = std::function<void(const juce::String&)>;
+    void setFileCommandCallback(FileCommandCallback cb) { fileCommandCallback = std::move(cb); }
     void setUndoManager(juce::UndoManager* um) { undoManager = um; }
 
     // DragAndDropTarget interface
@@ -125,7 +135,7 @@ private:
     // Dragging state
     struct DragState
     {
-        enum Type { None, Knob, Slider, Button, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange } type = None;
+        enum Type { None, Knob, Slider, Button, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange, CanvasPan } type = None;
         Module* module = nullptr;
         Parameter* parameter = nullptr;
         Connector* sourceConnector = nullptr;  // CableCreate: source connector
@@ -153,6 +163,7 @@ private:
     CableCallback cableDeletedCallback;
     std::function<void()> undoCallback;
     std::function<void()> redoCallback;
+    FileCommandCallback fileCommandCallback;
     juce::UndoManager* undoManager = nullptr;
 
     // Module drop preview
@@ -224,6 +235,17 @@ private:
     // Module overlap prevention
     bool isPositionFree(const ModuleContainer& container, const Module* exclude, int gx, int gy, int height) const;
     int findNearestFreeY(const ModuleContainer& container, const Module* exclude, int gx, int targetY, int height) const;
+
+    // Zoom
+    float zoomLevel = 1.0f;
+    static constexpr float zoomMin = 0.75f;
+    static constexpr float zoomMax = 3.0f;
+    static constexpr float zoomStep = 0.1f;
+    juce::Point<int> screenToCanvas(juce::Point<int> p) const
+    {
+        return { juce::roundToInt(p.x / zoomLevel), juce::roundToInt(p.y / zoomLevel) };
+    }
+    void updateSizeForZoom();
 
     static constexpr int paramSendIntervalMs = 50;  // Min interval between param sends during drag
 
@@ -339,6 +361,12 @@ public:
         commonCanvas.setRedoCallback(std::move(cb));
     }
 
+    void setFileCommandCallback(PatchCanvas::FileCommandCallback cb)
+    {
+        polyCanvas.setFileCommandCallback(cb);
+        commonCanvas.setFileCommandCallback(std::move(cb));
+    }
+
     void setUndoManager(juce::UndoManager* um)
     {
         polyCanvas.setUndoManager(um);
@@ -361,6 +389,23 @@ public:
     {
         return polyCanvas.isDragging(section, moduleId, parameterId)
             || commonCanvas.isDragging(section, moduleId, parameterId);
+    }
+
+    float getZoomLevel() const { return polyCanvas.getZoomLevel(); }
+    void setZoomLevel(float z, juce::Point<int> anchor = {})
+    {
+        polyCanvas.setZoomLevel(z, anchor);
+        commonCanvas.setZoomLevel(z, anchor);
+    }
+    void zoomToSelection()
+    {
+        polyCanvas.zoomToSelection();
+        commonCanvas.zoomToSelection();
+    }
+    void resetZoom()
+    {
+        polyCanvas.resetZoom();
+        commonCanvas.resetZoom();
     }
 
 private:

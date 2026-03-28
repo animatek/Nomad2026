@@ -11,10 +11,117 @@ PatchCanvas::PatchCanvas()
     setWantsKeyboardFocus(true);  // Enable keyboard input for Delete key
 }
 
+void PatchCanvas::updateSizeForZoom()
+{
+    int w = juce::roundToInt(canvasWidth * zoomLevel);
+    int h = juce::roundToInt(sectionHeight * zoomLevel);
+    setSize(w, h);
+}
+
+void PatchCanvas::setZoomLevel(float z, juce::Point<int> /*anchor*/)
+{
+    z = juce::jlimit(zoomMin, zoomMax, z);
+    if (std::abs(z - zoomLevel) < 0.001f)
+        return;
+    zoomLevel = z;
+    updateSizeForZoom();
+    repaint();
+}
+
+void PatchCanvas::resetZoom()
+{
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+    {
+        auto vpCenter = vp->getViewPosition() + juce::Point<int>(vp->getWidth() / 2, vp->getHeight() / 2);
+        auto canvasCenter = screenToCanvas(vpCenter);
+        zoomLevel = 1.0f;
+        updateSizeForZoom();
+        vp->setViewPosition(canvasCenter.x - vp->getWidth() / 2,
+                            canvasCenter.y - vp->getHeight() / 2);
+    }
+    else
+    {
+        zoomLevel = 1.0f;
+        updateSizeForZoom();
+    }
+    repaint();
+}
+
+void PatchCanvas::zoomToSelection()
+{
+    if (selection.empty())
+        return;
+
+    int minX = 999999, minY = 999999, maxX = 0, maxY = 0;
+    for (auto& sel : selection)
+    {
+        auto gpos = sel.module->getPosition();
+        int px = gpos.x * gridX;
+        int py = gpos.y * gridY;
+        int ph = sel.module->getDescriptor() ? sel.module->getDescriptor()->height * gridY : 60;
+        minX = juce::jmin(minX, px);
+        minY = juce::jmin(minY, py);
+        maxX = juce::jmax(maxX, px + gridX);
+        maxY = juce::jmax(maxY, py + ph);
+    }
+
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+    {
+        int bw = maxX - minX;
+        int bh = maxY - minY;
+        if (bw > 0 && bh > 0)
+        {
+            float zx = static_cast<float>(vp->getWidth()) / static_cast<float>(bw);
+            float zy = static_cast<float>(vp->getHeight()) / static_cast<float>(bh);
+            float newZoom = juce::jlimit(zoomMin, zoomMax, juce::jmin(zx, zy) * 0.9f);
+            zoomLevel = newZoom;
+            updateSizeForZoom();
+
+            int cx = juce::roundToInt((minX + bw / 2.0f) * newZoom);
+            int cy = juce::roundToInt((minY + bh / 2.0f) * newZoom);
+            vp->setViewPosition(cx - vp->getWidth() / 2, cy - vp->getHeight() / 2);
+        }
+    }
+    repaint();
+}
+
+void PatchCanvas::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+{
+    if (e.mods.isCommandDown() || e.mods.isCtrlDown())
+    {
+        // Zoom towards mouse cursor
+        float oldZoom = zoomLevel;
+        float newZoom = juce::jlimit(zoomMin, zoomMax, oldZoom + wheel.deltaY * zoomStep * 3.0f);
+        if (std::abs(newZoom - oldZoom) < 0.001f)
+            return;
+
+        // Get canvas-space point under cursor before zoom
+        auto canvasPt = screenToCanvas(e.getPosition());
+
+        zoomLevel = newZoom;
+        updateSizeForZoom();
+
+        // Adjust viewport so the same canvas point stays under the cursor
+        if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        {
+            auto vpMouse = e.getEventRelativeTo(vp).getPosition();
+            int newVpX = juce::roundToInt(canvasPt.x * newZoom) - vpMouse.x;
+            int newVpY = juce::roundToInt(canvasPt.y * newZoom) - vpMouse.y;
+            vp->setViewPosition(juce::jmax(0, newVpX), juce::jmax(0, newVpY));
+        }
+
+        repaint();
+        return;
+    }
+
+    // Default: let viewport handle normal scrolling
+    juce::Component::mouseWheelMove(e, wheel);
+}
+
 void PatchCanvas::setSection(int s)
 {
     mySection = s;
-    setSize(canvasWidth, sectionHeight);
+    updateSizeForZoom();
 }
 
 PatchCanvas::~PatchCanvas()
@@ -175,6 +282,9 @@ juce::Point<int> PatchCanvas::getConnectorPosition(const Module& m, const Connec
 void PatchCanvas::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff12122a));
+
+    // Apply zoom transform — all subsequent drawing is in canvas (logical) coordinates
+    g.addTransform(juce::AffineTransform::scale(zoomLevel));
 
     // Draw grid lines at column/row boundaries
     g.setColour(juce::Colour(0xff1a1a3a));
@@ -1493,7 +1603,17 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
     if (patch == nullptr || themeData == nullptr)
         return;
 
-    auto pos = e.getPosition();
+    auto pos = screenToCanvas(e.getPosition());
+
+    // Middle-click: start canvas pan (drag to scroll viewport)
+    if (e.mods.isMiddleButtonDown())
+    {
+        dragState = DragState();
+        dragState.type = DragState::CanvasPan;
+        dragState.startPos = e.getScreenPosition();  // absolute screen coords for pan
+        setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        return;
+    }
 
     // Each canvas handles exactly one section; yOffset is always 0.
     ModuleContainer& activeContainer = (mySection == 1)
@@ -1901,7 +2021,21 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
     if (dragState.type == DragState::None)
         return;
 
-    auto currentPos = e.getPosition();
+    auto currentPos = screenToCanvas(e.getPosition());
+
+    if (dragState.type == DragState::CanvasPan)
+    {
+        if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        {
+            auto screenPos = e.getScreenPosition();  // absolute screen coords — stable
+            int dx = screenPos.x - dragState.startPos.x;
+            int dy = screenPos.y - dragState.startPos.y;
+            auto vpos = vp->getViewPosition();
+            vp->setViewPosition(vpos.x - dx, vpos.y - dy);
+            dragState.startPos = screenPos;
+        }
+        return;
+    }
 
     if (dragState.type == DragState::RubberBand)
     {
@@ -2048,6 +2182,13 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
     if (dragState.type == DragState::None)
         return;
 
+    if (dragState.type == DragState::CanvasPan)
+    {
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+        dragState = DragState();
+        return;
+    }
+
     if (dragState.type == DragState::RubberBand)
     {
         showRubberBand = false;
@@ -2093,7 +2234,7 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
     if (dragState.type == DragState::CableCreate)
     {
         showCablePreview = false;
-        auto hit = findConnectorAt(e.getPosition());
+        auto hit = findConnectorAt(screenToCanvas(e.getPosition()));
         if (hit.connector != nullptr && hit.connector != dragState.sourceConnector
             && hit.section == dragState.section)
         {
@@ -2204,7 +2345,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     {
         if (!clipboard.empty())
         {
-            pasteFromClipboard({ getWidth() / 2, getHeight() / 4 });
+            pasteFromClipboard(screenToCanvas({ getWidth() / 2, getHeight() / 4 }));
             return true;
         }
     }
@@ -2221,13 +2362,13 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (activeQuickAdd != nullptr)
             return true;  // already open
 
-        auto mousePos = getMouseXYRelative();
+        auto mousePos = screenToCanvas(getMouseXYRelative());
 
         int section = mySection;
         int gx = juce::jlimit(0, 39, mousePos.x / gridX);
         int gy = juce::jlimit(0, 127, mousePos.y / gridY);
 
-        auto screenPos = localPointToGlobal(mousePos);
+        auto screenPos = localPointToGlobal(getMouseXYRelative());
 
         activeQuickAdd = new QuickAddPopup(
             *moduleDescs, screenPos, gx, gy,
@@ -2264,12 +2405,25 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (redoCallback) { redoCallback(); return true; }
     }
 
+    // Ctrl+N → new patch, Ctrl+O → open, Ctrl+S → save, Ctrl+W → close
+    if (fileCommandCallback)
+    {
+        if (key == juce::KeyPress('n', juce::ModifierKeys::commandModifier, 0))
+            { fileCommandCallback("new"); return true; }
+        if (key == juce::KeyPress('o', juce::ModifierKeys::commandModifier, 0))
+            { fileCommandCallback("open"); return true; }
+        if (key == juce::KeyPress('s', juce::ModifierKeys::commandModifier, 0))
+            { fileCommandCallback("save"); return true; }
+        if (key == juce::KeyPress('p', juce::ModifierKeys::commandModifier, 0))
+            { fileCommandCallback("patchSettings"); return true; }
+    }
+
     // F1 → show help popup for the selected/hovered module
     if (key == juce::KeyPress::F1Key)
     {
         // Prefer the module under the mouse cursor, fall back to last selected
         Module* target = nullptr;
-        auto mousePos = getMouseXYRelative();
+        auto mousePos = screenToCanvas(getMouseXYRelative());
         if (patch != nullptr)
         {
             for (auto& modPtr : patch->getPolyVoiceArea().getModules())
@@ -2301,6 +2455,38 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             ModuleHelpPopup::show(helpQuery, this);
         }
 
+        return true;
+    }
+
+    // Ctrl++ → Zoom In, Ctrl+- → Zoom Out
+    if (key.getModifiers().isCommandDown())
+    {
+        if (key.getKeyCode() == '+' || key.getKeyCode() == '=' || key.getKeyCode() == juce::KeyPress::numberPadAdd)
+        {
+            setZoomLevel(zoomLevel + zoomStep);
+            return true;
+        }
+        if (key.getKeyCode() == '-' || key.getKeyCode() == juce::KeyPress::numberPadSubtract)
+        {
+            setZoomLevel(zoomLevel - zoomStep);
+            return true;
+        }
+    }
+
+    // Shift+Z → always reset zoom to 100%
+    if (key == juce::KeyPress('z', juce::ModifierKeys::shiftModifier, 0))
+    {
+        resetZoom();
+        return true;
+    }
+
+    // Z → zoom-to-selection (if any) or reset to 100%
+    if (key.getTextCharacter() == 'z' && !key.getModifiers().isCommandDown())
+    {
+        if (!selection.empty())
+            zoomToSelection();
+        else
+            resetZoom();
         return true;
     }
 
@@ -2439,7 +2625,7 @@ void PatchCanvas::itemDragMove(const SourceDetails& dragSourceDetails)
     if (!showModuleDropPreview || !patch || !moduleDescs)
         return;
 
-    auto mousePos = dragSourceDetails.localPosition;
+    auto mousePos = screenToCanvas(dragSourceDetails.localPosition.toInt());
     dropPreviewSection = mySection;
     dropPreviewGridX = juce::jlimit(0, 39, mousePos.x / gridX);
     dropPreviewGridY = juce::jlimit(0, 127, mousePos.y / gridY);
@@ -2467,7 +2653,7 @@ void PatchCanvas::itemDropped(const SourceDetails& dragSourceDetails)
     int typeId = obj->getProperty("typeId");
     juce::String moduleName = obj->getProperty("name").toString();
 
-    auto mousePos = dragSourceDetails.localPosition;
+    auto mousePos = screenToCanvas(dragSourceDetails.localPosition.toInt());
     int section = mySection;
     int dropX = juce::jlimit(0, 39, mousePos.x / PatchCanvas::gridX);
     int dropY = juce::jlimit(0, 127, mousePos.y / PatchCanvas::gridY);
