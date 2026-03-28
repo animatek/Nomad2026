@@ -140,27 +140,34 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **MIDI Connect and Store to Bank buttons**: Toolbar buttons in left column above slot bar
 - [x] **Canvas hint watermark**: "Press Enter to add modules" shown on empty canvas sections
 - [x] **Poly/Common default split**: 90/10 default divider position (poly dominant)
-
-### Next Up
+- [x] **Synth name indicator**: Connected synth name displayed in header bar
+- [x] **File command shortcuts**: Ctrl+N/O/S/P wired from canvas, menu items show shortcut hints
+- [x] **Patch Settings Dialog** (Ctrl+P): Voices, velocity/keyboard range, pedal mode, bend range, portamento, octave shift, voice retrigger
+- [x] **Morph knob context menu**: Right-click morph knobs for Knob, MIDI Controller, and Keyboard (Velocity/Note) assignments
+- [x] **MorphKeyboardAssignmentMessage**: SysEx sc=0x67 — assign morph knobs to keyboard velocity or note
 - [x] **macOS menu bar**: File/Edit/Device/Help/About now appear in the system menu bar; Device menu items enable correctly on synth connect
 - [x] **macOS SysEx communication**: working correctly — previous issues were caused by a faulty USB hub, not a software bug
+- [x] **Patch file compatibility fix**: .pch files from new patches now load correctly in original editors (Nomad, NM 3.03) — module indices start at 1, CustomDump generated from descriptors, correct header defaults
+
+### Next Up
+- [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)
+- [ ] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.
+- [ ] **Morph overlay display** — F7 shows morph group assignments on modules, F5 shows morph ranges (start/end values)
+- [ ] **UI/UX design pass** — visual polish for all dialogs and menus
 
 ## Roadmap
 
 This section outlines all planned features to achieve feature parity with the original Nomad editor. Features are organized by category.
 
 ### File Operations
-- [x] **New Patch** (Ctrl+N) - Create new empty patch
+- [x] **New Patch** (Ctrl+N) - Create new empty patch (resets current slot)
 - [x] **Open Patch** (Ctrl+O) - Load .pch file from disk
-- [ ] **Close Patch** (Ctrl+W) - Close current patch
-- [ ] **Close All Patches** - Close all open patches
 - [x] **Save Patch** (Ctrl+S) - Save current patch to disk
 - [x] **Save Patch As** - Save patch with new filename
-- [ ] **Save All Patches** - Save all modified patches
 - [x] **Quit Application** (Ctrl+Q) - Exit Nomad2026
 
 ### Patch Management
-- [ ] **Patch Settings Dialog** (Ctrl+P) - Edit patch metadata and configuration
+- [x] **Patch Settings Dialog** (Ctrl+P) - Edit voices, velocity/keyboard range, pedal mode, bend range, portamento, octave shift, voice retrigger
 - [x] **Send Patch to Slot** - Upload editor patch to synth working slot (full 16-section PDL2 upload)
 - [x] **Save Patch in Synth** - Store uploaded patch to a bank location
 - [x] **New Patch** - Create a new empty patch in the editor
@@ -210,10 +217,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Keyboard hold icon
   - Joystick/modulation wheel icon
 - [ ] **Notes Floater** - Patch notes/comments window
-- [ ] **Browser** (Ctrl+B) - Patch library browser
-  - Search and filter patches
-  - Preview/audition patches
-  - Organize patch collections
+- [ ] **Browser** (Ctrl+B) - See **Preset Browser Window** under Patch Tools for full spec
 
 ### Module Canvas Editing
 - [x] **Drag & Drop Modules** - Add modules from browser to canvas by dragging
@@ -232,9 +236,36 @@ This section outlines all planned features to achieve feature parity with the or
 - [ ] **Help Contents** - Integrated help documentation
 - [ ] **About Dialog** - Version info, credits, license
 
+### Patch Tools
+- [ ] **Randomize Parameters** (Ctrl+R) - Randomize parameter values on selected modules or entire patch
+  - Two algorithms: Simple (uniform) and Gaussian (musical, biased toward center values)
+  - Auto-excludes level, mute, morph, and UI parameters
+  - **Parameter Lock**: Right-click any parameter to lock/unlock it from randomization (lock icon indicator)
+  - Locked parameters are preserved across randomize operations
+  - Full undo/redo support
+- [ ] **Snippet System** - Save and reuse module groups
+  - Select modules on canvas → right-click → "Save Selection as Snippet"
+  - Saves selected modules + internal cables + parameters as partial .pch
+  - Module indices reindexed on import to avoid collisions
+  - Insert via drag & drop from browser, or File → Import Snippet
+  - Full undo/redo support for snippet insertion
+- [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
+  - Separate resizable window (not embedded in canvas), toggle open/close
+  - **User Preset Library**: configurable root folder for .pch files, set on first launch
+  - Indexed metadata (name, category, date) cached in JSON/SQLite for fast search
+  - Sections: Recent, All Presets, Snippets
+  - Real-time search/filter by name and tags
+  - Double-click or drag & drop to load preset into current slot / insert snippet into canvas
+  - File → Import Snippet also available as alternative to browser
+  - **Synth Dump to Disk**: download all 9 banks × 99 slots from synth to user's preset folder
+  - **Community Patches** (future): browse electro-music.com patch archive from within browser
+    - Bundled offline packs as initial approach; live scraping as stretch goal
+
 ### Quality of Life
+- [ ] **Module Rendering Polish** - Compare each module type with original editor for pixel-perfect accuracy (see MODULE_CHECKLIST.md)
+- [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search
+- [ ] **Dark/Light Theme** - Switchable color themes (Dark default, Light mode) via configurable palette
 - [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
-- [ ] **Module Rendering Polish** - Compare each module type with original editor for pixel-perfect accuracy
 - [x] **Undo/Redo System** - Full undo/redo for all patch operations
 - [ ] **Keyboard Shortcuts** - Complete keyboard shortcut system matching original editor
 - [ ] **Window Management** - Remember window positions and sizes across sessions
