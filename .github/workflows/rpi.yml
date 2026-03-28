@@ -1,0 +1,77 @@
+name: Build Raspberry Pi (ARM64)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag para adjuntar al release (ej: v0.4.0). Dejar vacío para solo generar el artefacto.'
+        required: false
+        default: ''
+
+jobs:
+  build-rpi:
+    runs-on: ubuntu-latest
+    name: Build (Raspberry Pi ARM64 / Bookworm)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build inside ARM64 container (QEMU)
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: aarch64
+          distro: bookworm
+          githubToken: ${{ github.token }}
+
+          # Cache the ARM64 build tools between runs
+          dockerRunArgs: |
+            --volume "${{ github.workspace }}:/workspace"
+
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y \
+              build-essential \
+              cmake \
+              libasound2-dev \
+              libx11-dev \
+              libxcomposite-dev \
+              libxcursor-dev \
+              libxext-dev \
+              libxinerama-dev \
+              libxrandr-dev \
+              libxrender-dev \
+              libfreetype6-dev \
+              libfontconfig1-dev \
+              libglu1-mesa-dev \
+              libjack-jackd2-dev
+
+          run: |
+            cd /workspace
+            cmake -B build-rpi -DCMAKE_BUILD_TYPE=Release
+            cmake --build build-rpi --config Release --target Nomad2026 -j$(nproc)
+            echo "Build completed. Binary:"
+            file build-rpi/Nomad2026_artefacts/Release/Nomad2026
+
+      - name: Package binary
+        run: |
+          cd ${{ github.workspace }}/build-rpi/Nomad2026_artefacts/Release
+          tar czf ${{ github.workspace }}/Nomad2026-rpi-arm64.tar.gz Nomad2026
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nomad2026-rpi-arm64
+          path: Nomad2026-rpi-arm64.tar.gz
+          retention-days: 30
+
+      - name: Attach to release (if tag provided)
+        if: ${{ inputs.tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: Nomad2026-rpi-arm64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
