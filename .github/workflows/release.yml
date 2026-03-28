@@ -14,7 +14,7 @@ jobs:
           - os: ubuntu-latest
             name: Linux
             artifact: Nomad2026-linux-x86_64
-          - os: macos-latest
+          - os: macos-13
             name: macOS
             artifact: Nomad2026-macos-universal
           - os: windows-latest
@@ -55,7 +55,7 @@ jobs:
 
       - name: Configure (macOS Universal)
         if: runner.os == 'macOS'
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
