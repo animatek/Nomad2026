@@ -37,7 +37,7 @@ private:
     void writeKeyboardAssignment(juce::String& out, const Patch& patch);
     void writeKnobMapDump(juce::String& out, const Patch& patch);
     void writeCtrlMapDump(juce::String& out, const Patch& patch);
-    void writeCustomDump(juce::String& out, const std::vector<Patch::CustomDumpEntry>& entries, int voiceAreaId);
+    void writeCustomDump(juce::String& out, const Patch& patch, const ModuleContainer& container, int voiceAreaId);
     void writeNameDump(juce::String& out, const ModuleContainer& container, int voiceAreaId);
     void writeNotes(juce::String& out, const Patch& patch);
 

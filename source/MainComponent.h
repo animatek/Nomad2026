@@ -38,6 +38,7 @@ private:
     bool savePatchToFile(const juce::File& file);
 
     void showMidiSettingsDialog();
+    void showPatchSettingsDialog();
     void showBetaWarning(bool forceShow = false);
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
@@ -71,6 +72,7 @@ private:
     std::unique_ptr<UndoContext>& undoContext() { return slotUndoContexts[activeSlot]; }
 
     void switchToSlot(int slot);
+    void updateDspLoadDisplay();
     void rebuildUndoContext(int slot);  // call after patch change
 
     juce::String lastInputId;

@@ -443,8 +443,8 @@ bool PchFileIO::writeFile(const Patch& patch, const juce::File& file)
     if (!patch.ctrlAssignments.empty())
         writeCtrlMapDump(out, patch);
 
-    writeCustomDump(out, patch.polyCustomDump, 1);
-    writeCustomDump(out, patch.commonCustomDump, 0);
+    writeCustomDump(out, patch, patch.getPolyVoiceArea(), 1);
+    writeCustomDump(out, patch, patch.getCommonArea(), 0);
     writeNameDump(out, patch.getPolyVoiceArea(), 1);
     writeNameDump(out, patch.getCommonArea(), 0);
 
@@ -661,16 +661,49 @@ void PchFileIO::writeCtrlMapDump(juce::String& out, const Patch& patch)
 }
 
 // --- CustomDump ---
-void PchFileIO::writeCustomDump(juce::String& out, const std::vector<Patch::CustomDumpEntry>& entries, int voiceAreaId)
+void PchFileIO::writeCustomDump(juce::String& out, const Patch& patch, const ModuleContainer& container, int voiceAreaId)
 {
+    const auto& preExisting = (voiceAreaId == 1) ? patch.polyCustomDump : patch.commonCustomDump;
+
     out += "[CustomDump]\n";
     out += juce::String(voiceAreaId) + " \n";
 
-    for (auto& entry : entries)
+    // Build a map of pre-existing entries by module index
+    std::map<int, const Patch::CustomDumpEntry*> existingMap;
+    for (auto& entry : preExisting)
+        existingMap[entry.index] = &entry;
+
+    for (auto& m : container.getModules())
     {
-        out += juce::String(entry.index) + " " + juce::String(static_cast<int>(entry.values.size()));
-        for (auto v : entry.values)
-            out += " " + juce::String(v);
+        auto* desc = m->getDescriptor();
+        if (desc == nullptr) continue;
+
+        // Count "custom" class params
+        std::vector<int> customValues;
+        for (auto& pd : desc->parameters)
+        {
+            if (pd.paramClass != "custom") continue;
+            customValues.push_back(pd.defaultValue);
+        }
+
+        if (customValues.empty()) continue;
+
+        int idx = m->getContainerIndex();
+
+        // Use pre-existing values if available, otherwise defaults
+        auto it = existingMap.find(idx);
+        if (it != existingMap.end() && it->second->values.size() == customValues.size())
+        {
+            out += juce::String(idx) + " " + juce::String(static_cast<int>(it->second->values.size()));
+            for (auto v : it->second->values)
+                out += " " + juce::String(v);
+        }
+        else
+        {
+            out += juce::String(idx) + " " + juce::String(static_cast<int>(customValues.size()));
+            for (auto v : customValues)
+                out += " " + juce::String(v);
+        }
         out += " \n";
     }
 

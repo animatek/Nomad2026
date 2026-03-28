@@ -1,5 +1,6 @@
 #include "PatchSerializer.h"
 #include <juce_core/juce_core.h>
+#include <map>
 
 // ---- Helpers ----
 
@@ -359,11 +360,41 @@ std::vector<uint8_t> PatchSerializer::serializeCustomDump(const Patch& patch, in
     bs.writeBits(91, 8);     // section type
     bs.writeBits(section, 1);
 
-    const auto& dumpVec = (section == 1) ? patch.polyCustomDump : patch.commonCustomDump;
+    const auto& container = patch.getContainer(section);
+    const auto& preExisting = (section == 1) ? patch.polyCustomDump : patch.commonCustomDump;
 
-    bs.writeBits(static_cast<int>(dumpVec.size()), 7);
+    // Build map of pre-existing custom entries by module index
+    std::map<int, const Patch::CustomDumpEntry*> existingMap;
+    for (const auto& entry : preExisting)
+        existingMap[entry.index] = &entry;
 
-    for (const auto& entry : dumpVec)
+    // Collect modules that have custom params
+    struct CustomEntry { int index; std::vector<int> values; };
+    std::vector<CustomEntry> entries;
+
+    for (const auto& m : container.getModules())
+    {
+        auto* desc = m->getDescriptor();
+        if (desc == nullptr) continue;
+
+        std::vector<int> customDefaults;
+        for (const auto& pd : desc->parameters)
+            if (pd.paramClass == "custom")
+                customDefaults.push_back(pd.defaultValue);
+
+        if (customDefaults.empty()) continue;
+
+        int idx = m->getContainerIndex();
+        auto it = existingMap.find(idx);
+        if (it != existingMap.end() && it->second->values.size() == customDefaults.size())
+            entries.push_back({ idx, it->second->values });
+        else
+            entries.push_back({ idx, customDefaults });
+    }
+
+    bs.writeBits(static_cast<int>(entries.size()), 7);
+
+    for (const auto& entry : entries)
     {
         bs.writeBits(entry.index, 7);
         bs.writeBits(static_cast<int>(entry.values.size()), 8);

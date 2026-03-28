@@ -11,8 +11,10 @@ StatusBar::StatusBar()
     };
 
     setupLabel(connectionLabel, "Disconnected");
-    setupLabel(voiceLabel, "Voices: 0");
-    setupLabel(dspLabel, "DSP: 0%");
+    setupLabel(voiceLabel, "");
+    voiceLabel.setVisible(false);
+    setupLabel(dspLabel, "");
+    dspLabel.setVisible(false);
 
     // Message label (centered, initially hidden)
     messageLabel.setJustificationType(juce::Justification::centred);

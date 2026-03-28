@@ -465,6 +465,31 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
         g.drawText("Report a bug", bb.toNearestInt(), juce::Justification::centred, false);
     }
+
+    // --- Synth Connection Indicator (right-aligned) ---
+    if (!synthName.isEmpty())
+    {
+        constexpr int synthNameW = 110;
+        constexpr int synthPad = 10;
+        int sx = getWidth() - synthNameW - synthPad;
+
+        // Separator
+        {
+            float sepX = static_cast<float>(sx) - sepGap * 0.5f;
+            g.setColour(juce::Colour(0xff333355));
+            g.drawLine(sepX, 4.0f, sepX, static_cast<float>(h - 4), 1.0f);
+        }
+
+        // Synth name box
+        auto nameRect = juce::Rectangle<int>(sx, 6, synthNameW, h - 12);
+        g.setColour(juce::Colour(0xff252545));
+        g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
+        g.setColour(juce::Colour(0xff444466));
+        g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(11.0f));
+        g.drawText(synthName, nameRect.reduced(4, 0), juce::Justification::centredLeft, true);
+    }
 }
 
 // --- Mouse interaction ---
@@ -473,10 +498,15 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
 {
     auto pos = e.getPosition();
 
-    // Morph knob drag
+    // Morph knob — right-click for knob/CC assignment, left-click for drag
     int morphIdx = getMorphKnobAt(pos);
     if (morphIdx >= 0 && patch)
     {
+        if (e.mods.isPopupMenu())
+        {
+            showMorphKnobContextMenu(morphIdx);
+            return;
+        }
         dragState.morphIndex = morphIdx;
         dragState.startValue = patch->morphValues[static_cast<size_t>(morphIdx)];
         dragState.startPos = pos;
@@ -523,6 +553,149 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
             reportBugCallback();
         return;
     }
+}
+
+void PatchHeaderBar::showMorphKnobContextMenu(int morphIndex)
+{
+    // Morph knobs use section=2, module=1, param=morphIndex in the protocol
+    constexpr int morphSection = 2;
+    constexpr int morphModule = 1;
+
+    const char* morphNames[] = { "Morph 1", "Morph 2", "Morph 3", "Morph 4" };
+
+    // Find current knob assignment for this morph
+    int currentKnob = -1;
+    if (patch != nullptr)
+    {
+        for (int k = 0; k < 23; ++k)
+        {
+            const auto& ka = patch->knobAssignments[static_cast<size_t>(k)];
+            if (ka.assigned && ka.section == morphSection
+                && ka.module == morphModule && ka.param == morphIndex)
+            { currentKnob = k; break; }
+        }
+    }
+
+    // Find current MIDI CC assignment for this morph
+    int currentMidiCtrl = -1;
+    if (patch != nullptr)
+    {
+        for (const auto& ca : patch->ctrlAssignments)
+        {
+            if (ca.section == morphSection && ca.module == morphModule && ca.param == morphIndex)
+            { currentMidiCtrl = ca.control; break; }
+        }
+    }
+
+    juce::PopupMenu menu;
+    menu.addSectionHeader(morphNames[morphIndex]);
+
+    // Knob assignment submenu
+    {
+        juce::PopupMenu knobSubMenu;
+        for (int k = 0; k < 6; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        for (int k = 6; k < 12; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        for (int k = 12; k < 15; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        for (int k = 15; k < 18; ++k)
+        {
+            juce::String label = "Knob " + juce::String(k + 1);
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        const char* specialNames[] = { "Pedal", "After touch", "On/Off switch" };
+        for (int k = 18; k < 21; ++k)
+        {
+            juce::String label = specialNames[k - 18];
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
+                label += " (used)";
+            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
+        }
+        knobSubMenu.addSeparator();
+        knobSubMenu.addItem(99, "Disable", currentKnob >= 0);
+        menu.addSubMenu("Knob", knobSubMenu);
+    }
+
+    // MIDI Controller submenu
+    {
+        juce::PopupMenu midiSubMenu;
+        for (int cc = 0; cc < 120; ++cc)
+        {
+            bool isCurrent = (cc == currentMidiCtrl);
+            midiSubMenu.addItem(200 + cc, "CC " + juce::String(cc), true, isCurrent);
+        }
+        midiSubMenu.addSeparator();
+        midiSubMenu.addItem(199, "Disable", currentMidiCtrl >= 0);
+        menu.addSubMenu("MIDI Controller", midiSubMenu);
+    }
+
+    // Keyboard submenu (exclusive to morph knobs)
+    {
+        int currentKb = patch->morphKeyboard[static_cast<size_t>(morphIndex)];
+        juce::PopupMenu kbSubMenu;
+        kbSubMenu.addItem(401, "Velocity", true, currentKb == 1);
+        kbSubMenu.addItem(402, "Note", true, currentKb == 2);
+        kbSubMenu.addSeparator();
+        kbSubMenu.addItem(400, "Disable", currentKb != 0);
+        menu.addSubMenu("Keyboard", kbSubMenu);
+    }
+
+    menu.showMenuAsync(juce::PopupMenu::Options{},
+        [this, morphIndex, currentKnob, currentMidiCtrl](int result)
+        {
+            constexpr int ms = 2;  // morphSection
+            constexpr int mm = 1;  // morphModule
+
+            if (result == 99)
+            {
+                if (knobAssignCallback && currentKnob >= 0)
+                    knobAssignCallback(ms, mm, morphIndex, -1);
+            }
+            else if (result >= 100 && result < 123)
+            {
+                if (knobAssignCallback)
+                    knobAssignCallback(ms, mm, morphIndex, result - 100);
+            }
+            else if (result == 199)
+            {
+                if (midiCtrlAssignCallback && currentMidiCtrl >= 0)
+                    midiCtrlAssignCallback(ms, mm, morphIndex, -1);
+            }
+            else if (result >= 200 && result < 320)
+            {
+                if (midiCtrlAssignCallback)
+                    midiCtrlAssignCallback(ms, mm, morphIndex, result - 200);
+            }
+            // Keyboard assignment (400=disable, 401=velocity, 402=note)
+            else if (result >= 400 && result <= 402)
+            {
+                int kb = result - 400;  // 0=disable, 1=velocity, 2=note
+                if (keyboardAssignCallback)
+                    keyboardAssignCallback(morphIndex, kb);
+            }
+        });
 }
 
 void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)

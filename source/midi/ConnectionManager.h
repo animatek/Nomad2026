@@ -95,8 +95,12 @@ public:
 
     NmProtocol& getProtocol() { return protocol; }
 
-    // When true, NewPatchInSlot will NOT trigger auto-fetch.
-    // Set this while PatchSynchronizer is active (local model is authoritative).
+    // Call after sending a structural edit (module/cable add/delete) that will
+    // cause the synth to respond with NewPatchInSlot.  The next N NewPatchInSlot
+    // messages will be treated as echoes and suppressed.
+    void expectSyncEcho() { pendingSyncEchoes_++; }
+
+    // Legacy boolean suppress (for upload-in-progress protection).
     void setSuppressNewPatchInSlot(bool s) { suppressNewPatchInSlot_ = s; }
 
 private:
@@ -134,7 +138,8 @@ private:
     bool collectingSections = false;
     bool waitingForUploadAck = false;      // True while waiting for synth ACK after uploadPatch
     bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
-    bool suppressNewPatchInSlot_ = false;  // Set while PatchSynchronizer is active (local model authoritative)
+    bool suppressNewPatchInSlot_ = false;  // Set during upload-in-progress
+    int pendingSyncEchoes_ = 0;            // Count of expected NewPatchInSlot echoes from sync edits
     // Sequential upload state: send one section at a time, wait for ACK between each
     std::vector<std::vector<uint8_t>> uploadSections;  // serialized PDL2 sections
     std::vector<uint8_t> buildUploadSysEx(int sectionIndex, int numSections, int slot);

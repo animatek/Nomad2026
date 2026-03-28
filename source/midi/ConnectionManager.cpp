@@ -600,8 +600,18 @@ void ConnectionManager::finalizePatch()
 
 void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 {
-    if (msg.sc == 0x05 && voiceCountCallback)  // VoiceCount
-        voiceCountCallback(msg.voiceCount);
+    // Debug: log all NMInfo subcommands we receive
+    if (msg.sc != 0x39 && msg.sc != 0x3a)  // skip Lights and Meters (too spammy)
+        DBG("[NMInfo] sc=0x" + juce::String::toHexString(msg.sc) + " data=" + juce::String(static_cast<int>(msg.data.size())) + " bytes");
+
+    if (msg.sc == 0x05)  // VoiceCount
+    {
+        DBG("[DSP] VoiceCount received: " + juce::String(msg.voiceCount[0]) + " "
+            + juce::String(msg.voiceCount[1]) + " " + juce::String(msg.voiceCount[2]) + " "
+            + juce::String(msg.voiceCount[3]));
+        if (voiceCountCallback)
+            voiceCountCallback(msg.voiceCount);
+    }
 
     if (msg.sc == 0x38)  // NewPatchInSlot
     {
@@ -614,14 +624,18 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         currentPatchId = msg.newPatchPid;
 
         // Auto-request the new patch data from the synth — unless suppressed.
-        // suppressNewPatchInSlot_: set while PatchSynchronizer is active; local model is
-        //   authoritative, so real-time notifications from module/cable edits must not
-        //   cause a re-fetch that would overwrite in-progress changes.
+        // pendingSyncEchoes_: decremented for each echo from a structural edit we sent.
+        // suppressNewPatchInSlot_: set during upload-in-progress.
         // suppressNextAutoFetch: one-shot flag set after upload completes.
         // waitingForUploadAck: upload in progress — don't re-fetch.
-        if (suppressNewPatchInSlot_)
+        if (pendingSyncEchoes_ > 0)
         {
-            std::cout << "[SYNC] Ignoring NewPatchInSlot (sync active, local model authoritative)" << std::endl;
+            pendingSyncEchoes_--;
+            std::cout << "[SYNC] Consuming sync echo (remaining: " << pendingSyncEchoes_ << ")" << std::endl;
+        }
+        else if (suppressNewPatchInSlot_)
+        {
+            std::cout << "[UPLOAD] Ignoring NewPatchInSlot (upload suppress active)" << std::endl;
         }
         else if (suppressNextAutoFetch)
         {

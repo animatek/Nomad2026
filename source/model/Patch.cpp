@@ -222,8 +222,8 @@ Module* Patch::createModule(int section, int typeId, int gridX, int gridY,
     if (!container.canAdd(*descriptor))
         return nullptr;
 
-    // Generate unique container index (find max existing + 1)
-    int maxIndex = -1;
+    // Generate unique container index (find max existing + 1, starting from 1)
+    int maxIndex = 0;
     for (auto& m : container.getModules())
     {
         int idx = m->getContainerIndex();

@@ -163,7 +163,7 @@ struct PatchHeader
     bool portamento = false;
     int pedalMode = 0;
     int voices = 1;
-    int octaveShift = 0;
+    int octaveShift = 2;
     // Voice retrigger
     int voiceRetriggerPoly = 1;
     int voiceRetriggerCommon = 1;
@@ -178,7 +178,7 @@ struct PatchHeader
     bool cableVisPurple = true;
     bool cableVisWhite = true;
     // Section separator position
-    int separatorPosition = 0;
+    int separatorPosition = 4000;
 };
 
 struct MorphAssignment

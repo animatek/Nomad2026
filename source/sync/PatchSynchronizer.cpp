@@ -124,6 +124,7 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
                        outModIdx, outIsOutput, outConnIdx);
 
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex);
 
     // Debug logging with hex dump
@@ -176,6 +177,7 @@ void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector
                           outModIdx, outIsOutput, outConnIdx);
 
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex);
 
     // Debug logging with hex dump
@@ -278,6 +280,7 @@ void PatchSynchronizer::onModuleAdded(int section, Module* module)
                               paramValues, customValues);
 
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex);
 
     // Register moved callback so future moves are synced to the synth
@@ -318,6 +321,7 @@ void PatchSynchronizer::onModuleRemoved(int section, Module* module)
     // Build and send DeleteModuleMessage
     DeleteModuleMessage msg(pid, section, moduleIndex);
     auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex);
 
     std::cout << "[SYNC] DeleteModule sent:"

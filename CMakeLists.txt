@@ -28,6 +28,7 @@ set(NOMAD_SHARED_SOURCES
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
     source/ui/PatchLocationDialog.cpp
+    source/ui/PatchSettingsDialog.cpp
     source/ui/MidiSettingsDialog.cpp
     source/ui/QuickAddPopup.cpp
     source/ui/PatchBrowserPanel.cpp
@@ -50,6 +51,7 @@ set(NOMAD_SHARED_SOURCES
     source/protocol/StorePatchMessage.cpp
     source/protocol/SetPatchTitleMessage.cpp
     source/protocol/MorphAssignmentMessage.cpp
+    source/protocol/MorphKeyboardAssignmentMessage.cpp
     source/protocol/MorphRangeChangeMessage.cpp
     source/protocol/KnobAssignmentMessage.cpp
     source/protocol/MidiCtrlAssignmentMessage.cpp

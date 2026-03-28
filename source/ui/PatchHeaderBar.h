@@ -13,6 +13,13 @@ public:
 
     // Set DSP load values (0.0-1.0, or -1 for unknown)
     void setLoadValues(float pva, float e) { loadPva = pva; loadE = e; repaint(); }
+    void setSynthName(const juce::String& name) { synthName = name; repaint(); }
+    void setSynthDspLoad(int slot0, int slot1, int slot2, int slot3)
+    {
+        synthDsp[0] = slot0; synthDsp[1] = slot1;
+        synthDsp[2] = slot2; synthDsp[3] = slot3;
+        repaint();
+    }
 
     using MorphChangeCallback = std::function<void(int morphIndex, int value)>;
     using VoiceChangeCallback = std::function<void(int voices)>;
@@ -20,6 +27,10 @@ public:
     using NameChangeCallback = std::function<void(const juce::String& newName)>;
     using QuickSaveCallback = std::function<void()>;
     using ShakeCablesCallback = std::function<void()>;
+    // section=2, module=1, param=morphIndex for morph knobs
+    using KnobAssignCallback = std::function<void(int section, int module, int param, int knob)>;
+    using MidiCtrlAssignCallback = std::function<void(int section, int module, int param, int cc)>;
+    using KeyboardAssignCallback = std::function<void(int morphIndex, int keyboard)>; // 0=disable, 1=velocity, 2=note
 
     void setMorphChangeCallback(MorphChangeCallback cb) { morphChangeCallback = std::move(cb); }
     void setVoiceChangeCallback(VoiceChangeCallback cb) { voiceChangeCallback = std::move(cb); }
@@ -27,6 +38,9 @@ public:
     void setNameChangeCallback(NameChangeCallback cb) { nameChangeCallback = std::move(cb); }
     void setQuickSaveCallback(QuickSaveCallback cb) { quickSaveCallback = std::move(cb); }
     void setShakeCablesCallback(ShakeCablesCallback cb) { shakeCablesCallback = std::move(cb); }
+    void setKnobAssignCallback(KnobAssignCallback cb) { knobAssignCallback = std::move(cb); }
+    void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
+    void setKeyboardAssignCallback(KeyboardAssignCallback cb) { keyboardAssignCallback = std::move(cb); }
 
     using ReportBugCallback = std::function<void()>;
     void setReportBugCallback(ReportBugCallback cb) { reportBugCallback = std::move(cb); }
@@ -65,6 +79,8 @@ private:
     Patch* patch = nullptr;
     float loadPva = -1.0f;
     float loadE = -1.0f;
+    juce::String synthName;
+    int synthDsp[4] = { -1, -1, -1, -1 };  // per-slot DSP load (0-127), -1=unknown
 
     struct DragState
     {
@@ -83,6 +99,11 @@ private:
     QuickSaveCallback quickSaveCallback;
     ShakeCablesCallback shakeCablesCallback;
     ReportBugCallback reportBugCallback;
+    KnobAssignCallback knobAssignCallback;
+    MidiCtrlAssignCallback midiCtrlAssignCallback;
+    KeyboardAssignCallback keyboardAssignCallback;
+
+    void showMorphKnobContextMenu(int morphIndex);
 
     juce::Rectangle<float> getShakeButtonBounds() const;
     bool isShakeButtonAt(juce::Point<int> pos) const;
