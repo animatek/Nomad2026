@@ -3,7 +3,9 @@
 #include "model/PchFileIO.h"
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
+#include "ui/PatchSettingsDialog.h"
 #include "protocol/StorePatchMessage.h"
+#include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "BinaryData.h"
 #include <iostream>
 
@@ -76,8 +78,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   connectionManager.setVoiceCountCallback([this](const int voiceCounts[4]) {
     int total =
         voiceCounts[0] + voiceCounts[1] + voiceCounts[2] + voiceCounts[3];
+    int c0 = voiceCounts[0], c1 = voiceCounts[1], c2 = voiceCounts[2], c3 = voiceCounts[3];
+    DBG("[DSP] VoiceCount: " + juce::String(c0) + " " + juce::String(c1) + " "
+        + juce::String(c2) + " " + juce::String(c3) + " total=" + juce::String(total));
     juce::MessageManager::callAsync(
-        [this, total]() { mainLayout->getStatusBar().setVoiceCount(total); });
+        [this, total, c0, c1, c2, c3]() {
+          mainLayout->getStatusBar().setVoiceCount(total);
+          mainLayout->getHeaderBar().setSynthDspLoad(c0, c1, c2, c3);
+        });
   });
 
   // Wire canvas selection to inspector
@@ -252,13 +260,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
             // If this is the currently viewed slot, update the UI
             if (targetSlot == activeSlot) {
-              connectionManager.setSuppressNewPatchInSlot(false);
               mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
               mainLayout->getHeaderBar().setPatch(currentPatch().get());
               mainLayout->getInspector().setPatch(currentPatch().get());
+              updateDspLoadDisplay();
               mainLayout->getStatusBar().setConnectionStatus(
                   "Connected - " + currentPatch()->getName(), true);
-              connectionManager.setSuppressNewPatchInSlot(true);
 
               int ls = connectionManager.getLastLoadedSection();
               int lp = connectionManager.getLastLoadedPosition();
@@ -297,6 +304,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         if (!undoManager().perform(new AddModuleAction(*undoContext(), section, typeId, gridX, gridY, name)))
           mainLayout->getStatusBar().setConnectionStatus(
             "Failed to add module - check synth memory/limits", true);
+        updateDspLoadDisplay();
       });
 
   // Wire module delete from canvas context menu
@@ -304,6 +312,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this](int section, Module* module) {
         if (!currentPatch() || !undoContext() || !module) return;
         undoManager().perform(new DeleteModuleAction(*undoContext(), section, module));
+        updateDspLoadDisplay();
       });
 
   // Wire module move undo from canvas
@@ -374,6 +383,46 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         if (midiCC == prevCtrl) return; // no-op
         undoManager().beginNewTransaction("MIDI CC Assign");
         undoManager().perform(new MidiCtrlAssignAction(*undoContext(), section, moduleId, paramId, midiCC, prevCtrl));
+      });
+
+  // Wire morph knob assignments from header bar (same logic as canvas params)
+  mainLayout->getHeaderBar().setKnobAssignCallback(
+      [this](int section, int moduleId, int paramId, int knobIndex) {
+        if (!currentPatch() || !undoContext()) return;
+        int prevKnob = -1;
+        for (int k = 0; k < 23; ++k)
+        {
+            auto& ka = currentPatch()->knobAssignments[static_cast<size_t>(k)];
+            if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
+            { prevKnob = k; break; }
+        }
+        if (knobIndex == prevKnob) return;
+        undoManager().beginNewTransaction("Knob Assign");
+        undoManager().perform(new KnobAssignAction(*undoContext(), section, moduleId, paramId, knobIndex, prevKnob));
+      });
+  mainLayout->getHeaderBar().setMidiCtrlAssignCallback(
+      [this](int section, int moduleId, int paramId, int midiCC) {
+        if (!currentPatch() || !undoContext()) return;
+        int prevCtrl = -1;
+        for (auto& ca : currentPatch()->ctrlAssignments)
+            if (ca.section == section && ca.module == moduleId && ca.param == paramId)
+            { prevCtrl = ca.control; break; }
+        if (midiCC == prevCtrl) return;
+        undoManager().beginNewTransaction("MIDI CC Assign");
+        undoManager().perform(new MidiCtrlAssignAction(*undoContext(), section, moduleId, paramId, midiCC, prevCtrl));
+      });
+
+  // Wire morph keyboard assignment (velocity/note) from header bar
+  mainLayout->getHeaderBar().setKeyboardAssignCallback(
+      [this](int morphIndex, int keyboard) {
+        if (!currentPatch()) return;
+        currentPatch()->morphKeyboard[static_cast<size_t>(morphIndex)] = keyboard;
+        if (connectionManager.isConnected()) {
+          MorphKeyboardAssignmentMessage msg(
+              connectionManager.getCurrentPatchId(), morphIndex, keyboard);
+          auto sysex = msg.toSysEx(connectionManager.getCurrentSlot());
+          connectionManager.sendAckedSysEx(sysex);
+        }
       });
 
   // Wire cable creation undo from canvas
@@ -457,9 +506,17 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this]() { mainLayout->getCanvas().shakeCables(); });
 
   // Wire undo/redo keyboard shortcuts from canvas
-  mainLayout->getCanvas().setUndoCallback([this]() { undoManager().undo(); });
-  mainLayout->getCanvas().setRedoCallback([this]() { undoManager().redo(); });
+  mainLayout->getCanvas().setUndoCallback([this]() { undoManager().undo(); updateDspLoadDisplay(); });
+  mainLayout->getCanvas().setRedoCallback([this]() { undoManager().redo(); updateDspLoadDisplay(); });
   mainLayout->getCanvas().setUndoManager(&undoManager());
+
+  // Wire file command shortcuts (Ctrl+N/O/S/W) from canvas
+  mainLayout->getCanvas().setFileCommandCallback([this](const juce::String& cmd) {
+    if (cmd == "new")   newPatch();
+    else if (cmd == "open")  openPatch();
+    else if (cmd == "save")  savePatch();
+    else if (cmd == "patchSettings") showPatchSettingsDialog();
+  });
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
   connectionManager.setParameterChangeCallback([this](int section, int moduleId,
@@ -564,12 +621,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
 
   if (menuIndex == 0) // File
   {
-    menu.addItem(1, "New Patch");
-    menu.addItem(2, "Open...");
-    menu.addItem(3, "Save");
+    menu.addItem(1, "New Patch\tCtrl+N");
+    menu.addItem(2, "Open...\tCtrl+O");
+    menu.addSeparator();
+    menu.addItem(3, "Save\tCtrl+S");
     menu.addItem(4, "Save As...");
     menu.addSeparator();
-    menu.addItem(10, "Quit");
+    menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
+    menu.addSeparator();
+    menu.addItem(10, "Quit\tCtrl+Q");
   } else if (menuIndex == 1) // Edit
   {
     menu.addItem(20, "Undo " + undoManager().getUndoDescription(),
@@ -637,14 +697,19 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 4:
     savePatchAs();
     break;
+  case 8:
+    showPatchSettingsDialog();
+    break;
   case 10:
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
     break;
   case 20:
     undoManager().undo();
+    updateDspLoadDisplay();
     break;
   case 21:
     undoManager().redo();
+    updateDspLoadDisplay();
     break;
   case 30:
     showMidiSettingsDialog();
@@ -710,6 +775,7 @@ void MainComponent::switchToSlot(int slot) {
     mainLayout->getHeaderBar().setPatch(currentPatch().get());
     mainLayout->getInspector().setPatch(currentPatch().get());
     mainLayout->getCanvas().setUndoManager(&undoManager());
+    updateDspLoadDisplay();
 
     const char* slotNames[] = {"A", "B", "C", "D"};
     mainLayout->getStatusBar().setConnectionStatus(
@@ -719,6 +785,7 @@ void MainComponent::switchToSlot(int slot) {
     mainLayout->getCanvas().setPatch(nullptr, nullptr, nullptr);
     mainLayout->getHeaderBar().setPatch(nullptr);
     mainLayout->getInspector().setPatch(nullptr);
+    updateDspLoadDisplay();
 
     const char* slotNames[] = {"A", "B", "C", "D"};
     mainLayout->getStatusBar().setConnectionStatus(
@@ -730,16 +797,12 @@ void MainComponent::switchToSlot(int slot) {
       connectionManager.requestPatch(slot);
   }
 
-  // Suppress synth notifications for non-active slot synchronizers
-  connectionManager.setSuppressNewPatchInSlot(currentSynchronizer() != nullptr);
-
   std::cout << "[SLOT] Switched to slot " << slot << std::endl;
 }
 
 void MainComponent::newPatch() {
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   currentSynchronizer().reset();
-  connectionManager.setSuppressNewPatchInSlot(false);
   mainLayout->getInspector().clearModule();
 
   currentPatch() = std::make_unique<Patch>();
@@ -750,17 +813,18 @@ void MainComponent::newPatch() {
   mainLayout->getHeaderBar().clearCurrentLocation();
   mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
+  updateDspLoadDisplay();
 
   if (connectionManager.isConnected()) {
     // Upload empty patch to synth so it resets too
     connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
     currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), connectionManager);
-    connectionManager.setSuppressNewPatchInSlot(true);
   }
 
   undoManager().clearUndoHistory();
   rebuildUndoContext(activeSlot);
 }
+
 
 void MainComponent::openPatch() {
   auto chooser = std::make_shared<juce::FileChooser>(
@@ -820,7 +884,6 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   currentSynchronizer().reset();
-  connectionManager.setSuppressNewPatchInSlot(false);
   // Clear inspector before replacing patch — its currentModule points into the old patch
   mainLayout->getInspector().clearModule();
 
@@ -831,11 +894,16 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   mainLayout->getInspector().setPatch(currentPatch().get());
   mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
+  updateDspLoadDisplay();
 
   if (connectionManager.isConnected()) {
+    // Send loaded patch to synth so it plays immediately
+    int slot = connectionManager.getCurrentSlot();
+    connectionManager.uploadPatch(slot, *currentPatch());
+    std::cout << "[FILE] Uploading loaded patch to synth slot " << slot << std::endl;
+
     currentSynchronizer() = std::make_unique<PatchSynchronizer>(
         *currentPatch(), connectionManager);
-    connectionManager.setSuppressNewPatchInSlot(true);
     std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
 
@@ -961,6 +1029,36 @@ bool MainComponent::savePatchToFile(const juce::File &file) {
   return ok;
 }
 
+void MainComponent::showPatchSettingsDialog() {
+  if (currentPatch() == nullptr)
+    return;
+
+  PatchSettingsDialog::show(this, currentPatch()->getHeader(),
+      [this](const PatchSettingsDialog::Result& r)
+      {
+        auto& h = currentPatch()->getHeader();
+        h.voices = r.voices;
+        h.velRangeMin = r.velRangeMin;
+        h.velRangeMax = r.velRangeMax;
+        h.keyRangeMin = r.keyRangeMin;
+        h.keyRangeMax = r.keyRangeMax;
+        h.pedalMode = r.pedalMode;
+        h.bendRange = r.bendRange;
+        h.portamento = r.portamento;
+        h.portamentoTime = r.portamentoTime;
+        h.octaveShift = r.octaveShift;
+        h.voiceRetriggerPoly = r.voiceRetriggerPoly ? 1 : 0;
+        h.voiceRetriggerCommon = r.voiceRetriggerCommon ? 1 : 0;
+
+        mainLayout->getHeaderBar().repaint();
+        mainLayout->getStatusBar().showMessage("Patch settings updated", 2000);
+
+        // Upload full patch to synth if connected
+        if (connectionManager.isConnected())
+          connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
+      });
+}
+
 void MainComponent::showMidiSettingsDialog() {
   MidiSettingsDialog::show(
       this, lastInputId, lastOutputId, connectionManager.getStatus(),
@@ -998,16 +1096,19 @@ void MainComponent::onConnectionStatusChanged(
     if (currentPatch() && !currentSynchronizer()) {
       currentSynchronizer() = std::make_unique<PatchSynchronizer>(
           *currentPatch(), connectionManager);
-      connectionManager.setSuppressNewPatchInSlot(true);
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
     connectionManager.requestPatchList();
+
+    // Show synth name in header bar (will be replaced by real name from SynthSettings later)
+    mainLayout->getHeaderBar().setSynthName("Nord Modular");
   } else {
     // Disable all synchronizers on disconnect
     for (int s = 0; s < numSlots; ++s)
       slotSynchronizers[s].reset();
-    connectionManager.setSuppressNewPatchInSlot(false);
+    mainLayout->getHeaderBar().setSynthName({});
+    mainLayout->getHeaderBar().setSynthDspLoad(-1, -1, -1, -1);
     std::cout << "[SYNC] All slot synchronizers disabled on disconnect" << std::endl;
   }
 }
@@ -1257,4 +1358,29 @@ void MainComponent::rebuildUndoContext(int slot)
             });
         }
     });
+}
+
+void MainComponent::updateDspLoadDisplay() {
+  if (currentPatch() == nullptr) {
+    mainLayout->getHeaderBar().setLoadValues(-1.0f, -1.0f);
+    return;
+  }
+
+  // Sum cycles from all modules in each voice area
+  double polyCycles = 0.0;
+  for (auto& mod : currentPatch()->getPolyVoiceArea().getModules())
+    if (mod && mod->getDescriptor())
+      polyCycles += mod->getDescriptor()->cycles;
+
+  double commonCycles = 0.0;
+  for (auto& mod : currentPatch()->getCommonArea().getModules())
+    if (mod && mod->getDescriptor())
+      commonCycles += mod->getDescriptor()->cycles;
+
+  double total = polyCycles + commonCycles;
+
+  // cycles values in modules.xml are already percentages (0-100 scale)
+  mainLayout->getHeaderBar().setLoadValues(
+      static_cast<float>(polyCycles / 100.0),
+      static_cast<float>(total / 100.0));
 }
