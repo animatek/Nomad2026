@@ -789,3 +789,82 @@ private:
     UndoContext& ctx_;
     juce::String oldName_, newName_;
 };
+
+// ============================================================================
+// RandomizeAction — batches many parameter changes, single synth upload
+// ============================================================================
+class RandomizeAction : public juce::UndoableAction
+{
+public:
+    struct ParamChange {
+        int section, moduleId, paramId, oldValue, newValue;
+    };
+
+    RandomizeAction(UndoContext& ctx, std::vector<ParamChange> changes)
+        : ctx_(ctx), changes_(std::move(changes)) {}
+
+    bool perform() override
+    {
+        applyValues(true);
+        return true;
+    }
+
+    bool undo() override
+    {
+        applyValues(false);
+        return true;
+    }
+
+    int getSizeInUnits() override { return static_cast<int>(changes_.size()); }
+
+private:
+    void applyValues(bool forward)
+    {
+        // 1. Apply all values in memory (no SysEx yet)
+        for (auto& c : changes_)
+        {
+            auto& container = ctx_.patch.getContainer(c.section);
+            auto* mod = container.getModuleByIndex(c.moduleId);
+            if (!mod) continue;
+            auto* param = mod->getParameter(c.paramId);
+            if (!param) continue;
+            param->setValue(forward ? c.newValue : c.oldValue);
+        }
+        ctx_.repaint();
+
+        // 2. Send parameter changes to synth with throttled batches
+        //    using callAfterDelay chain (no self-deleting timer).
+        if (!ctx_.connMgr.isConnected()) return;
+
+        auto pending = std::make_shared<std::vector<ParamChange>>(changes_);
+        if (!forward) {
+            for (auto& c : *pending)
+                c.newValue = c.oldValue;
+        }
+
+        auto idx = std::make_shared<size_t>(0);
+        sendBatch(pending, idx, ctx_.connMgr);
+    }
+
+    static void sendBatch(std::shared_ptr<std::vector<ParamChange>> params,
+                          std::shared_ptr<size_t> pos,
+                          ConnectionManager& cm)
+    {
+        // Send up to 4 params per batch
+        for (int i = 0; i < 4 && *pos < params->size(); ++i, ++(*pos))
+        {
+            auto& c = (*params)[*pos];
+            cm.sendParameter(c.section, c.moduleId, c.paramId, c.newValue);
+        }
+        // Schedule next batch if more remain
+        if (*pos < params->size())
+        {
+            juce::Timer::callAfterDelay(20, [params, pos, &cm]() {
+                sendBatch(params, pos, cm);
+            });
+        }
+    }
+
+    UndoContext& ctx_;
+    std::vector<ParamChange> changes_;
+};

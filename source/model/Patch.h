@@ -24,11 +24,15 @@ public:
     int getMorphRange() const { return morphRange; }
     void setMorphRange(int r) { morphRange = r; }
 
+    bool isLocked() const { return locked; }
+    void setLocked(bool l) { locked = l; }
+
 private:
     const ParameterDescriptor* descriptor;
     int value;
     int morphGroup = -1;  // -1 = none
     int morphRange = 0;   // signed -127..127
+    bool locked = false;  // locked from randomization
 };
 
 class Connector

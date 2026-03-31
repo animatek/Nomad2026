@@ -710,6 +710,30 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         g.setColour(juce::Colours::white);
         g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
                    centerX + sinA * outerR, centerY - cosA * outerR, 1.5f);
+
+        // Lock indicator — small padlock icon at bottom-right of knob
+        if (param != nullptr && param->isLocked())
+        {
+            float lockSize = juce::jmax(7.0f, sz * 0.35f);
+            float lx = cx + sz - lockSize + 1.0f;
+            float ly = cy + sz - lockSize + 1.0f;
+            float bodyH = lockSize * 0.55f;
+            float bodyW = lockSize * 0.85f;
+            float bodyX = lx + (lockSize - bodyW) * 0.5f;
+            float bodyY = ly + lockSize - bodyH;
+            // Lock body
+            g.setColour(juce::Colour(0xffE0C030));
+            g.fillRoundedRectangle(bodyX, bodyY, bodyW, bodyH, 1.0f);
+            // Shackle arc
+            float shackleW = bodyW * 0.55f;
+            float shackleH = lockSize - bodyH;
+            float shackleX = bodyX + (bodyW - shackleW) * 0.5f;
+            g.setColour(juce::Colour(0xffC0A020));
+            juce::Path shackle;
+            shackle.addArc(shackleX, ly, shackleW, shackleH * 2.0f,
+                           -juce::MathConstants<float>::pi, 0.0f, true);
+            g.strokePath(shackle, juce::PathStrokeType(1.5f));
+        }
     }
 }
 
@@ -915,6 +939,12 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
             g.fillRect(gripX, sy + 1.0f, gripW, sh - 2.0f);
         }
 
+        // Lock indicator — small yellow dot at bottom-right corner
+        if (param != nullptr && param->isLocked())
+        {
+            g.setColour(juce::Colour(0xffE0C030));
+            g.fillEllipse(sx + sw - 5.0f, sy + sh - 5.0f, 4.0f, 4.0f);
+        }
     }
 }
 
@@ -2387,6 +2417,16 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    // Ctrl+R → randomize (simple), Ctrl+Shift+R → randomize (gaussian)
+    if (key == juce::KeyPress('r', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 0))
+    {
+        if (fileCommandCallback) { fileCommandCallback("randomizeGaussian"); return true; }
+    }
+    if (key == juce::KeyPress('r', juce::ModifierKeys::commandModifier, 0))
+    {
+        if (fileCommandCallback) { fileCommandCallback("randomize"); return true; }
+    }
+
     // Ctrl+Z → undo
     if (key == juce::KeyPress('z', juce::ModifierKeys::commandModifier, 0))
     {
@@ -2684,6 +2724,9 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
     // 1. Default Value
     menu.addItem(1, "Default Value", !atDefault);
 
+    // 2a. Lock Parameter (toggle)
+    menu.addItem(3, param.isLocked() ? "Unlock Parameter" : "Lock Parameter");
+
     // 2. Zero Morph — sends MorphRangeChange with span=0 to synth
     bool hasMorphAssigned = (currentMorphGroup >= 0);
     menu.addItem(2, "Zero Morph", hasMorphAssigned);
@@ -2793,7 +2836,13 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
             auto* pd2 = param.getDescriptor();
             if (pd2 == nullptr) return;
 
-            if (result == 1)
+            if (result == 3)
+            {
+                // Toggle lock
+                param.setLocked(!param.isLocked());
+                repaint();
+            }
+            else if (result == 1)
             {
                 // Set to default value
                 int oldVal = param.getValue();

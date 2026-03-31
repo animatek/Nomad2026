@@ -516,6 +516,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     else if (cmd == "open")  openPatch();
     else if (cmd == "save")  savePatch();
     else if (cmd == "patchSettings") showPatchSettingsDialog();
+    else if (cmd == "randomize") randomizeParameters(false);
+    else if (cmd == "randomizeGaussian") randomizeParameters(true);
   });
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
@@ -636,6 +638,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                  undoManager().canUndo(), false);
     menu.addItem(21, "Redo " + undoManager().getRedoDescription(),
                  undoManager().canRedo(), false);
+    menu.addSeparator();
+    bool hasPatch = (currentPatch() != nullptr);
+    menu.addItem(22, "Randomize (Simple)\tCtrl+R", hasPatch);
+    menu.addItem(23, "Randomize (Gaussian)\tCtrl+Shift+R", hasPatch);
   } else if (menuIndex == 2) // View
   {
     float zoom = mainLayout->getCanvas().getZoomLevel();
@@ -723,6 +729,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 21:
     undoManager().redo();
     updateDspLoadDisplay();
+    break;
+  case 22:
+    randomizeParameters(false);
+    break;
+  case 23:
+    randomizeParameters(true);
     break;
   case 30:
     showMidiSettingsDialog();
@@ -1388,6 +1400,75 @@ void MainComponent::rebuildUndoContext(int slot)
             });
         }
     });
+}
+
+void MainComponent::randomizeParameters(bool gaussian) {
+  if (!currentPatch() || !undoContext()) return;
+
+  // Auto-exclude list: parameter names that should not be randomized
+  static const juce::StringArray excludeNames = {
+      "Mute", "mute", "Level", "level", "Vol", "vol",
+      "Active", "active", "Bypass", "bypass"
+  };
+
+  auto shouldExclude = [&](const Parameter& param) -> bool {
+      if (param.isLocked()) return true;
+      auto* pd = param.getDescriptor();
+      if (!pd) return true;
+      if (pd->paramClass != "parameter") return true;  // skip morph/custom
+      if (pd->minValue == pd->maxValue) return true;    // no range
+      for (auto& ex : excludeNames)
+          if (pd->name.containsIgnoreCase(ex)) return true;
+      return false;
+  };
+
+  juce::Random rng;
+
+  std::vector<RandomizeAction::ParamChange> changes;
+
+  auto processContainer = [&](ModuleContainer& container, int section) {
+      for (auto& modPtr : container.getModules()) {
+          if (!modPtr) continue;
+          for (auto& param : modPtr->getParameters()) {
+              if (shouldExclude(param)) continue;
+              auto* pd = param.getDescriptor();
+              int oldVal = param.getValue();
+              int newVal;
+              if (gaussian) {
+                  // Gaussian centered on midpoint, sigma = range/6
+                  float mid = (pd->minValue + pd->maxValue) * 0.5f;
+                  float sigma = (pd->maxValue - pd->minValue) / 6.0f;
+                  float g1 = rng.nextFloat();
+                  float g2 = rng.nextFloat();
+                  // Box-Muller
+                  float z = std::sqrt(-2.0f * std::log(juce::jmax(g1, 1e-10f)))
+                            * std::cos(2.0f * juce::MathConstants<float>::pi * g2);
+                  newVal = juce::jlimit(pd->minValue, pd->maxValue,
+                                        juce::roundToInt(mid + z * sigma));
+              } else {
+                  newVal = pd->minValue + rng.nextInt(pd->maxValue - pd->minValue + 1);
+              }
+              if (newVal != oldVal) {
+                  changes.push_back({section, modPtr->getContainerIndex(),
+                                     pd->index, oldVal, newVal});
+              }
+          }
+      }
+  };
+
+  processContainer(currentPatch()->getPolyVoiceArea(), 1);
+  processContainer(currentPatch()->getCommonArea(), 0);
+
+  if (changes.empty()) return;
+
+  // Single undo transaction with batched synth upload
+  undoManager().beginNewTransaction("Randomize Parameters");
+  undoManager().perform(new RandomizeAction(*undoContext(), std::move(changes)));
+
+  mainLayout->getCanvas().repaintCanvas();
+  mainLayout->getStatusBar().showMessage(
+      "Randomized " + juce::String(static_cast<int>(changes.size())) + " parameters"
+      + (gaussian ? " (Gaussian)" : " (Simple)"), 3000);
 }
 
 void MainComponent::updateDspLoadDisplay() {

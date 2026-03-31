@@ -157,6 +157,14 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Middle-click drag: pan canvas (hand tool)
   - View menu with all zoom controls and current zoom indicator
 
+- [x] **Randomize Parameters** (Ctrl+R / Ctrl+Shift+R):
+  - Simple (uniform random) and Gaussian (center-biased, musical) algorithms
+  - Auto-excludes: morph/custom params, mute, level, volume, active, bypass
+  - **Parameter Lock**: right-click any knob/slider → "Lock Parameter" to protect from randomization
+  - Visual indicator: yellow padlock icon on locked knobs, yellow dot on locked sliders
+  - Full undo/redo support (single transaction for all randomized changes)
+  - Status bar shows count of randomized parameters
+
 ### Next Up
 - [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)
 - [ ] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.
@@ -245,7 +253,7 @@ This section outlines all planned features to achieve feature parity with the or
 - [ ] **About Dialog** - Version info, credits, license
 
 ### Patch Tools
-- [ ] **Randomize Parameters** (Ctrl+R) - Randomize parameter values on selected modules or entire patch
+- [x] **Randomize Parameters** (Ctrl+R) - Randomize parameter values on entire patch
   - Two algorithms: Simple (uniform) and Gaussian (musical, biased toward center values)
   - Auto-excludes level, mute, morph, and UI parameters
   - **Parameter Lock**: Right-click any parameter to lock/unlock it from randomization (lock icon indicator)

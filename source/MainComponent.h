@@ -40,6 +40,7 @@ private:
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
     void showBetaWarning(bool forceShow = false);
+    void randomizeParameters(bool gaussian);
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
     void onConnectionStatusChanged(const ConnectionManager::Status& status);
