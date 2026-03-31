@@ -60,6 +60,15 @@ public:
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
 
+    /** Returns list of currently selected modules as (module*, section) pairs */
+    std::vector<std::pair<Module*, int>> getSelectedModules() const
+    {
+        std::vector<std::pair<Module*, int>> result;
+        for (auto& s : selection)
+            if (s.module) result.push_back({s.module, s.section});
+        return result;
+    }
+
     // Callbacks
     void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
     void setParameterDragCompleteCallback(ParameterDragCompleteCallback cb) { paramDragCompleteCallback = std::move(cb); }
@@ -345,6 +354,15 @@ public:
     {
         polyCanvas.setInitModuleCallback(cb);
         commonCanvas.setInitModuleCallback(std::move(cb));
+    }
+
+    /** Aggregate selected modules from both canvases */
+    std::vector<std::pair<Module*, int>> getSelectedModules() const
+    {
+        auto sel = polyCanvas.getSelectedModules();
+        auto common = commonCanvas.getSelectedModules();
+        sel.insert(sel.end(), common.begin(), common.end());
+        return sel;
     }
 
     void setCableCreatedCallback(PatchCanvas::CableCallback cb)

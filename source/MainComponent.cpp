@@ -8,6 +8,7 @@
 #include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "BinaryData.h"
 #include <iostream>
+#include <set>
 
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
@@ -1457,9 +1458,17 @@ void MainComponent::randomizeParameters(bool gaussian) {
 
   std::vector<RandomizeAction::ParamChange> changes;
 
+  // If modules are selected, only randomize those; otherwise randomize all
+  auto selected = mainLayout->getCanvas().getSelectedModules();
+  std::set<Module*> selectedSet;
+  for (auto& [mod, sec] : selected)
+      selectedSet.insert(mod);
+  bool hasSelection = !selectedSet.empty();
+
   auto processContainer = [&](ModuleContainer& container, int section) {
       for (auto& modPtr : container.getModules()) {
           if (!modPtr) continue;
+          if (hasSelection && selectedSet.count(modPtr.get()) == 0) continue;
           for (auto& param : modPtr->getParameters()) {
               if (shouldExclude(param)) continue;
               auto* pd = param.getDescriptor();
@@ -1493,13 +1502,15 @@ void MainComponent::randomizeParameters(bool gaussian) {
   if (changes.empty()) return;
 
   // Single undo transaction with batched synth upload
+  int numChanges = static_cast<int>(changes.size());
   undoManager().beginNewTransaction("Randomize Parameters");
   undoManager().perform(new RandomizeAction(*undoContext(), std::move(changes)));
 
   mainLayout->getCanvas().repaintCanvas();
+  juce::String scope = hasSelection ? " (selection)" : " (all)";
   mainLayout->getStatusBar().showMessage(
-      "Randomized " + juce::String(static_cast<int>(changes.size())) + " parameters"
-      + (gaussian ? " (Gaussian)" : " (Simple)"), 3000);
+      "Randomized " + juce::String(numChanges) + " parameters" + scope
+      + (gaussian ? " — Gaussian" : " — Simple"), 3000);
 }
 
 void MainComponent::updateDspLoadDisplay() {
