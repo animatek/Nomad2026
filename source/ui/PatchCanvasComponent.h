@@ -37,6 +37,8 @@ public:
     using KnobAssignCallback = std::function<void(int section, int moduleId, int paramId, int knobIndex)>;
     // section, moduleId, paramId, midiCC (0-127, or -1=disable)
     using MidiCtrlAssignCallback = std::function<void(int section, int moduleId, int paramId, int midiCC)>;
+    // Initialize module: section, module pointer
+    using InitModuleCallback = std::function<void(int section, Module* module)>;
 
     PatchCanvas();
     ~PatchCanvas();
@@ -70,6 +72,7 @@ public:
     void setMorphRangeChangeCallback(MorphRangeChangeCallback cb) { morphRangeChangeCallback = std::move(cb); }
     void setKnobAssignCallback(KnobAssignCallback cb) { knobAssignCallback = std::move(cb); }
     void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
+    void setInitModuleCallback(InitModuleCallback cb) { initModuleCallback = std::move(cb); }
     void setCableCreatedCallback(CableCallback cb) { cableCreatedCallback = std::move(cb); }
     void setCableDeletedCallback(CableCallback cb) { cableDeletedCallback = std::move(cb); }
     void setUndoCallback(std::function<void()> cb) { undoCallback = std::move(cb); }
@@ -159,6 +162,7 @@ private:
     MorphRangeChangeCallback morphRangeChangeCallback;
     KnobAssignCallback knobAssignCallback;
     MidiCtrlAssignCallback midiCtrlAssignCallback;
+    InitModuleCallback initModuleCallback;
     CableCallback cableCreatedCallback;
     CableCallback cableDeletedCallback;
     std::function<void()> undoCallback;
@@ -335,6 +339,12 @@ public:
     {
         polyCanvas.setMidiCtrlAssignCallback(cb);
         commonCanvas.setMidiCtrlAssignCallback(std::move(cb));
+    }
+
+    void setInitModuleCallback(PatchCanvas::InitModuleCallback cb)
+    {
+        polyCanvas.setInitModuleCallback(cb);
+        commonCanvas.setInitModuleCallback(std::move(cb));
     }
 
     void setCableCreatedCallback(PatchCanvas::CableCallback cb)

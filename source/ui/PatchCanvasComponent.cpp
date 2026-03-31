@@ -1873,6 +1873,8 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 menu.addItem(3, "Duplicate with Cables");
                 menu.addItem(4, "Copy");
                 menu.addSeparator();
+                menu.addItem(6, "Initialize Module");
+                menu.addSeparator();
                 menu.addItem(5, "Delete Module");
 
                 menu.showMenuAsync(juce::PopupMenu::Options{},
@@ -1933,6 +1935,11 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             if (selectedModule == modPtr)
                                 clearSelection();
                             repaint();
+                        }
+                        else if (result == 6)
+                        {
+                            if (initModuleCallback)
+                                initModuleCallback(sec, modPtr);
                         }
                     });
                 return;
@@ -3210,6 +3217,8 @@ void PatchCanvas::showSelectionContextMenu()
     menu.addItem(2, "Duplicate with Cables");
     menu.addItem(3, "Copy");
     menu.addSeparator();
+    menu.addItem(5, "Initialize");
+    menu.addSeparator();
     menu.addItem(4, "Delete");
 
     menu.showMenuAsync(juce::PopupMenu::Options{}, [this](int result) {
@@ -3217,6 +3226,15 @@ void PatchCanvas::showSelectionContextMenu()
         else if (result == 2) duplicateSelection(true);
         else if (result == 3) copySelectionToClipboard();
         else if (result == 4) deleteSelection();
+        else if (result == 5) {
+            if (initModuleCallback) {
+                if (undoManager)
+                    undoManager->beginNewTransaction("Initialize Selection");
+                for (auto& sel : selection)
+                    if (sel.module)
+                        initModuleCallback(sel.section, sel.module);
+            }
+        }
     });
 }
 

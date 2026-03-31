@@ -164,6 +164,11 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Visual indicator: yellow padlock icon on locked knobs, yellow dot on locked sliders
   - Full undo/redo support (single transaction for all randomized changes)
   - Status bar shows count of randomized parameters
+- [x] **Initialize Module** (context menu):
+  - Right-click module → "Initialize Module" resets all parameters to factory defaults
+  - Works on multi-selection: right-click selection → "Initialize" resets all selected modules
+  - Respects parameter locks (locked params are not reset)
+  - Full undo/redo support, throttled SysEx sync
 
 ### Next Up
 - [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)

@@ -497,6 +497,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         mainLayout->getStatusBar().showMessage("Quick saved to location " + juce::String(displayLocation), 3000);
       });
 
+  // Wire initialize module callback
+  mainLayout->getCanvas().setInitModuleCallback(
+      [this](int section, Module* module) {
+        initializeModule(section, module);
+      });
+
   // Wire cable visibility toggles to repaint the canvas
   mainLayout->getHeaderBar().setCableVisibilityCallback(
       [this]() { mainLayout->getCanvas().repaintCanvas(); });
@@ -1400,6 +1406,31 @@ void MainComponent::rebuildUndoContext(int slot)
             });
         }
     });
+}
+
+void MainComponent::initializeModule(int section, Module* module) {
+  if (!module || !currentPatch() || !undoContext()) return;
+
+  std::vector<RandomizeAction::ParamChange> changes;
+  for (auto& param : module->getParameters()) {
+      if (param.isLocked()) continue;
+      auto* pd = param.getDescriptor();
+      if (!pd || pd->paramClass != "parameter") continue;
+      int oldVal = param.getValue();
+      int newVal = pd->defaultValue;
+      if (oldVal != newVal)
+          changes.push_back({section, module->getContainerIndex(),
+                             pd->index, oldVal, newVal});
+  }
+  if (changes.empty()) return;
+
+  // Use the current transaction if one is already open (multi-select groups calls)
+  if (!undoManager().isPerformingUndoRedo())
+      undoManager().beginNewTransaction("Initialize Module");
+  undoManager().perform(new RandomizeAction(*undoContext(), std::move(changes)));
+  mainLayout->getCanvas().repaintCanvas();
+  mainLayout->getStatusBar().showMessage(
+      "Initialized " + module->getTitle(), 2000);
 }
 
 void MainComponent::randomizeParameters(bool gaussian) {
