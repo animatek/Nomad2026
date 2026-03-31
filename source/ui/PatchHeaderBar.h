@@ -45,6 +45,15 @@ public:
     using ReportBugCallback = std::function<void()>;
     void setReportBugCallback(ReportBugCallback cb) { reportBugCallback = std::move(cb); }
 
+    // Snapshot buttons (click=recall, shift+click=save, right-click=interpolation menu)
+    using SnapshotClickCallback = std::function<void(int index, bool isShiftClick)>;
+    using SnapshotInterpolateCallback = std::function<void(int fromIndex, int toIndex, float seconds)>;
+    void setSnapshotClickCallback(SnapshotClickCallback cb) { snapshotClickCallback = std::move(cb); }
+    void setSnapshotInterpolateCallback(SnapshotInterpolateCallback cb) { snapshotInterpolateCallback = std::move(cb); }
+    void setSnapshotFilled(int index, bool filled);
+    void setActiveSnapshot(int index) { activeSnapshot = index; repaint(); }
+    void setInterpolationProgress(float progress);  // 0-1, <0 = not interpolating
+
     // Set the current bank/position for quick save button
     void setCurrentLocation(int section, int position);
     void clearCurrentLocation();
@@ -102,6 +111,8 @@ private:
     KnobAssignCallback knobAssignCallback;
     MidiCtrlAssignCallback midiCtrlAssignCallback;
     KeyboardAssignCallback keyboardAssignCallback;
+    SnapshotClickCallback snapshotClickCallback;
+    SnapshotInterpolateCallback snapshotInterpolateCallback;
 
     void showMorphKnobContextMenu(int morphIndex);
 
@@ -109,6 +120,13 @@ private:
     bool isShakeButtonAt(juce::Point<int> pos) const;
     juce::Rectangle<float> getBugButtonBounds() const;
     bool isBugButtonAt(juce::Point<int> pos) const;
+
+    // Snapshot buttons
+    juce::Rectangle<float> getSnapshotButtonBounds(int index) const;
+    int getSnapshotButtonAt(juce::Point<int> pos) const;  // -1 if none
+    bool snapshotFilled[8] = {};
+    int activeSnapshot = -1;       // -1 = none active
+    float interpolationProgress = -1.0f;  // <0 = not interpolating
 
     std::unique_ptr<juce::Label> patchNameEditor;
     std::unique_ptr<juce::DrawableButton> quickSaveButton;

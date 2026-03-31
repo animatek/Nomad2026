@@ -169,6 +169,17 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Works on multi-selection: right-click selection → "Initialize" resets all selected modules
   - Respects parameter locks (locked params are not reset)
   - Full undo/redo support, throttled SysEx sync
+- [x] **Parameter Snapshots** (8 memory slots):
+  - 8 snapshot buttons in header bar (after bug report button)
+  - Click on empty slot = save current parameter state
+  - Click on filled slot = recall (restore all parameters)
+  - Shift+click = overwrite/save to slot
+  - Right-click filled slot = interpolation menu (1s, 2s, 5s, 10s, 20s, 30s, 60s)
+  - Timed interpolation: smooth morph between current state and target snapshot
+  - Progress bar during interpolation
+  - Respects parameter locks
+  - Visual: empty=gray, filled=blue, active=gold
+  - Full undo/redo for recall operations
 
 ### Next Up
 - [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)

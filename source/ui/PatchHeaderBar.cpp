@@ -204,6 +204,35 @@ bool PatchHeaderBar::isBugButtonAt(juce::Point<int> pos) const
     return getBugButtonBounds().expanded(2.0f).contains(pos.toFloat());
 }
 
+juce::Rectangle<float> PatchHeaderBar::getSnapshotButtonBounds(int index) const
+{
+    auto bugBounds = getBugButtonBounds();
+    float startX = bugBounds.getRight() + 12.0f;
+    float btnSize = static_cast<float>(cableToggleSize);
+    float spacing = 3.0f;
+    float cy = (static_cast<float>(getHeight()) - btnSize) / 2.0f;
+    return { startX + index * (btnSize + spacing), cy, btnSize, btnSize };
+}
+
+int PatchHeaderBar::getSnapshotButtonAt(juce::Point<int> pos) const
+{
+    for (int i = 0; i < 8; ++i)
+        if (getSnapshotButtonBounds(i).expanded(1.0f).contains(pos.toFloat()))
+            return i;
+    return -1;
+}
+
+void PatchHeaderBar::setSnapshotFilled(int index, bool filled)
+{
+    if (index >= 0 && index < 8) { snapshotFilled[index] = filled; repaint(); }
+}
+
+void PatchHeaderBar::setInterpolationProgress(float progress)
+{
+    interpolationProgress = progress;
+    repaint();
+}
+
 PatchHeaderBar::ArrowHit PatchHeaderBar::getVoiceArrowAt(juce::Point<int> pos) const
 {
     int ax = voicesSecX_ + voicesLblW + voicesValW;
@@ -466,6 +495,49 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.drawText("Report a bug", bb.toNearestInt(), juce::Justification::centred, false);
     }
 
+    // --- Snapshot Buttons (1-8) ---
+    {
+        g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+        for (int i = 0; i < 8; ++i)
+        {
+            auto sb = getSnapshotButtonBounds(i);
+            bool filled = snapshotFilled[i];
+            bool active = (i == activeSnapshot);
+
+            // Background
+            if (active)
+                g.setColour(juce::Colour(0xffD4A020));  // gold for active
+            else if (filled)
+                g.setColour(juce::Colour(0xff4466aa));  // blue for filled
+            else
+                g.setColour(juce::Colour(0xff3a3a3a));  // dark gray for empty
+
+            g.fillRoundedRectangle(sb, 2.0f);
+
+            // Border
+            g.setColour(active ? juce::Colour(0xffE8C840) : juce::Colour(0xff666666));
+            g.drawRoundedRectangle(sb.reduced(0.5f), 2.0f, 1.0f);
+
+            // Number label
+            g.setColour(active || filled ? juce::Colours::white : juce::Colour(0xff888888));
+            g.drawText(juce::String(i + 1), sb.toNearestInt(), juce::Justification::centred, false);
+        }
+
+        // Interpolation progress bar (below snapshot buttons)
+        if (interpolationProgress >= 0.0f)
+        {
+            auto first = getSnapshotButtonBounds(0);
+            auto last = getSnapshotButtonBounds(7);
+            float barY = first.getBottom() + 1.0f;
+            float barW = last.getRight() - first.getX();
+            float barH = 2.0f;
+            g.setColour(juce::Colour(0xff333333));
+            g.fillRect(first.getX(), barY, barW, barH);
+            g.setColour(juce::Colour(0xffD4A020));
+            g.fillRect(first.getX(), barY, barW * interpolationProgress, barH);
+        }
+    }
+
     // --- Synth Connection Indicator (right-aligned) ---
     if (!synthName.isEmpty())
     {
@@ -551,6 +623,42 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     {
         if (reportBugCallback)
             reportBugCallback();
+        return;
+    }
+
+    // Snapshot buttons
+    int snapIdx = getSnapshotButtonAt(pos);
+    if (snapIdx >= 0)
+    {
+        if (e.mods.isRightButtonDown() && snapshotFilled[snapIdx])
+        {
+            // Right-click on filled snapshot → interpolation menu
+            juce::PopupMenu menu;
+            menu.addSectionHeader("Interpolate to Snapshot " + juce::String(snapIdx + 1));
+            for (float secs : { 1.0f, 2.0f, 5.0f, 10.0f, 20.0f, 30.0f, 60.0f })
+            {
+                int id = juce::roundToInt(secs * 10);
+                juce::String label = (secs < 10.0f)
+                    ? juce::String(secs, 0) + "s"
+                    : juce::String(juce::roundToInt(secs)) + "s";
+                menu.addItem(id, label);
+            }
+            int fromSnap = snapIdx;
+            menu.showMenuAsync(juce::PopupMenu::Options{},
+                [this, fromSnap](int result) {
+                    if (result > 0 && snapshotInterpolateCallback)
+                    {
+                        float duration = result / 10.0f;
+                        snapshotInterpolateCallback(activeSnapshot, fromSnap, duration);
+                    }
+                });
+        }
+        else
+        {
+            bool isShift = e.mods.isShiftDown();
+            if (snapshotClickCallback)
+                snapshotClickCallback(snapIdx, isShift);
+        }
         return;
     }
 }

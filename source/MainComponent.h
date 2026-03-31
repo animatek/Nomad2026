@@ -42,6 +42,11 @@ private:
     void showBetaWarning(bool forceShow = false);
     void randomizeParameters(bool gaussian);
     void initializeModule(int section, Module* module);
+    void handleSnapshotClick(int index, bool isShiftClick);
+    void saveSnapshot(int index);
+    void recallSnapshot(int index);
+    void interpolateSnapshots(int fromIndex, int toIndex, float seconds);
+    void onInterpolationTick();
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
     void onConnectionStatusChanged(const ConnectionManager::Status& status);
@@ -76,6 +81,27 @@ private:
     void switchToSlot(int slot);
     void updateDspLoadDisplay();
     void rebuildUndoContext(int slot);  // call after patch change
+
+    // Parameter snapshots (8 slots per patch slot)
+    struct ParamSnapshot {
+        struct Entry { int section, moduleId, paramId, value; };
+        std::vector<Entry> entries;
+        bool filled = false;
+    };
+    ParamSnapshot snapshots[numSlots][8];  // [slot][snapshot]
+    int activeSnapshotIndex[numSlots] = { -1, -1, -1, -1 };
+
+    // Interpolation state
+    struct InterpolationState {
+        bool active = false;
+        std::vector<ParamSnapshot::Entry> from;
+        std::vector<ParamSnapshot::Entry> to;
+        float durationMs = 0;
+        float elapsedMs = 0;
+        int targetSnapshot = -1;
+    };
+    InterpolationState interpolation;
+    std::unique_ptr<juce::Timer> interpolationTimer;
 
     juce::String lastInputId;
     juce::String lastOutputId;

@@ -817,6 +817,24 @@ public:
 
     int getSizeInUnits() override { return static_cast<int>(changes_.size()); }
 
+    /** Throttled async send of parameter changes to synth (4 per 20ms) */
+    static void sendBatch(std::shared_ptr<std::vector<ParamChange>> params,
+                          std::shared_ptr<size_t> pos,
+                          ConnectionManager& cm)
+    {
+        for (int i = 0; i < 4 && *pos < params->size(); ++i, ++(*pos))
+        {
+            auto& c = (*params)[*pos];
+            cm.sendParameter(c.section, c.moduleId, c.paramId, c.newValue);
+        }
+        if (*pos < params->size())
+        {
+            juce::Timer::callAfterDelay(20, [params, pos, &cm]() {
+                sendBatch(params, pos, cm);
+            });
+        }
+    }
+
 private:
     void applyValues(bool forward)
     {
@@ -844,25 +862,6 @@ private:
 
         auto idx = std::make_shared<size_t>(0);
         sendBatch(pending, idx, ctx_.connMgr);
-    }
-
-    static void sendBatch(std::shared_ptr<std::vector<ParamChange>> params,
-                          std::shared_ptr<size_t> pos,
-                          ConnectionManager& cm)
-    {
-        // Send up to 4 params per batch
-        for (int i = 0; i < 4 && *pos < params->size(); ++i, ++(*pos))
-        {
-            auto& c = (*params)[*pos];
-            cm.sendParameter(c.section, c.moduleId, c.paramId, c.newValue);
-        }
-        // Schedule next batch if more remain
-        if (*pos < params->size())
-        {
-            juce::Timer::callAfterDelay(20, [params, pos, &cm]() {
-                sendBatch(params, pos, cm);
-            });
-        }
     }
 
     UndoContext& ctx_;

@@ -512,6 +512,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getHeaderBar().setShakeCablesCallback(
       [this]() { mainLayout->getCanvas().shakeCables(); });
 
+  // Wire snapshot buttons
+  mainLayout->getHeaderBar().setSnapshotClickCallback(
+      [this](int index, bool isShift) { handleSnapshotClick(index, isShift); });
+  mainLayout->getHeaderBar().setSnapshotInterpolateCallback(
+      [this](int fromIdx, int toIdx, float secs) { interpolateSnapshots(fromIdx, toIdx, secs); });
+
   // Wire undo/redo keyboard shortcuts from canvas
   mainLayout->getCanvas().setUndoCallback([this]() { undoManager().undo(); updateDspLoadDisplay(); });
   mainLayout->getCanvas().setRedoCallback([this]() { undoManager().redo(); updateDspLoadDisplay(); });
@@ -1407,6 +1413,197 @@ void MainComponent::rebuildUndoContext(int slot)
             });
         }
     });
+}
+
+// --- Parameter Snapshots ---
+
+void MainComponent::handleSnapshotClick(int index, bool isShiftClick) {
+    if (!currentPatch()) return;
+    if (isShiftClick)
+        saveSnapshot(index);
+    else if (snapshots[activeSlot][index].filled)
+        recallSnapshot(index);
+    else
+        saveSnapshot(index);  // click on empty = save
+}
+
+void MainComponent::saveSnapshot(int index) {
+    if (!currentPatch() || index < 0 || index >= 8) return;
+
+    auto& snap = snapshots[activeSlot][index];
+    snap.entries.clear();
+
+    auto captureContainer = [&](const ModuleContainer& container, int section) {
+        for (auto& modPtr : container.getModules()) {
+            if (!modPtr) continue;
+            for (auto& param : modPtr->getParameters()) {
+                auto* pd = param.getDescriptor();
+                if (!pd || pd->paramClass != "parameter") continue;
+                snap.entries.push_back({section, modPtr->getContainerIndex(),
+                                        pd->index, param.getValue()});
+            }
+        }
+    };
+
+    captureContainer(currentPatch()->getPolyVoiceArea(), 1);
+    captureContainer(currentPatch()->getCommonArea(), 0);
+    snap.filled = true;
+
+    activeSnapshotIndex[activeSlot] = index;
+    mainLayout->getHeaderBar().setSnapshotFilled(index, true);
+    mainLayout->getHeaderBar().setActiveSnapshot(index);
+    mainLayout->getStatusBar().showMessage(
+        "Snapshot " + juce::String(index + 1) + " saved (" +
+        juce::String(static_cast<int>(snap.entries.size())) + " params)", 2000);
+}
+
+void MainComponent::recallSnapshot(int index) {
+    if (!currentPatch() || !undoContext() || index < 0 || index >= 8) return;
+    auto& snap = snapshots[activeSlot][index];
+    if (!snap.filled) return;
+
+    // Stop any running interpolation
+    if (interpolation.active) {
+        interpolation.active = false;
+        interpolationTimer.reset();
+        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
+    }
+
+    // Build changes list
+    std::vector<RandomizeAction::ParamChange> changes;
+    for (auto& e : snap.entries) {
+        auto& container = currentPatch()->getContainer(e.section);
+        auto* mod = container.getModuleByIndex(e.moduleId);
+        if (!mod) continue;
+        auto* param = mod->getParameter(e.paramId);
+        if (!param || param->isLocked()) continue;
+        int oldVal = param->getValue();
+        if (oldVal != e.value)
+            changes.push_back({e.section, e.moduleId, e.paramId, oldVal, e.value});
+    }
+
+    if (!changes.empty()) {
+        undoManager().beginNewTransaction("Recall Snapshot " + juce::String(index + 1));
+        undoManager().perform(new RandomizeAction(*undoContext(), std::move(changes)));
+        mainLayout->getCanvas().repaintCanvas();
+    }
+
+    activeSnapshotIndex[activeSlot] = index;
+    mainLayout->getHeaderBar().setActiveSnapshot(index);
+    mainLayout->getStatusBar().showMessage(
+        "Snapshot " + juce::String(index + 1) + " recalled", 2000);
+}
+
+void MainComponent::interpolateSnapshots(int /*fromIndex*/, int toIndex, float seconds) {
+    if (!currentPatch() || toIndex < 0 || toIndex >= 8) return;
+    auto& toSnap = snapshots[activeSlot][toIndex];
+    if (!toSnap.filled) return;
+
+    // Stop any running interpolation
+    if (interpolation.active) {
+        interpolation.active = false;
+        interpolationTimer.reset();
+    }
+
+    // Capture current state as "from"
+    interpolation.from.clear();
+    interpolation.to.clear();
+
+    // Build matched pairs: current value → target value
+    for (auto& e : toSnap.entries) {
+        auto& container = currentPatch()->getContainer(e.section);
+        auto* mod = container.getModuleByIndex(e.moduleId);
+        if (!mod) continue;
+        auto* param = mod->getParameter(e.paramId);
+        if (!param || param->isLocked()) continue;
+        if (param->getDescriptor()->paramClass != "parameter") continue;
+
+        interpolation.from.push_back({e.section, e.moduleId, e.paramId, param->getValue()});
+        interpolation.to.push_back({e.section, e.moduleId, e.paramId, e.value});
+    }
+
+    interpolation.durationMs = seconds * 1000.0f;
+    interpolation.elapsedMs = 0.0f;
+    interpolation.targetSnapshot = toIndex;
+    interpolation.active = true;
+
+    mainLayout->getHeaderBar().setInterpolationProgress(0.0f);
+    mainLayout->getStatusBar().showMessage(
+        "Interpolating to snapshot " + juce::String(toIndex + 1) +
+        " over " + juce::String(seconds, 1) + "s", static_cast<int>(seconds * 1000));
+
+    // Timer: ~30ms ticks for smooth interpolation
+    struct InterpTimer : public juce::Timer {
+        MainComponent& mc;
+        InterpTimer(MainComponent& m) : mc(m) {}
+        void timerCallback() override { mc.onInterpolationTick(); }
+    };
+
+    interpolationTimer = std::make_unique<InterpTimer>(*this);
+    static_cast<InterpTimer*>(interpolationTimer.get())->startTimer(30);
+}
+
+void MainComponent::onInterpolationTick() {
+    if (!interpolation.active || !currentPatch()) {
+        interpolation.active = false;
+        interpolationTimer.reset();
+        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
+        return;
+    }
+
+    interpolation.elapsedMs += 30.0f;
+    float t = juce::jlimit(0.0f, 1.0f, interpolation.elapsedMs / interpolation.durationMs);
+
+    // Apply interpolated values and collect changed params for synth
+    auto toSend = std::make_shared<std::vector<RandomizeAction::ParamChange>>();
+    for (size_t i = 0; i < interpolation.from.size(); ++i) {
+        auto& f = interpolation.from[i];
+        auto& toE = interpolation.to[i];
+        int interpolatedVal = juce::roundToInt(
+            f.value + (toE.value - f.value) * t);
+
+        auto& container = currentPatch()->getContainer(f.section);
+        auto* mod = container.getModuleByIndex(f.moduleId);
+        if (!mod) continue;
+        auto* param = mod->getParameter(f.paramId);
+        if (!param) continue;
+
+        int oldVal = param->getValue();
+        param->setValue(interpolatedVal);
+        if (oldVal != interpolatedVal)
+            toSend->push_back({f.section, f.moduleId, f.paramId, 0, interpolatedVal});
+    }
+
+    // Send changed params to synth (throttled)
+    if (connectionManager.isConnected() && !toSend->empty()) {
+        auto idx = std::make_shared<size_t>(0);
+        RandomizeAction::sendBatch(toSend, idx, connectionManager);
+    }
+
+    mainLayout->getCanvas().repaintCanvas();
+    mainLayout->getHeaderBar().setInterpolationProgress(t);
+
+    // Done?
+    if (t >= 1.0f) {
+        interpolation.active = false;
+        interpolationTimer.reset();
+        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
+        activeSnapshotIndex[activeSlot] = interpolation.targetSnapshot;
+        mainLayout->getHeaderBar().setActiveSnapshot(interpolation.targetSnapshot);
+
+        // Send all final values to synth
+        auto pending = std::make_shared<std::vector<RandomizeAction::ParamChange>>();
+        for (size_t i = 0; i < interpolation.to.size(); ++i) {
+            auto& e = interpolation.to[i];
+            pending->push_back({e.section, e.moduleId, e.paramId, 0, e.value});
+        }
+        auto idx = std::make_shared<size_t>(0);
+        RandomizeAction::sendBatch(pending, idx, connectionManager);
+
+        mainLayout->getStatusBar().showMessage(
+            "Interpolation complete — Snapshot " +
+            juce::String(interpolation.targetSnapshot + 1), 2000);
+    }
 }
 
 void MainComponent::initializeModule(int section, Module* module) {
