@@ -86,6 +86,11 @@ public:
     using UploadCompleteCallback = std::function<void()>;
     void setUploadCompleteCallback(UploadCompleteCallback cb) { uploadCompleteCallback = std::move(cb); }
 
+    // Called when synth sends real-time light/meter data (sc=0x39/0x3A)
+    // lights: 128 LED values (0-3), meters: 128 meter values (0-127)
+    using LightMeterCallback = std::function<void(const int lights[128], const int meters[128])>;
+    void setLightMeterCallback(LightMeterCallback cb) { lightMeterCallback = std::move(cb); }
+
     // Patch list management
     using PatchListCallback = std::function<void(const std::vector<std::string>& names)>;
     void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
@@ -132,6 +137,11 @@ private:
     SynthErrorCallback synthErrorCallback;
     SlotChangedCallback slotChangedCallback;
     UploadCompleteCallback uploadCompleteCallback;
+    LightMeterCallback lightMeterCallback;
+
+    // Global light/meter arrays updated by synth messages
+    int globalLightValues[128] = {};
+    int globalMeterValues[128] = {};
 
     // Patch request state
     bool waitingForPatchAck = false;

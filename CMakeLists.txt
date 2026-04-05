@@ -5,8 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(JUCE)
-set(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(libs/clap-juce-extensions)
+option(NOMAD_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
+
+if(NOMAD_BUILD_PLUGIN)
+    set(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    add_subdirectory(libs/clap-juce-extensions)
+endif()
 
 # --- Shared source files (used by both standalone and plugin) ---
 set(NOMAD_SHARED_SOURCES
@@ -76,32 +80,34 @@ target_sources(Nomad2026 PRIVATE
     ${NOMAD_SHARED_SOURCES}
 )
 
-# --- VST3/AU Plugin ---
-juce_add_plugin(Nomad2026Plugin
-    PLUGIN_MANUFACTURER_CODE Nmad
-    PLUGIN_CODE Nm26
-    FORMATS VST3 AU Standalone
-    PRODUCT_NAME "Nomad2026"
-    COMPANY_NAME "Nomad2026"
-    IS_MIDI_EFFECT TRUE
-    NEEDS_MIDI_INPUT TRUE
-    NEEDS_MIDI_OUTPUT TRUE
-    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-    VERSION "0.1.0"
-)
+if(NOMAD_BUILD_PLUGIN)
+    # --- VST3/AU Plugin ---
+    juce_add_plugin(Nomad2026Plugin
+        PLUGIN_MANUFACTURER_CODE Nmad
+        PLUGIN_CODE Nm26
+        FORMATS VST3 AU Standalone
+        PRODUCT_NAME "Nomad2026"
+        COMPANY_NAME "Nomad2026"
+        IS_MIDI_EFFECT TRUE
+        NEEDS_MIDI_INPUT TRUE
+        NEEDS_MIDI_OUTPUT TRUE
+        EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+        VERSION "0.1.0"
+    )
 
-target_sources(Nomad2026Plugin PRIVATE
-    source/plugin/PluginProcessor.cpp
-    source/plugin/PluginEditor.cpp
-    ${NOMAD_SHARED_SOURCES}
-)
+    target_sources(Nomad2026Plugin PRIVATE
+        source/plugin/PluginProcessor.cpp
+        source/plugin/PluginEditor.cpp
+        ${NOMAD_SHARED_SOURCES}
+    )
 
-clap_juce_extensions_plugin(
-    TARGET Nomad2026Plugin
-    CLAP_ID "com.nomad2026.editor"
-    CLAP_FEATURES "note-effect" "utility"
-    CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 0
-)
+    clap_juce_extensions_plugin(
+        TARGET Nomad2026Plugin
+        CLAP_ID "com.nomad2026.editor"
+        CLAP_FEATURES "note-effect" "utility"
+        CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 0
+    )
+endif()
 
 juce_add_binary_data(NomadData SOURCES
     data/modules.xml
@@ -109,8 +115,13 @@ juce_add_binary_data(NomadData SOURCES
     data/classic-theme.xml
 )
 
-# --- Shared settings for both targets ---
-foreach(target Nomad2026 Nomad2026Plugin)
+# --- Shared settings ---
+set(NOMAD_TARGETS Nomad2026)
+if(NOMAD_BUILD_PLUGIN)
+    list(APPEND NOMAD_TARGETS Nomad2026Plugin)
+endif()
+
+foreach(target ${NOMAD_TARGETS})
     target_include_directories(${target} PRIVATE source)
 
     target_compile_definitions(${target} PRIVATE

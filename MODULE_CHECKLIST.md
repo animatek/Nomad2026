@@ -20,8 +20,8 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 1 | Keyboard | [ ] | [ ] | [ ] | [ ] | |
-| 2 | AudioIn | [ ] | [ ] | [ ] | [ ] | Has VU meter input |
+| 1 | Keyboard | [x] | [x] | [x] | [x] | Outputs=cuadrados, inputs=círculos, label Rel/vel multilínea centrado |
+| 2 | AudioIn | [x] | [x] | [x] | [x] | VU meters animados (verde/amarillo/rojo), LEDs clip rojos activados por ledOnValue=127 |
 | 3 | 4Output | [ ] | [ ] | [ ] | [ ] | Has VU meters |
 | 4 | 2Output | [ ] | [ ] | [ ] | [ ] | Has VU meters |
 | 5 | 1Output | [ ] | [ ] | [ ] | [ ] | Has VU meter |

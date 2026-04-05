@@ -81,6 +81,7 @@ private:
     void switchToSlot(int slot);
     void updateDspLoadDisplay();
     void rebuildUndoContext(int slot);  // call after patch change
+    void clearSnapshots(int slot);     // call when patch changes
 
     // Parameter snapshots (8 slots per patch slot)
     struct ParamSnapshot {

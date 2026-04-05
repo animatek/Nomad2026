@@ -160,6 +160,35 @@ NMInfoMessage NMInfoMessage::decode(const uint8_t* payload, size_t length)
             }
             break;
 
+        case 0x39:  // LightMessage: 20 LED values (2 bits each), packed 3 per byte
+            // PDL2: 0:1 startIndex:7 | [0:2 l2:2 l1:2 l0:2] x6 groups | 0:4 l19:2 l18:2
+            if (msg.data.size() >= 1)
+            {
+                msg.lightStartIndex = msg.data[0] & 0x7f;
+                int ledIdx = 0;
+                for (size_t i = 1; i < msg.data.size() && ledIdx < 20; ++i)
+                {
+                    uint8_t b = msg.data[i];
+                    if (ledIdx < 20) msg.lightValues[ledIdx++] = (b >> 0) & 0x03;
+                    if (ledIdx < 20) msg.lightValues[ledIdx++] = (b >> 2) & 0x03;
+                    if (ledIdx < 20) msg.lightValues[ledIdx++] = (b >> 4) & 0x03;
+                }
+            }
+            break;
+
+        case 0x3a:  // MeterMessage: 5 pairs of 7-bit values (b, a)
+            // PDL2: 0:1 startIndex:7 | [0:1 b:7 0:1 a:7] x5
+            if (msg.data.size() >= 1)
+            {
+                msg.meterStartIndex = msg.data[0] & 0x7f;
+                for (int i = 0; i < 5 && (size_t)(1 + i*2 + 1) < msg.data.size(); ++i)
+                {
+                    msg.meterValuesB[i] = msg.data[static_cast<size_t>(1 + i*2)]     & 0x7f;
+                    msg.meterValuesA[i] = msg.data[static_cast<size_t>(1 + i*2 + 1)] & 0x7f;
+                }
+            }
+            break;
+
         default:
             break;
     }

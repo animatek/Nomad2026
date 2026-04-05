@@ -177,7 +177,7 @@ void ThemeData::parseLabel(const juce::XmlElement& elem, ModuleTheme& theme)
     ThemeLabel tl;
     tl.x = elem.getIntAttribute("x");
     tl.y = elem.getIntAttribute("y");
-    tl.text = elem.getAllSubText().trim();
+    tl.text = elem.getAllSubText().trim().replace("\\n", "\n");
 
     theme.labels.push_back(tl);
 }
@@ -205,6 +205,8 @@ void ThemeData::parseLight(const juce::XmlElement& elem, ModuleTheme& theme)
     tl.width = elem.getIntAttribute("width", 7);
     tl.height = elem.getIntAttribute("height", 7);
     tl.type = elem.getStringAttribute("type", "led");
+    if (elem.hasAttribute("ledOnValue"))
+        tl.ledOnValue = elem.getIntAttribute("ledOnValue");
 
     theme.lights.push_back(tl);
 }

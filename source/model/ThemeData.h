@@ -57,7 +57,8 @@ struct ThemeLight
     juce::String componentId;
     int x = 0, y = 0;
     int width = 7, height = 7;
-    juce::String type;  // "led" or "meter"
+    juce::String type;      // "led" or "meter"
+    int ledOnValue = -1;    // if >= 0: LED activates when paired meter reaches this value
 };
 
 struct ThemeCustomDisplay

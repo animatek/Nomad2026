@@ -523,6 +523,23 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.drawText(juce::String(i + 1), sb.toNearestInt(), juce::Justification::centred, false);
         }
 
+        // Interpolation time label (after last button)
+        {
+            auto last = getSnapshotButtonBounds(7);
+            float labelX = last.getRight() + 4.0f;
+            float labelY = last.getY();
+            g.setFont(juce::FontOptions(9.0f));
+            if (snapshotInterpSeconds > 0.0f)
+            {
+                g.setColour(juce::Colour(0xffD4A020));
+                juce::String timeLabel = (snapshotInterpSeconds < 10.0f)
+                    ? juce::String(snapshotInterpSeconds, 0) + "s"
+                    : juce::String(juce::roundToInt(snapshotInterpSeconds)) + "s";
+                g.drawText(timeLabel, juce::Rectangle<float>(labelX, labelY, 24.0f, last.getHeight()),
+                           juce::Justification::centredLeft, false);
+            }
+        }
+
         // Interpolation progress bar (below snapshot buttons)
         if (interpolationProgress >= 0.0f)
         {
@@ -630,34 +647,50 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     int snapIdx = getSnapshotButtonAt(pos);
     if (snapIdx >= 0)
     {
-        if (e.mods.isRightButtonDown() && snapshotFilled[snapIdx])
+        if (e.mods.isRightButtonDown())
         {
-            // Right-click on filled snapshot → interpolation menu
+            // Right-click → set interpolation time (works on any snapshot button)
             juce::PopupMenu menu;
-            menu.addSectionHeader("Interpolate to Snapshot " + juce::String(snapIdx + 1));
+            menu.addSectionHeader("Interpolation Time");
+            menu.addItem(1, "Instant", true, snapshotInterpSeconds < 0.01f);
             for (float secs : { 1.0f, 2.0f, 5.0f, 10.0f, 20.0f, 30.0f, 60.0f })
             {
-                int id = juce::roundToInt(secs * 10);
+                int id = juce::roundToInt(secs * 10) + 1;  // offset by 1 to avoid clash with "Instant"=1
                 juce::String label = (secs < 10.0f)
                     ? juce::String(secs, 0) + "s"
                     : juce::String(juce::roundToInt(secs)) + "s";
-                menu.addItem(id, label);
+                menu.addItem(id, label, true, std::abs(snapshotInterpSeconds - secs) < 0.01f);
             }
-            int fromSnap = snapIdx;
             menu.showMenuAsync(juce::PopupMenu::Options{},
-                [this, fromSnap](int result) {
-                    if (result > 0 && snapshotInterpolateCallback)
-                    {
-                        float duration = result / 10.0f;
-                        snapshotInterpolateCallback(activeSnapshot, fromSnap, duration);
-                    }
+                [this](int result) {
+                    if (result == 1)
+                        snapshotInterpSeconds = 0.0f;
+                    else if (result > 1)
+                        snapshotInterpSeconds = (result - 1) / 10.0f;
+                    repaint();
                 });
         }
         else
         {
             bool isShift = e.mods.isShiftDown();
-            if (snapshotClickCallback)
-                snapshotClickCallback(snapIdx, isShift);
+            if (isShift || !snapshotFilled[snapIdx])
+            {
+                // Shift+click or click on empty → save
+                if (snapshotClickCallback)
+                    snapshotClickCallback(snapIdx, true);
+            }
+            else if (snapshotInterpSeconds > 0.0f)
+            {
+                // Filled snapshot + interpolation time set → interpolate
+                if (snapshotInterpolateCallback)
+                    snapshotInterpolateCallback(activeSnapshot, snapIdx, snapshotInterpSeconds);
+            }
+            else
+            {
+                // Filled snapshot + instant → direct recall
+                if (snapshotClickCallback)
+                    snapshotClickCallback(snapIdx, false);
+            }
         }
         return;
     }

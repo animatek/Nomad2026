@@ -24,6 +24,8 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] UI framework (menu bar, module browser, patch canvas, inspector, status bar)
 - [x] MIDI settings dialog with port persistence
 - [x] Pixel-perfect module rendering (classic-theme.xml: connectors, knobs, sliders, labels, text displays, lights)
+- [x] **Real-time VU meters and LEDs**: synth sends NMInfo sc=0x39 (lights) and sc=0x3A (meters); meters animate green/yellow/red, clip LEDs activate at ledOnValue threshold
+- [x] **Module rendering pass (in progress)**: output connectors=squares, input connectors=circles, multiline labels, flat module background, Fira Sans bold titles, top/bottom separator lines
 - [x] Radio-selector buttons (multi-option with highlighted selection)
 - [x] Increment/arrow buttons
 - [x] Custom display renderers (ADSR/AD/AHD envelopes, LFO waveforms, filter response, overdrive/clip curves, EQ, compressor/expander, phaser)
@@ -172,11 +174,14 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Parameter Snapshots** (8 memory slots):
   - 8 snapshot buttons in header bar (after bug report button)
   - Click on empty slot = save current parameter state
-  - Click on filled slot = recall (restore all parameters)
+  - Click on filled slot = recall (instant or interpolated)
   - Shift+click = overwrite/save to slot
-  - Right-click filled slot = interpolation menu (1s, 2s, 5s, 10s, 20s, 30s, 60s)
-  - Timed interpolation: smooth morph between current state and target snapshot
+  - Right-click any snapshot button = set interpolation time (Instant, 1s, 2s, 5s, 10s, 20s, 30s, 60s)
+  - **Sticky interpolation time**: once set, all subsequent clicks use that time — no need to right-click each time
+  - Current time displayed in gold next to snapshot buttons
+  - Timed interpolation: smooth 30ms-tick morph between current state and target snapshot
   - Progress bar during interpolation
+  - Snapshots automatically cleared on patch change (new patch, load file, synth patch switch)
   - Respects parameter locks
   - Visual: empty=gray, filled=blue, active=gold
   - Full undo/redo for recall operations
@@ -360,6 +365,18 @@ cp build/Nomad2026Plugin_artefacts/Debug/CLAP/Nomad2026.clap ~/.clap/
 **Note:** Plugin builds require the clap-juce-extensions submodule: `git submodule update --init --recursive`
 
 Requires JUCE (included as a git submodule in `JUCE/`) and a C++17 compiler.
+
+### Linux MIDI: JUCE Patches
+
+The local JUCE copy includes two patches to `JUCE/modules/juce_audio_devices/native/juce_Midi_linux.cpp` that fix MIDI on Linux with modern kernels (6.5+) that expose UMP (Universal MIDI Packet) APIs:
+
+1. **Synchronous endpoint cache** (Client constructor): `cachedEndpoints = findEndpoints(handle.get());`
+   Without this, `getAvailableDevices()` returns 0 devices on startup because the ALSA sequencer thread hasn't delivered port-change events yet.
+
+2. **Bytestream for legacy ports** (OutputImplNative::send): `port->isUmpEndpoint()` check added.
+   Without this, JUCE sends UMP packets to legacy MIDI devices (e.g. Roland UM-ONE), which causes assertion failures and no data is transmitted.
+
+These patches are required on any Linux distribution with kernel UMP support (CachyOS, Fedora 40+, Ubuntu 24.10+, etc.). If you update the JUCE submodule, reapply these patches.
 
 ## Technical Documentation
 

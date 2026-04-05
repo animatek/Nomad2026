@@ -258,6 +258,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
             slotUndoManagers[targetSlot].clearUndoHistory();
             rebuildUndoContext(targetSlot);
+            clearSnapshots(targetSlot);
 
             // If this is the currently viewed slot, update the UI
             if (targetSlot == activeSlot) {
@@ -507,6 +508,17 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire cable visibility toggles to repaint the canvas
   mainLayout->getHeaderBar().setCableVisibilityCallback(
       [this]() { mainLayout->getCanvas().repaintCanvas(); });
+
+  // Wire real-time light/meter data from synth
+  connectionManager.setLightMeterCallback(
+      [this](const int lights[128], const int meters[128]) {
+          std::array<int,128> l, me;
+          std::copy(lights,  lights  + 128, l.begin());
+          std::copy(meters, meters + 128, me.begin());
+          juce::MessageManager::callAsync([this, l, me]() mutable {
+              mainLayout->getCanvas().setLightMeterData(l.data(), me.data());
+          });
+      });
 
   // Wire shake cables button
   mainLayout->getHeaderBar().setShakeCablesCallback(
@@ -862,6 +874,7 @@ void MainComponent::newPatch() {
 
   currentPatch() = std::make_unique<Patch>();
   currentPatchFile() = juce::File();
+  clearSnapshots(activeSlot);
   mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch().get());
   mainLayout->getInspector().setPatch(currentPatch().get());
@@ -944,6 +957,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
 
   currentPatch() = std::move(patch);
   currentPatchFile() = file;
+  clearSnapshots(activeSlot);
   mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch().get());
   mainLayout->getInspector().setPatch(currentPatch().get());
@@ -1417,6 +1431,28 @@ void MainComponent::rebuildUndoContext(int slot)
 
 // --- Parameter Snapshots ---
 
+void MainComponent::clearSnapshots(int slot) {
+    if (slot < 0 || slot >= numSlots) return;
+
+    // Stop interpolation if running on this slot
+    if (interpolation.active && slot == activeSlot) {
+        interpolation.active = false;
+        if (interpolationTimer) interpolationTimer->stopTimer();
+        interpolationTimer.reset();
+        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
+    }
+
+    for (int i = 0; i < 8; ++i) {
+        snapshots[slot][i].entries.clear();
+        snapshots[slot][i].filled = false;
+        if (slot == activeSlot)
+            mainLayout->getHeaderBar().setSnapshotFilled(i, false);
+    }
+    activeSnapshotIndex[slot] = -1;
+    if (slot == activeSlot)
+        mainLayout->getHeaderBar().setActiveSnapshot(-1);
+}
+
 void MainComponent::handleSnapshotClick(int index, bool isShiftClick) {
     if (!currentPatch()) return;
     if (isShiftClick)
@@ -1465,6 +1501,7 @@ void MainComponent::recallSnapshot(int index) {
     // Stop any running interpolation
     if (interpolation.active) {
         interpolation.active = false;
+        if (interpolationTimer) interpolationTimer->stopTimer();
         interpolationTimer.reset();
         mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
     }
@@ -1502,7 +1539,8 @@ void MainComponent::interpolateSnapshots(int /*fromIndex*/, int toIndex, float s
     // Stop any running interpolation
     if (interpolation.active) {
         interpolation.active = false;
-        interpolationTimer.reset();
+        if (interpolationTimer)
+            interpolationTimer->stopTimer();
     }
 
     // Capture current state as "from"
@@ -1527,6 +1565,10 @@ void MainComponent::interpolateSnapshots(int /*fromIndex*/, int toIndex, float s
     interpolation.targetSnapshot = toIndex;
     interpolation.active = true;
 
+    std::cout << "[SNAP] Interpolation START → snapshot " << (toIndex + 1)
+              << ", " << interpolation.from.size() << " params, "
+              << seconds << "s (" << interpolation.durationMs << "ms)" << std::endl;
+
     mainLayout->getHeaderBar().setInterpolationProgress(0.0f);
     mainLayout->getStatusBar().showMessage(
         "Interpolating to snapshot " + juce::String(toIndex + 1) +
@@ -1540,12 +1582,15 @@ void MainComponent::interpolateSnapshots(int /*fromIndex*/, int toIndex, float s
     };
 
     interpolationTimer = std::make_unique<InterpTimer>(*this);
-    static_cast<InterpTimer*>(interpolationTimer.get())->startTimer(30);
+    interpolationTimer->startTimer(30);
 }
 
 void MainComponent::onInterpolationTick() {
     if (!interpolation.active || !currentPatch()) {
+        std::cout << "[SNAP] Tick ABORTED: active=" << interpolation.active
+                  << " patch=" << (currentPatch() != nullptr) << std::endl;
         interpolation.active = false;
+        if (interpolationTimer) interpolationTimer->stopTimer();
         interpolationTimer.reset();
         mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
         return;
@@ -1553,6 +1598,10 @@ void MainComponent::onInterpolationTick() {
 
     interpolation.elapsedMs += 30.0f;
     float t = juce::jlimit(0.0f, 1.0f, interpolation.elapsedMs / interpolation.durationMs);
+
+    if (interpolation.elapsedMs <= 60.0f || t >= 0.99f)
+        std::cout << "[SNAP] Tick: elapsed=" << interpolation.elapsedMs
+                  << "ms t=" << t << " duration=" << interpolation.durationMs << "ms" << std::endl;
 
     // Apply interpolated values and collect changed params for synth
     auto toSend = std::make_shared<std::vector<RandomizeAction::ParamChange>>();
@@ -1585,7 +1634,10 @@ void MainComponent::onInterpolationTick() {
 
     // Done?
     if (t >= 1.0f) {
+        std::cout << "[SNAP] Interpolation COMPLETE → snapshot "
+                  << (interpolation.targetSnapshot + 1) << std::endl;
         interpolation.active = false;
+        if (interpolationTimer) interpolationTimer->stopTimer();
         interpolationTimer.reset();
         mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
         activeSnapshotIndex[activeSlot] = interpolation.targetSnapshot;

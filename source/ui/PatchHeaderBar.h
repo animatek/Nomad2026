@@ -127,6 +127,7 @@ private:
     bool snapshotFilled[8] = {};
     int activeSnapshot = -1;       // -1 = none active
     float interpolationProgress = -1.0f;  // <0 = not interpolating
+    float snapshotInterpSeconds = 0.0f;   // 0 = instant recall
 
     std::unique_ptr<juce::Label> patchNameEditor;
     std::unique_ptr<juce::DrawableButton> quickSaveButton;

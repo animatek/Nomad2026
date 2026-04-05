@@ -5,6 +5,55 @@
 
 // --- PatchCanvas (inner scrollable surface) ---
 
+void PatchCanvas::setLightMeterData(const int lights[128], const int meters[128])
+{
+    std::copy(lights, lights + 128, globalLightValues);
+    std::copy(meters, meters + 128, globalMeterValues);
+    repaint();
+}
+
+int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetSection, bool forMeters) const
+{
+    if (patch == nullptr || themeData == nullptr) return 0;
+
+    // Build sorted list: poly (section=1) first, then common (section=0), each sorted by containerIndex
+    struct ModuleRef { const Module* mod; int section; };
+    std::vector<ModuleRef> ordered;
+
+    auto addSection = [&](const ModuleContainer& container, int sec)
+    {
+        size_t start = ordered.size();
+        for (auto& m : container.getModules())
+            ordered.push_back({ m.get(), sec });
+        std::sort(ordered.begin() + static_cast<std::ptrdiff_t>(start), ordered.end(),
+                  [](const ModuleRef& a, const ModuleRef& b) {
+                      return a.mod->getContainerIndex() < b.mod->getContainerIndex();
+                  });
+    };
+
+    addSection(patch->getPolyVoiceArea(), 1);
+    addSection(patch->getCommonArea(), 0);
+
+    int baseIndex = 0;
+    for (auto& ref : ordered)
+    {
+        if (ref.mod == &targetModule && ref.section == targetSection)
+            return baseIndex;
+
+        // Count lights/meters for this module from its theme
+        auto compId = ref.mod->getDescriptor() ? ref.mod->getDescriptor()->componentId : juce::String();
+        if (const ModuleTheme* theme = themeData->getModuleTheme(compId))
+        {
+            for (auto& light : theme->lights)
+            {
+                if (forMeters && light.type == "meter") ++baseIndex;
+                if (!forMeters && light.type == "led")  ++baseIndex;
+            }
+        }
+    }
+    return baseIndex;
+}
+
 PatchCanvas::PatchCanvas()
 {
     setSize(canvasWidth, sectionHeight);
@@ -433,7 +482,7 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
             theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
 
         if (theme != nullptr)
-            paintModuleThemed(g, m, rect, *theme, container);
+            paintModuleThemed(g, m, mySection, rect, *theme, container);
         else
             paintModuleFallback(g, m, rect);
 
@@ -446,7 +495,7 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
     }
 }
 
-void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container)
+void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container)
 {
     paintModuleBackground(g, m, bounds, theme);
     paintCustomDisplays(g, m, bounds, theme);
@@ -456,34 +505,29 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, juce::Re
     paintKnobs(g, m, bounds, theme);
     paintButtons(g, m, bounds, theme);
     paintConnectors(g, m, bounds, theme, container);
-    paintLights(g, bounds, theme);
+    paintLights(g, m, section, bounds, theme);
 }
 
 void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& /*theme*/)
 {
     auto bgColour = m.getDescriptor()->background;
 
-    // Module body
+    // Module body (flat background, no title band)
     g.setColour(bgColour);
     g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
 
-    // Title bar (top 12px, slightly darker)
-    auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY(), bounds.getWidth(), 12);
-    g.setColour(bgColour.darker(0.15f));
-    juce::Path titlePath;
-    titlePath.addRoundedRectangle(static_cast<float>(titleBar.getX()), static_cast<float>(titleBar.getY()),
-                                  static_cast<float>(titleBar.getWidth()), static_cast<float>(titleBar.getHeight()),
-                                  3.0f, 3.0f, true, true, false, false);
-    g.fillPath(titlePath);
-
-    // Title text
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(9.0f));
+    // Module name (no band, text directly on background)
+    auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY() + 2, bounds.getWidth(), 12);
+    g.setColour(juce::Colours::black.withAlpha(0.7f));
+    g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
-    // Border
-    g.setColour(bgColour.brighter(0.3f));
-    g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 3.0f, 1.0f);
+    // Subtle top and bottom separator lines
+    g.setColour(juce::Colour(0x44000000));
+    g.drawLine(static_cast<float>(bounds.getX()),     static_cast<float>(bounds.getY()),
+               static_cast<float>(bounds.getRight()), static_cast<float>(bounds.getY()),     1.0f);
+    g.drawLine(static_cast<float>(bounds.getX()),     static_cast<float>(bounds.getBottom()),
+               static_cast<float>(bounds.getRight()), static_cast<float>(bounds.getBottom()), 1.0f);
 
     // Selection highlight
     if (isSelected(&m))
@@ -566,29 +610,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
         if (isOutput)
         {
-            // Output: filled circle
-            g.setColour(connColour);
-            g.fillEllipse(cx, cy, sz, sz);
-
-            g.setColour(outline);
-            g.drawEllipse(cx, cy, sz, sz, 1.0f);
-
-            if (capped)
-            {
-                // Capped: filled center (no hole) with a subtle cross/cap indicator
-                g.setColour(connColour.darker(0.4f));
-                g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
-            }
-            else
-            {
-                // Normal: dark inner circle (plug hole)
-                g.setColour(darkHole);
-                g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
-            }
-        }
-        else
-        {
-            // Input: rounded rectangle
+            // Output: rounded rectangle (square shape)
             const float cornerRadius = sz * 0.25f;
             g.setColour(connColour);
             g.fillRoundedRectangle(cx, cy, sz, sz, cornerRadius);
@@ -598,7 +620,6 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
             if (capped)
             {
-                // Capped: filled center (no socket hole)
                 const float sqSz = innerSz * 1.1f;
                 const float sqOff = (sz - sqSz) * 0.5f;
                 g.setColour(connColour.darker(0.4f));
@@ -606,11 +627,32 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
             }
             else
             {
-                // Normal: dark inner square (socket hole)
+                // Dark inner square (plug hole)
                 const float sqSz = innerSz * 1.1f;
                 const float sqOff = (sz - sqSz) * 0.5f;
                 g.setColour(darkHole);
                 g.fillRoundedRectangle(cx + sqOff, cy + sqOff, sqSz, sqSz, cornerRadius * 0.4f);
+            }
+        }
+        else
+        {
+            // Input: filled circle
+            g.setColour(connColour);
+            g.fillEllipse(cx, cy, sz, sz);
+
+            g.setColour(outline);
+            g.drawEllipse(cx, cy, sz, sz, 1.0f);
+
+            if (capped)
+            {
+                g.setColour(connColour.darker(0.4f));
+                g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
+            }
+            else
+            {
+                // Dark inner circle (socket hole)
+                g.setColour(darkHole);
+                g.fillEllipse(cx + innerOffset, cy + innerOffset, innerSz, innerSz);
             }
         }
     }
@@ -623,10 +665,28 @@ void PatchCanvas::paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, co
 
     for (auto& label : theme.labels)
     {
-        g.drawText(label.text,
-                   bounds.getX() + label.x, bounds.getY() + label.y,
-                   120, 12,
-                   juce::Justification::centredLeft, true);
+        if (label.text.containsChar('\n'))
+        {
+            // Multiline label: split on \n, centre block vertically within module height
+            auto lines = juce::StringArray::fromLines(label.text);
+            const int lineH = 10;
+            const int totalH = lines.size() * lineH;
+            const int startY = bounds.getY() + label.y + (bounds.getHeight() - totalH) / 2;
+            for (int i = 0; i < lines.size(); ++i)
+            {
+                g.drawText(lines[i],
+                           bounds.getX() + label.x, startY + i * lineH,
+                           60, lineH,
+                           juce::Justification::centredLeft, true);
+            }
+        }
+        else
+        {
+            g.drawText(label.text,
+                       bounds.getX() + label.x, bounds.getY() + label.y,
+                       120, 12,
+                       juce::Justification::centredLeft, true);
+        }
     }
 }
 
@@ -975,28 +1035,116 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
     }
 }
 
-void PatchCanvas::paintLights(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
+    // Compute base indices for this module's LEDs and meters in the global arrays
+    int ledBase   = computeModuleLightIndex(m, section, false);
+    int meterBase = computeModuleLightIndex(m, section, true);
+
+    // Build map of meter vertical centers (for LED alignment) and meter index per component-id
+    std::map<juce::String, float> meterCenterY;
+    std::map<juce::String, int>   meterGlobalIdx;
+    int meterCount = 0;
     for (auto& tl : theme.lights)
     {
-        float lx = static_cast<float>(bounds.getX() + tl.x);
-        float ly = static_cast<float>(bounds.getY() + tl.y);
+        if (tl.type == "meter")
+        {
+            float cy = static_cast<float>(bounds.getY() + tl.y) + tl.height * 0.5f;
+            // Only store first occurrence for center (multiple meters per channel use same id)
+            if (meterCenterY.find(tl.componentId) == meterCenterY.end())
+                meterCenterY[tl.componentId] = cy;
+            meterGlobalIdx[tl.componentId] = meterBase + meterCount;
+            ++meterCount;
+        }
+    }
+
+    // Track LED index per component-id
+    std::map<juce::String, int> ledGlobalIdx;
+    int ledCount = 0;
+    for (auto& tl : theme.lights)
+    {
+        if (tl.type == "led")
+        {
+            ledGlobalIdx[tl.componentId] = ledBase + ledCount;
+            ++ledCount;
+        }
+    }
+
+    for (auto& tl : theme.lights)
+    {
+        float lx = static_cast<float>(bounds.getX() + tl.x) + (tl.type == "led" ? 2.0f : 0.0f);
         float lw = static_cast<float>(tl.width);
         float lh = static_cast<float>(tl.height);
 
         if (tl.type == "led")
         {
-            // LED: small dark circle (off state)
-            g.setColour(juce::Colour(0xff333333));
-            g.fillEllipse(lx, ly, lw, lh);
-            g.setColour(juce::Colour(0xff555555));
-            g.drawEllipse(lx, ly, lw, lh, 0.5f);
+            // Vertically centre LED on its paired meter
+            float ly;
+            auto it = meterCenterY.find(tl.componentId);
+            if (it != meterCenterY.end())
+                ly = it->second - lh * 0.5f;
+            else
+                ly = static_cast<float>(bounds.getY() + tl.y);
+
+            // Determine if LED is on:
+            // - ledOnValue >= 0: driven by paired meter reaching that threshold
+            // - otherwise: driven by globalLightValues
+            bool ledOn = false;
+            if (tl.ledOnValue >= 0)
+            {
+                int mIdx = meterGlobalIdx.count(tl.componentId) ? meterGlobalIdx[tl.componentId] : meterBase;
+                int mVal = (mIdx < 128) ? globalMeterValues[mIdx] : 0;
+                ledOn = (mVal >= tl.ledOnValue);
+            }
+            else
+            {
+                int ledIdx = ledGlobalIdx.count(tl.componentId) ? ledGlobalIdx[tl.componentId] : ledBase;
+                ledOn = (ledIdx < 128) && (globalLightValues[ledIdx] > 0);
+            }
+
+            if (ledOn)
+            {
+                // On: bright red (clipping indicator)
+                g.setColour(juce::Colour(0xffff2200));
+                g.fillEllipse(lx, ly, lw, lh);
+                g.setColour(juce::Colour(0xffff6644));
+                g.drawEllipse(lx, ly, lw, lh, 0.5f);
+            }
+            else
+            {
+                // Off: dark circle
+                g.setColour(juce::Colour(0xff333333));
+                g.fillEllipse(lx, ly, lw, lh);
+                g.setColour(juce::Colour(0xff555555));
+                g.drawEllipse(lx, ly, lw, lh, 0.5f);
+            }
         }
-        else
+        else  // meter
         {
-            // Meter: dark rect (off state)
-            g.setColour(juce::Colour(0xff333333));
+            float ly = static_cast<float>(bounds.getY() + tl.y);
+
+            // Background
+            g.setColour(juce::Colour(0xff222222));
             g.fillRect(lx, ly, lw, lh);
+
+            // Get meter value (0-127)
+            int mIdx = meterGlobalIdx.count(tl.componentId) ? meterGlobalIdx[tl.componentId] : meterBase;
+            int mVal = (mIdx < 128) ? globalMeterValues[mIdx] : 0;
+
+            if (mVal > 0)
+            {
+                float fill = static_cast<float>(mVal) / 127.0f;
+                float barW = lw * fill;
+
+                // Colour: green → yellow → red based on level
+                juce::Colour barColour;
+                if (fill < 0.6f)       barColour = juce::Colour(0xff22cc44);
+                else if (fill < 0.85f) barColour = juce::Colour(0xffddcc00);
+                else                   barColour = juce::Colour(0xffee2200);
+
+                g.setColour(barColour);
+                g.fillRect(lx, ly, barW, lh);
+            }
         }
     }
 }

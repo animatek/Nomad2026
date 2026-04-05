@@ -80,6 +80,13 @@ struct NMInfoMessage
     // NewPatchInSlot (sc=0x38)
     int newPatchSlot = -1;
     int newPatchPid = -1;
+    // LightMessage (sc=0x39): 20 LED values (2-bit each, 0-3), startIndex into global LED array
+    int lightStartIndex = -1;
+    int lightValues[20] = {};
+    // MeterMessage (sc=0x3A): 5 pairs of 7-bit values, startIndex into global meter array
+    int meterStartIndex = -1;
+    int meterValuesA[5] = {};   // channel A (right/even)
+    int meterValuesB[5] = {};   // channel B (left/odd)
 
     static NMInfoMessage decode(const uint8_t* payload, size_t length);
 };

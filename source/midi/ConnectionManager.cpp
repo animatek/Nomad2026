@@ -604,6 +604,27 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     if (msg.sc != 0x39 && msg.sc != 0x3a)  // skip Lights and Meters (too spammy)
         DBG("[NMInfo] sc=0x" + juce::String::toHexString(msg.sc) + " data=" + juce::String(static_cast<int>(msg.data.size())) + " bytes");
 
+    if (msg.sc == 0x39 && msg.lightStartIndex >= 0)  // LightMessage
+    {
+        int base = msg.lightStartIndex;
+        for (int i = 0; i < 20 && (base + i) < 128; ++i)
+            globalLightValues[base + i] = msg.lightValues[i];
+        if (lightMeterCallback)
+            lightMeterCallback(globalLightValues, globalMeterValues);
+    }
+
+    if (msg.sc == 0x3a && msg.meterStartIndex >= 0)  // MeterMessage
+    {
+        int base = msg.meterStartIndex;
+        for (int i = 0; i < 5; ++i)
+        {
+            if ((base + i*2)   < 128) globalMeterValues[base + i*2]   = msg.meterValuesB[i];
+            if ((base + i*2+1) < 128) globalMeterValues[base + i*2+1] = msg.meterValuesA[i];
+        }
+        if (lightMeterCallback)
+            lightMeterCallback(globalLightValues, globalMeterValues);
+    }
+
     if (msg.sc == 0x05)  // VoiceCount
     {
         DBG("[DSP] VoiceCount received: " + juce::String(msg.voiceCount[0]) + " "

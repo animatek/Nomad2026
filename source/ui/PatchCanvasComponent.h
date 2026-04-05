@@ -59,6 +59,7 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
+    void setLightMeterData(const int lights[128], const int meters[128]);
 
     /** Returns list of currently selected modules as (module*, section) pairs */
     std::vector<std::pair<Module*, int>> getSelectedModules() const
@@ -120,7 +121,7 @@ private:
     juce::Point<int> getConnectorPosition(const Module& m, const Connector& conn, int yOffset) const;
 
     // Theme-aware painting helpers
-    void paintModuleThemed(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
+    void paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme);
@@ -128,7 +129,7 @@ private:
     void paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintSliders(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintTextDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
-    void paintLights(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintCustomDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintModuleFallback(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
 
@@ -143,6 +144,14 @@ private:
     const ModuleDescriptions* moduleDescs = nullptr;
     const ThemeData* themeData = nullptr;
     int mySection = -1;  // -1=both (legacy), 0=common, 1=poly
+
+    // Real-time light/meter data from synth
+    int globalLightValues[128] = {};
+    int globalMeterValues[128] = {};
+
+    // Compute the global base index for a module's LEDs or meters
+    // (poly modules come first, sorted by index; then common modules)
+    int computeModuleLightIndex(const Module& m, int section, bool forMeters) const;
 
     // Dragging state
     struct DragState
@@ -405,6 +414,12 @@ public:
     {
         polyCanvas.repaint();
         commonCanvas.repaint();
+    }
+
+    void setLightMeterData(const int lights[128], const int meters[128])
+    {
+        polyCanvas.setLightMeterData(lights, meters);
+        commonCanvas.setLightMeterData(lights, meters);
     }
 
     void shakeCables()
