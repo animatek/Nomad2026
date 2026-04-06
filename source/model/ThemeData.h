@@ -50,6 +50,7 @@ struct ThemeTextDisplay
     juce::String componentId;
     int x = 0, y = 0;
     int width = 40, height = 16;
+    bool noteFormat = false;  // true → display as note name (C4, D#3, etc.)
 };
 
 struct ThemeLight

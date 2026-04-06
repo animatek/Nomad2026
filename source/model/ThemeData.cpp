@@ -191,7 +191,17 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
     td.height = elem.getIntAttribute("height", 16);
 
     if (auto* param = elem.getChildByName("parameter"))
+    {
         td.componentId = param->getStringAttribute("component-id");
+        // Modules with note-select parameter (transformations.xml selector="note-select")
+        static const juce::StringArray noteSelectModules { "m67", "m100" };
+        // m67 (NoteDetect): p1 — m100 (KeybSplit): p1 (lower) and p2 (upper)
+        bool isNoteModule = noteSelectModules.contains(theme.componentId);
+        bool isNoteParam  = (td.componentId == "p1") ||
+                            (theme.componentId == "m100" && td.componentId == "p2");
+        if (isNoteModule && isNoteParam)
+            td.noteFormat = true;
+    }
 
     theme.textDisplays.push_back(td);
 }

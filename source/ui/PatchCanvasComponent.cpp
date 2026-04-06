@@ -503,7 +503,7 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintTextDisplays(g, m, bounds, theme);
     paintSliders(g, m, bounds, theme);
     paintKnobs(g, m, bounds, theme);
-    paintButtons(g, m, bounds, theme);
+    paintButtons(g, m, bounds, theme, m.getDescriptor()->background);
     paintConnectors(g, m, bounds, theme, container);
     paintLights(g, m, section, bounds, theme);
 }
@@ -522,12 +522,16 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
-    // Subtle top and bottom separator lines
+    // Subtle edge lines on all four sides
     g.setColour(juce::Colour(0x44000000));
-    g.drawLine(static_cast<float>(bounds.getX()),     static_cast<float>(bounds.getY()),
-               static_cast<float>(bounds.getRight()), static_cast<float>(bounds.getY()),     1.0f);
-    g.drawLine(static_cast<float>(bounds.getX()),     static_cast<float>(bounds.getBottom()),
-               static_cast<float>(bounds.getRight()), static_cast<float>(bounds.getBottom()), 1.0f);
+    float x1 = static_cast<float>(bounds.getX());
+    float y1 = static_cast<float>(bounds.getY());
+    float x2 = static_cast<float>(bounds.getRight());
+    float y2 = static_cast<float>(bounds.getBottom());
+    g.drawLine(x1, y1, x2, y1, 1.0f); // top
+    g.drawLine(x1, y2, x2, y2, 1.0f); // bottom
+    g.drawLine(x1, y1, x1, y2, 1.0f); // left
+    g.drawLine(x2, y1, x2, y2, 1.0f); // right
 
     // Selection highlight
     if (isSelected(&m))
@@ -667,11 +671,10 @@ void PatchCanvas::paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, co
     {
         if (label.text.containsChar('\n'))
         {
-            // Multiline label: split on \n, centre block vertically within module height
+            // Multiline label: use y as top of first line (XML positions are intentional)
             auto lines = juce::StringArray::fromLines(label.text);
             const int lineH = 10;
-            const int totalH = lines.size() * lineH;
-            const int startY = bounds.getY() + label.y + (bounds.getHeight() - totalH) / 2;
+            const int startY = bounds.getY() + label.y;
             for (int i = 0; i < lines.size(); ++i)
             {
                 g.drawText(lines[i],
@@ -797,7 +800,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
     }
 }
 
-void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, juce::Colour moduleBg)
 {
     for (auto& tb : theme.buttons)
     {
@@ -858,10 +861,52 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
 
         int numOptions = static_cast<int>(tb.labels.size());
 
+        // Helper: draw a single bevel-effect button segment
+        // pressed=true → sunken look; false → raised look
+        auto drawBevelSegment = [&](float sx, float sy, float sw, float sh,
+                                    bool pressed, juce::Colour baseFill,
+                                    const juce::String& label, juce::Colour labelColour)
+        {
+            // Fill
+            g.setColour(baseFill);
+            g.fillRect(sx, sy, sw, sh);
+
+            // Bevel edges: raised = light top/left, dark bottom/right; pressed = inverted
+            juce::Colour hiEdge  = baseFill.brighter(0.55f);
+            juce::Colour loEdge  = baseFill.darker(0.55f);
+            juce::Colour topLeft  = pressed ? loEdge : hiEdge;
+            juce::Colour botRight = pressed ? hiEdge : loEdge;
+
+            // Top
+            g.setColour(topLeft);
+            g.drawLine(sx, sy, sx + sw, sy, 1.0f);
+            // Left
+            g.drawLine(sx, sy, sx, sy + sh, 1.0f);
+            // Bottom
+            g.setColour(botRight);
+            g.drawLine(sx, sy + sh - 1.0f, sx + sw, sy + sh - 1.0f, 1.0f);
+            // Right
+            g.drawLine(sx + sw - 1.0f, sy, sx + sw - 1.0f, sy + sh, 1.0f);
+
+            if (label.isNotEmpty())
+            {
+                float fontSize = juce::jmin(8.0f, juce::jmin(sw * 0.85f, sh - 2.0f));
+                if (fontSize < 4.0f) fontSize = 4.0f;
+                g.setColour(labelColour);
+                g.setFont(juce::FontOptions("Fira Sans", fontSize, juce::Font::bold));
+                // Shift content 1px down-right when pressed for tactile feel
+                int ox = pressed ? 1 : 0;
+                int oy = pressed ? 1 : 0;
+                g.drawText(label,
+                           static_cast<int>(sx) + ox, static_cast<int>(sy) + oy,
+                           static_cast<int>(sw), static_cast<int>(sh),
+                           juce::Justification::centred, true);
+            }
+        };
+
         // --- Radio-selector buttons (cyclic=false, multiple options) ---
         if (!tb.cyclic && numOptions > 1)
         {
-            // Draw segmented button showing all options, highlight selected
             for (int i = 0; i < numOptions; i++)
             {
                 float segX, segY, segW, segH;
@@ -883,47 +928,25 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
 
                 bool selected = (i == val);
 
-                // Segment background
-                g.setColour(selected ? juce::Colour(0xff5566aa) : juce::Colour(0xff3a3a3a));
-                g.fillRect(segX, segY, segW, segH);
-
-                // Segment border
-                g.setColour(juce::Colour(0xff555555));
-                g.drawRect(segX, segY, segW, segH, 0.5f);
-
-                // Label
                 juce::String segLabel;
                 if (i < numOptions)
                     segLabel = tb.labels[static_cast<size_t>(i)];
-                // Image-only option: show index
                 if (segLabel.isEmpty())
                     segLabel = juce::String(i);
 
-                float fontSize = juce::jmin(8.0f, juce::jmin(segW * 0.8f, segH - 2.0f));
-                if (fontSize < 4.0f) fontSize = 4.0f;
-
-                g.setColour(selected ? juce::Colours::white : juce::Colour(0xffaaaaaa));
-                g.setFont(juce::FontOptions(fontSize));
-                g.drawText(segLabel,
-                           static_cast<int>(segX), static_cast<int>(segY),
-                           static_cast<int>(segW), static_cast<int>(segH),
-                           juce::Justification::centred, true);
+                juce::Colour base  = selected ? moduleBg.brighter(0.25f).withSaturation(0.5f) : moduleBg.darker(0.15f);
+                juce::Colour label = selected ? juce::Colour(0xff111111) : juce::Colour(0xff333333);
+                drawBevelSegment(segX, segY, segW, segH, selected, base, segLabel, label);
             }
 
-            // Overall border
-            g.setColour(juce::Colour(0xff666666));
+            // Outer border
+            g.setColour(juce::Colour(0xff222222));
             g.drawRect(bx, by, bw, bh, 1.0f);
             continue;
         }
 
         // --- Toggle buttons (cyclic=true) or single-option ---
         bool isOn = (val > 0);
-
-        g.setColour(isOn ? juce::Colour(0xff505060) : juce::Colour(0xff3a3a3a));
-        g.fillRect(bx, by, bw, bh);
-
-        g.setColour(isOn ? juce::Colour(0xff7777aa) : juce::Colour(0xff555555));
-        g.drawRect(bx, by, bw, bh, 1.0f);
 
         // Determine label text for current state
         juce::String labelText;
@@ -934,23 +957,16 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             else
                 labelText = tb.labels[0];
         }
+        if (labelText.isEmpty() && param != nullptr)
+            labelText = juce::String(val);
 
-        // Image-only toggle: show on/off indicator
-        if (labelText.isEmpty())
-        {
-            if (param != nullptr)
-                labelText = juce::String(val);
-        }
+        juce::Colour base      = isOn ? moduleBg.brighter(0.2f).withSaturation(0.4f) : moduleBg.darker(0.15f);
+        juce::Colour labelCol  = isOn ? juce::Colour(0xff111111) : juce::Colour(0xff333333);
+        drawBevelSegment(bx, by, bw, bh, isOn, base, labelText, labelCol);
 
-        if (labelText.isNotEmpty())
-        {
-            g.setColour(isOn ? juce::Colours::white : juce::Colour(0xffcccccc));
-            g.setFont(juce::FontOptions(juce::jmin(8.0f, bh - 2.0f)));
-            g.drawText(labelText,
-                       static_cast<int>(bx), static_cast<int>(by),
-                       static_cast<int>(bw), static_cast<int>(bh),
-                       juce::Justification::centred, true);
-        }
+        // Outer border
+        g.setColour(juce::Colour(0xff222222));
+        g.drawRect(bx, by, bw, bh, 1.0f);
     }
 }
 
@@ -1025,9 +1041,24 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         auto* param = findParameter(m, td.componentId);
         if (param != nullptr)
         {
+            int val = param->getValue();
+            juce::String displayStr;
+
+            if (td.noteFormat)
+            {
+                // MIDI note → name, Clavia convention: 0=C0 … 60=C4 … 127=G9
+                static const char* noteNames[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B" };
+                int octave = (val / 12) - 1;   // MIDI standard: C4=60 → octave=(60/12)-1=4
+                displayStr = juce::String(noteNames[val % 12]) + juce::String(octave);
+            }
+            else
+            {
+                displayStr = juce::String(val);
+            }
+
             g.setColour(juce::Colours::white);
             g.setFont(juce::FontOptions(9.0f));
-            g.drawText(juce::String(param->getValue()),
+            g.drawText(displayStr,
                        static_cast<int>(dx), static_cast<int>(dy),
                        static_cast<int>(dw), static_cast<int>(dh),
                        juce::Justification::centred, true);
@@ -1144,6 +1175,25 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
 
                 g.setColour(barColour);
                 g.fillRect(lx, ly, barW, lh);
+            }
+
+            // dB scale below meter bar — only between meters (not after the last one)
+            if (lw >= 60.0f && ly + lh + 12.0f < static_cast<float>(bounds.getBottom()))
+            {
+                const int dbMarks[] = { 0, -6, -12, -18, -24, -30 };
+                g.setColour(juce::Colours::black);
+                g.setFont(juce::FontOptions(6.0f));
+                for (int db : dbMarks)
+                {
+                    float t = 1.0f + db / 30.0f;   // 0 dB → t=1.0, -30 dB → t=0.0
+                    float tx = lx + lw * t;
+                    g.drawLine(tx, ly + lh, tx, ly + lh + 2.0f, 1.0f);
+                    juce::String label = (db == 0) ? "0" : juce::String(db);
+                    g.drawText(label,
+                               static_cast<int>(tx) - 8, static_cast<int>(ly + lh + 2),
+                               16, 8,
+                               juce::Justification::centred, false);
+                }
             }
         }
     }

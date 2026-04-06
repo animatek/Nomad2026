@@ -1584,8 +1584,8 @@ label{fill:#000;}
 			<btn index="0">+6dB</btn>
 			<btn index="1">+6dB</btn>
 		</button>
-		<label x="85" y="13">L</label>
-		<label x="85" y="26">R</label>
+		<label x="85" y="2">L</label>
+		<label x="85" y="17">R</label>
 		<label x="225" y="12">L</label>
 		<label x="241" y="12">R</label><!--
 		<display.audiolevel x="95" y="6" width="90" height="5" />
