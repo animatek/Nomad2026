@@ -504,17 +504,33 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintSliders(g, m, bounds, theme);
     paintKnobs(g, m, bounds, theme);
     paintButtons(g, m, bounds, theme, m.getDescriptor()->background);
+    paintResetButtons(g, m, bounds, theme);
+    paintStaticIcons(g, bounds, theme);
     paintConnectors(g, m, bounds, theme, container);
     paintLights(g, m, section, bounds, theme);
 }
 
-void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& /*theme*/)
+void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
     auto bgColour = m.getDescriptor()->background;
 
     // Module body (flat background, no title band)
     g.setColour(bgColour);
     g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+
+    // GroupBoxes — rounded rect section borders (e.g. PWidth in OscA)
+    for (auto& gb : theme.groupBoxes)
+    {
+        auto gbRect = juce::Rectangle<float>(
+            static_cast<float>(bounds.getX() + gb.x),
+            static_cast<float>(bounds.getY() + gb.y),
+            static_cast<float>(gb.width),
+            static_cast<float>(gb.height));
+        g.setColour(bgColour.darker(0.25f));
+        g.fillRoundedRectangle(gbRect, 3.0f);
+        g.setColour(bgColour.darker(0.5f));
+        g.drawRoundedRectangle(gbRect, 3.0f, 1.0f);
+    }
 
     // Module name (no band, text directly on background)
     auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY() + 2, bounds.getWidth(), 12);
@@ -660,6 +676,50 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
             }
         }
     }
+
+    // For each input connector, if there's a knob at similar Y and nearby X, draw a connecting line
+    const int yTolerance = 12;
+    g.setColour(juce::Colour(0xff1a1a1a));
+    for (auto& tc : theme.connectors)
+    {
+        if (tc.cssClass == "cSLAVE") continue;
+        bool isOut = false;
+        for (auto& conn : m.getConnectors())
+            if (conn.getDescriptor() && conn.getDescriptor()->componentId == tc.componentId)
+                { isOut = conn.getDescriptor()->isOutput; break; }
+        if (isOut) continue;
+
+        float connCx = static_cast<float>(bounds.getX() + tc.x) + tc.size * 0.5f;
+        float connCy = static_cast<float>(bounds.getY() + tc.y) + tc.size * 0.5f;
+
+        float bestDist = 999.0f;
+        float knobCx = -1.0f;
+        float bestKnobSz = 21.0f;
+        for (auto& tk : theme.knobs)
+        {
+            float kx = static_cast<float>(bounds.getX() + tk.x) + tk.size * 0.5f;
+            float ky = static_cast<float>(bounds.getY() + tk.y) + tk.size * 0.5f;
+            float dy = std::abs(ky - connCy);
+            float dx = kx - connCx;
+            if (dy <= static_cast<float>(yTolerance) && dx > 0.0f && dx < bestDist)
+            {
+                bestDist = dx;
+                knobCx = kx;
+                bestKnobSz = static_cast<float>(tk.size);
+            }
+        }
+
+        if (knobCx > 0.0f && bestDist < 40.0f)
+        {
+            float renderScale = (bestKnobSz >= 26.0f) ? 0.82f : 0.78f;
+            float knobRadius  = bestKnobSz * renderScale * 0.5f;
+            float lineY  = connCy;
+            float lineX0 = connCx + tc.size * 0.5f;
+            float lineX1 = knobCx - knobRadius - 1.0f;
+            if (lineX1 > lineX0)
+                g.drawLine(lineX0, lineY, lineX1, lineY, 1.0f);
+        }
+    }
 }
 
 void PatchCanvas::paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme)
@@ -723,13 +783,19 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
                 normalized = static_cast<float>(param->getValue() - pd->minValue) / static_cast<float>(paramRange);
         }
 
-        // Knob center and radii
+        // Knob center — always at the XML-defined centre regardless of render scale
         float centerX = cx + sz * 0.5f;
         float centerY = cy + sz * 0.5f;
-        float radius  = sz * 0.5f;
+
+        // Render the knob slightly smaller than the XML size so it looks
+        // proportional on screen (original Nomad knobs are compact).
+        float renderScale = (sz >= 26.0f) ? 0.82f : 0.78f;
+        float rSz    = sz * renderScale;
+        float radius  = rSz * 0.5f;
+        float rcx    = centerX - radius;
+        float rcy    = centerY - radius;
 
         // Knob angle: 270° range from 7 o'clock (-135°) to 5 o'clock (+135°)
-        // Convention: 0° = 12 o'clock, positive = clockwise (same as JUCE addPieSegment)
         const float kRangedeg = 270.0f;
         const float kStartDeg = -135.0f;
         float knobAngleDeg = kStartDeg + normalized * kRangedeg;
@@ -737,7 +803,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
 
         // Background circle — morph group color if assigned, grey otherwise
         g.setColour(baseColor);
-        g.fillEllipse(cx, cy, sz, sz);
+        g.fillEllipse(rcx, rcy, rSz, rSz);
 
         // Morph wedge: starts at the knob's current position, sweeps by morphRange
         if (hasMorph && param != nullptr)
@@ -762,9 +828,25 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
 
         // Outline
         g.setColour(hasMorph ? baseColor.darker(0.4f) : juce::Colour(0xff666666));
-        g.drawEllipse(cx, cy, sz, sz, 1.0f);
+        g.drawEllipse(rcx, rcy, rSz, rSz, 1.0f);
 
-        // Grip line — drawn on top of wedge so it's always visible
+        // Travel-limit tick marks at -135° (7 o'clock) and +135° (5 o'clock)
+        // Drawn OUTSIDE the knob circle, on the module background
+        {
+            const float pi = juce::MathConstants<float>::pi;
+            const float tickInner = radius * 1.08f;
+            const float tickOuter = radius * 1.45f;
+            const float limitAngles[2] = { -135.0f * pi / 180.0f, 135.0f * pi / 180.0f };
+            g.setColour(juce::Colour(0xff333333));
+            for (float a : limitAngles)
+            {
+                float sa = std::sin(a), ca = std::cos(a);
+                g.drawLine(centerX + sa * tickInner, centerY - ca * tickInner,
+                           centerX + sa * tickOuter, centerY - ca * tickOuter, 1.5f);
+            }
+        }
+
+        // Grip line — drawn on top of everything so it's always visible
         float innerR = radius * 0.3f;
         float outerR = radius * 0.85f;
         float sinA   = std::sin(knobAngle);
@@ -777,9 +859,9 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         // Lock indicator — small padlock icon at bottom-right of knob
         if (param != nullptr && param->isLocked())
         {
-            float lockSize = juce::jmax(7.0f, sz * 0.35f);
-            float lx = cx + sz - lockSize + 1.0f;
-            float ly = cy + sz - lockSize + 1.0f;
+            float lockSize = juce::jmax(7.0f, rSz * 0.35f);
+            float lx = rcx + rSz - lockSize + 1.0f;
+            float ly = rcy + rSz - lockSize + 1.0f;
             float bodyH = lockSize * 0.55f;
             float bodyW = lockSize * 0.85f;
             float bodyX = lx + (lockSize - bodyW) * 0.5f;
@@ -797,6 +879,62 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
                            -juce::MathConstants<float>::pi, 0.0f, true);
             g.strokePath(shackle, juce::PathStrokeType(1.5f));
         }
+    }
+}
+
+// Draw a waveform/icon shape by name into the given rectangle
+// Paths are drawn in a centred sub-rect (75% wide, 55% tall) so they look
+// compact and proportional at any button size.
+static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
+                           float ix, float iy, float iw, float ih, juce::Colour colour)
+{
+    g.setColour(colour);
+    float mx = ix + iw * 0.5f,  my = iy + ih * 0.5f;
+    float pw = iw * 0.75f,       ph = ih * 0.55f;
+    float x0 = mx - pw * 0.5f,  x1 = mx + pw * 0.5f;
+    float y0 = my - ph * 0.5f,  y1 = my + ph * 0.5f;
+
+    juce::Path p;
+
+    if (iconName == "wf_sine")
+    {
+        p.startNewSubPath(x0, my);
+        for (int i = 0; i <= 32; ++i)
+        {
+            float t = static_cast<float>(i) / 32.0f;
+            p.lineTo(x0 + pw * t,
+                     my - ph * 0.5f * std::sin(t * juce::MathConstants<float>::twoPi));
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "wf_tri")
+    {
+        p.startNewSubPath(x0, my);
+        p.lineTo(x0 + pw * 0.25f, y0);
+        p.lineTo(x0 + pw * 0.75f, y1);
+        p.lineTo(x1, my);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "wf_saw")
+    {
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x1, y0);
+        p.lineTo(x1, y1);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "wf_square")
+    {
+        p.startNewSubPath(x0, my);
+        p.lineTo(x0, y0);
+        p.lineTo(mx, y0);
+        p.lineTo(mx, y1);
+        p.lineTo(x1, y1);
+        p.lineTo(x1, my);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else
+    {
+        g.drawEllipse(ix + iw * 0.1f, iy + ih * 0.1f, iw * 0.8f, ih * 0.8f, 1.0f);
     }
 }
 
@@ -865,7 +1003,8 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         // pressed=true → sunken look; false → raised look
         auto drawBevelSegment = [&](float sx, float sy, float sw, float sh,
                                     bool pressed, juce::Colour baseFill,
-                                    const juce::String& label, juce::Colour labelColour)
+                                    const juce::String& label, juce::Colour labelColour,
+                                    const juce::String& iconRef = juce::String())
         {
             // Fill
             g.setColour(baseFill);
@@ -877,28 +1016,30 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             juce::Colour topLeft  = pressed ? loEdge : hiEdge;
             juce::Colour botRight = pressed ? hiEdge : loEdge;
 
-            // Top
             g.setColour(topLeft);
             g.drawLine(sx, sy, sx + sw, sy, 1.0f);
-            // Left
             g.drawLine(sx, sy, sx, sy + sh, 1.0f);
-            // Bottom
             g.setColour(botRight);
             g.drawLine(sx, sy + sh - 1.0f, sx + sw, sy + sh - 1.0f, 1.0f);
-            // Right
             g.drawLine(sx + sw - 1.0f, sy, sx + sw - 1.0f, sy + sh, 1.0f);
 
-            if (label.isNotEmpty())
+            float ox = pressed ? 1.0f : 0.0f;
+            float oy = pressed ? 1.0f : 0.0f;
+
+            if (iconRef.isNotEmpty())
+            {
+                drawButtonIcon(g, iconRef,
+                               sx + ox + 1.0f, sy + oy + 1.0f,
+                               sw - 2.0f, sh - 2.0f, labelColour);
+            }
+            else if (label.isNotEmpty())
             {
                 float fontSize = juce::jmin(8.0f, juce::jmin(sw * 0.85f, sh - 2.0f));
                 if (fontSize < 4.0f) fontSize = 4.0f;
                 g.setColour(labelColour);
                 g.setFont(juce::FontOptions("Fira Sans", fontSize, juce::Font::bold));
-                // Shift content 1px down-right when pressed for tactile feel
-                int ox = pressed ? 1 : 0;
-                int oy = pressed ? 1 : 0;
                 g.drawText(label,
-                           static_cast<int>(sx) + ox, static_cast<int>(sy) + oy,
+                           static_cast<int>(sx + ox), static_cast<int>(sy + oy),
                            static_cast<int>(sw), static_cast<int>(sh),
                            juce::Justification::centred, true);
             }
@@ -920,23 +1061,31 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                 }
                 else
                 {
+                    // Vertical: index 0 = bottom, last = top (matches original)
+                    int ri = numOptions - 1 - i;
                     segW = bw;
                     segH = bh / static_cast<float>(numOptions);
                     segX = bx;
-                    segY = by + static_cast<float>(i) * segH;
+                    segY = by + static_cast<float>(ri) * segH;
                 }
 
                 bool selected = (i == val);
 
                 juce::String segLabel;
-                if (i < numOptions)
+                if (i < static_cast<int>(tb.labels.size()))
                     segLabel = tb.labels[static_cast<size_t>(i)];
-                if (segLabel.isEmpty())
+
+                juce::String segIcon;
+                if (i < static_cast<int>(tb.imageRefs.size()))
+                    segIcon = tb.imageRefs[static_cast<size_t>(i)];
+
+                // Only show numeric fallback if no label AND no icon
+                if (segLabel.isEmpty() && segIcon.isEmpty())
                     segLabel = juce::String(i);
 
                 juce::Colour base  = selected ? moduleBg.brighter(0.25f).withSaturation(0.5f) : moduleBg.darker(0.15f);
                 juce::Colour label = selected ? juce::Colour(0xff111111) : juce::Colour(0xff333333);
-                drawBevelSegment(segX, segY, segW, segH, selected, base, segLabel, label);
+                drawBevelSegment(segX, segY, segW, segH, selected, base, segLabel, label, segIcon);
             }
 
             // Outer border
@@ -959,6 +1108,22 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         }
         if (labelText.isEmpty() && param != nullptr)
             labelText = juce::String(val);
+
+        // --- Mute / compact toggle: small button (<=20x20) rendered as connector-sized square ---
+        if (tb.cyclic && bw <= 20.0f && bh <= 20.0f)
+        {
+            const float sq = 13.0f;
+            float sx = bx + (bw - sq) * 0.5f;
+            float sy = by + (bh - sq) * 0.5f;
+
+            juce::Colour muteBase = isOn ? juce::Colour(0xffcc4444) : moduleBg.darker(0.2f);
+            juce::Colour muteText = isOn ? juce::Colours::white : juce::Colour(0xff444444);
+            drawBevelSegment(sx, sy, sq, sq, isOn, muteBase, labelText, muteText);
+
+            g.setColour(juce::Colour(0xff222222));
+            g.drawRect(sx, sy, sq, sq, 1.0f);
+            continue;
+        }
 
         juce::Colour base      = isOn ? moduleBg.brighter(0.2f).withSaturation(0.4f) : moduleBg.darker(0.15f);
         juce::Colour labelCol  = isOn ? juce::Colour(0xff111111) : juce::Colour(0xff333333);
@@ -1033,9 +1198,20 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         float dw = static_cast<float>(td.width);
         float dh = static_cast<float>(td.height);
 
-        // Dark blue background
-        g.setColour(juce::Colour(0xff392F7D));
-        g.fillRect(dx, dy, dw, dh);
+        // Dark blue background — clip height to max 13px for compact look
+        float renderH = juce::jmin(dh, 13.0f);
+        float renderY = dy + (dh - renderH) * 0.5f;
+
+        g.setColour(juce::Colour(0xff2A2560));
+        g.fillRect(dx, renderY, dw, renderH);
+
+        // Inner-bevel border: darker on top/left, slightly lighter on bottom/right
+        g.setColour(juce::Colour(0xff181440));
+        g.drawLine(dx, renderY,           dx + dw, renderY,           1.0f);
+        g.drawLine(dx, renderY,           dx,       renderY + renderH, 1.0f);
+        g.setColour(juce::Colour(0xff4A3FA0));
+        g.drawLine(dx,       renderY + renderH, dx + dw, renderY + renderH, 1.0f);
+        g.drawLine(dx + dw,  renderY,           dx + dw, renderY + renderH, 1.0f);
 
         // Value text
         auto* param = findParameter(m, td.componentId);
@@ -1046,10 +1222,30 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
 
             if (td.noteFormat)
             {
-                // MIDI note → name, Clavia convention: 0=C0 … 60=C4 … 127=G9
+                // Clavia convention: MIDI 0=C0, MIDI 60=C5, MIDI 127=G10
                 static const char* noteNames[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B" };
-                int octave = (val / 12) - 1;   // MIDI standard: C4=60 → octave=(60/12)-1=4
+                int octave = val / 12;
                 displayStr = juce::String(noteNames[val % 12]) + juce::String(octave);
+            }
+            else if (td.partialFormat)
+            {
+                // Slave oscillator partial ratio (nmformat.js fmtPartials)
+                // Values at multiples of 12 offset by 4: 4,16,28,40,52,64,76,88,100,112,124
+                static const char* partialFractions[] =
+                    { "1:32","1:16","1:8","1:4","1:2","1:1","2:1","4:1","8:1","16:1","32:1" };
+                if ((val + 8) % 12 == 0)
+                {
+                    int idx = val / 12;
+                    if (idx >= 0 && idx <= 10)
+                        displayStr = partialFractions[idx];
+                    else
+                        displayStr = juce::String(val);
+                }
+                else
+                {
+                    double ratio = std::pow(2.0, (val - 64.0) / 12.0);
+                    displayStr = "x" + juce::String(ratio, 3);
+                }
             }
             else
             {
@@ -1057,12 +1253,97 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             }
 
             g.setColour(juce::Colours::white);
-            g.setFont(juce::FontOptions(9.0f));
+            g.setFont(juce::FontOptions(8.5f));
             g.drawText(displayStr,
-                       static_cast<int>(dx), static_cast<int>(dy),
-                       static_cast<int>(dw), static_cast<int>(dh),
+                       static_cast<int>(dx), static_cast<int>(renderY),
+                       static_cast<int>(dw), static_cast<int>(renderH),
                        juce::Justification::centred, true);
         }
+
+        // Partial format: draw ◄ ► arrow buttons below the display box
+        if (td.partialFormat)
+        {
+            float arrowY = renderY + renderH + 1.0f;
+            float arrowH = 8.0f;
+            float midX   = dx + dw * 0.5f;
+
+            // Button backgrounds
+            g.setColour(juce::Colour(0xff2a2a2a));
+            g.fillRect(dx, arrowY, dw, arrowH);
+            g.setColour(juce::Colour(0xff444444));
+            g.drawRect(dx, arrowY, dw, arrowH, 1.0f);
+            g.drawLine(midX, arrowY, midX, arrowY + arrowH, 1.0f);
+
+            // ◄ left arrow (decrement partial)
+            float lCx = dx + dw * 0.25f, cy = arrowY + arrowH * 0.5f;
+            juce::Path la;
+            la.addTriangle(lCx - 3.0f, cy, lCx + 2.5f, cy - 2.5f, lCx + 2.5f, cy + 2.5f);
+            g.setColour(juce::Colour(0xffaaaaaa));
+            g.fillPath(la);
+
+            // ► right arrow (increment partial)
+            float rCx = dx + dw * 0.75f;
+            juce::Path ra;
+            ra.addTriangle(rCx + 3.0f, cy, rCx - 2.5f, cy - 2.5f, rCx - 2.5f, cy + 2.5f);
+            g.fillPath(ra);
+        }
+    }
+}
+
+void PatchCanvas::paintResetButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+{
+    for (auto& rb : theme.resetButtons)
+    {
+        auto* param = findParameter(m, rb.componentId);
+        int val = (param != nullptr) ? param->getValue() : -1;
+        bool atDefault = (val == rb.defaultValue);
+
+        float rx = static_cast<float>(bounds.getX() + rb.x);
+        float ry = static_cast<float>(bounds.getY() + rb.y);
+        float rw = static_cast<float>(rb.width);
+        float rh = static_cast<float>(rb.height);
+
+        juce::Path tri;
+        tri.addTriangle(rx, ry, rx + rw, ry, rx + rw * 0.5f, ry + rh);
+        g.setColour(atDefault ? juce::Colour(0xff44cc44) : juce::Colour(0xff2a4a2a));
+        g.fillPath(tri);
+        g.setColour(juce::Colour(0xff111111));
+        g.strokePath(tri, juce::PathStrokeType(0.5f));
+    }
+}
+
+void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+{
+    for (auto& si : theme.staticIcons)
+    {
+        const float scale  = 1.14f;
+        const float pad    = 4.0f;
+        const float margin = 2.0f;   // min gap from module edge
+        float iw = static_cast<float>(si.width)  * scale;
+        float ih = static_cast<float>(si.height) * scale;
+
+        // Clamp box so there's always `margin` px gap from every module edge
+        float bw = iw + pad * 2.0f;
+        float bh = ih + pad * 2.0f;
+        float bx = static_cast<float>(bounds.getX() + si.x) - pad - 3.0f;
+        float by = static_cast<float>(bounds.getY() + si.y) - pad + 5.0f;
+        bx = juce::jlimit(static_cast<float>(bounds.getX())  + margin,
+                          static_cast<float>(bounds.getRight())  - bw - margin, bx);
+        by = juce::jlimit(static_cast<float>(bounds.getY())  + margin,
+                          static_cast<float>(bounds.getBottom()) - bh - margin, by);
+
+        // Icon follows the (possibly shifted) box
+        float ix = bx + pad;
+        float iy = by + pad;
+
+        // Semi-transparent black rounded box
+        g.setColour(juce::Colour(0x66000000));
+        g.fillRoundedRectangle(bx, by, bw, bh, 3.0f);
+        g.setColour(juce::Colour(0x66ffffff));
+        g.drawRoundedRectangle(bx, by, bw, bh, 3.0f, 1.0f);
+
+        // Waveform icon in white
+        drawButtonIcon(g, si.iconName, ix, iy, iw, ih, juce::Colours::white);
     }
 }
 
@@ -2048,6 +2329,73 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         return;
                     }
                 }
+            }
+
+            // Test partial arrow buttons on textDisplays
+            for (auto& td : theme->textDisplays)
+            {
+                if (!td.partialFormat) continue;
+
+                // Arrow row geometry (mirrors paintTextDisplays)
+                float dh      = static_cast<float>(td.height);
+                float renderH = juce::jmin(dh, 13.0f);
+                float renderY = td.y + (dh - renderH) * 0.5f;
+                float arrowY  = renderY + renderH + 1.0f;
+                float arrowH  = 8.0f;
+
+                juce::Rectangle<float> arrowRect(static_cast<float>(td.x), arrowY,
+                                                 static_cast<float>(td.width), arrowH);
+                if (!arrowRect.contains(relPos.toFloat())) continue;
+
+                auto* param     = findParameter(m, td.componentId);   // p2
+                auto* fineParam = findParameter(m, "p3");              // fine detune
+                if (param == nullptr) continue;
+
+                static const int kSnaps[]  = {4, 16, 28, 40, 52, 64, 76, 88, 100, 112, 124};
+                static const int kNumSnaps = 11;
+                int val    = param->getValue();
+                int newVal = val;
+                bool goUp  = (relPos.x > td.x + td.width / 2);
+
+                if (goUp)
+                {
+                    for (int i = 0; i < kNumSnaps; ++i)
+                        if (kSnaps[i] > val) { newVal = kSnaps[i]; break; }
+                }
+                else
+                {
+                    for (int i = kNumSnaps - 1; i >= 0; --i)
+                        if (kSnaps[i] < val) { newVal = kSnaps[i]; break; }
+                }
+
+                if (newVal != val)
+                {
+                    int oldVal = val;
+                    param->setValue(newVal);
+                    if (parameterChangeCallback)
+                        parameterChangeCallback(area.section, m.getContainerIndex(),
+                                                param->getDescriptor()->index, newVal);
+                    if (paramDragCompleteCallback)
+                        paramDragCompleteCallback(area.section, m.getContainerIndex(),
+                                                  param->getDescriptor()->index, oldVal, newVal);
+
+                    // Reset fine (p3) to center/zero (value 64)
+                    if (fineParam != nullptr && fineParam->getValue() != 64)
+                    {
+                        int oldFine = fineParam->getValue();
+                        fineParam->setValue(64);
+                        if (parameterChangeCallback)
+                            parameterChangeCallback(area.section, m.getContainerIndex(),
+                                                    fineParam->getDescriptor()->index, 64);
+                        if (paramDragCompleteCallback)
+                            paramDragCompleteCallback(area.section, m.getContainerIndex(),
+                                                      fineParam->getDescriptor()->index, oldFine, 64);
+                    }
+
+                    repaint();
+                    return;
+                }
+                return; // already at limit — consume click anyway
             }
 
             // Module body fallback

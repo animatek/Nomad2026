@@ -35,17 +35,17 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 7 | OscA | [ ] | [ ] | [ ] | [ ] | Waveform selector buttons, custom param |
-| 8 | OscB | [ ] | [ ] | [ ] | [ ] | Waveform selector buttons, custom param |
-| 9 | OscC | [ ] | [ ] | [ ] | [ ] | Sine oscillator |
-| 10 | OscSlvB | [ ] | [ ] | [ ] | [ ] | Square/Pulse slave, custom param |
-| 11 | OscSlvC | [ ] | [ ] | [ ] | [ ] | Sawtooth slave, custom param |
-| 12 | OscSlvD | [ ] | [ ] | [ ] | [ ] | Triangle slave, custom param |
-| 13 | OscSlvE | [ ] | [ ] | [ ] | [ ] | Sine slave, custom param |
-| 14 | OscSlvA | [ ] | [ ] | [ ] | [ ] | Multiple slave, custom param |
+| 7 | OscA | [x] | [x] | [x] | [x] | Knobs, waveform selector (icons), TextDisplay nota, mute, static icon, groupbox |
+| 8 | OscB | [x] | [x] | [x] | [x] | Igual que OscA |
+| 9 | OscC | [x] | [x] | [x] | [x] | Sine solo, groupbox ajustado, static icon, labels alineados |
+| 10 | OscSlvB | [x] | [x] | [x] | [x] | Partial display 1:1, flechas ◄►, static icon wf_square |
+| 11 | OscSlvC | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_saw |
+| 12 | OscSlvD | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_tri |
+| 13 | OscSlvE | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
+| 14 | OscSlvA | [x] | [x] | [x] | [x] | Partial display, flechas, waveform radio selector |
 | 31 | Noise | [ ] | [ ] | [ ] | [ ] | Noise generator |
 | 58 | DrumSynth | [ ] | [ ] | [ ] | [ ] | |
-| 85 | OscSlvFM | [ ] | [ ] | [ ] | [ ] | FM slave, custom param |
+| 85 | OscSlvFM | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
 | 95 | PercOsc | [ ] | [ ] | [ ] | [ ] | Custom param |
 | 96 | FormantOsc | [ ] | [ ] | [ ] | [ ] | Custom param, needs formant display? |
 | 97 | MasterOsc | [ ] | [ ] | [ ] | [ ] | Custom param |

@@ -72,7 +72,38 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
             parseTextDisplay(*child, theme);
         else if (tag == "light")
             parseLight(*child, theme);
-        else if (tag != "image" && tag != "resetButton" && tag != "name"
+        else if (tag == "resetButton")
+            parseResetButton(*child, theme);
+        else if (tag == "image")
+        {
+            auto href = child->getStringAttribute("xlink:href");
+            if (href.contains("groupbox"))
+            {
+                ThemeGroupBox gb;
+                gb.x = child->getIntAttribute("x");
+                gb.y = child->getIntAttribute("y");
+                gb.width  = child->getIntAttribute("width", 40);
+                gb.height = child->getIntAttribute("height", 30);
+                theme.groupBoxes.push_back(gb);
+            }
+            else if (href.contains("/images/"))
+            {
+                // Static waveform / decoration icon (e.g. wf_sine.png)
+                juce::String iconName = href.fromLastOccurrenceOf("/", false, false)
+                                            .upToLastOccurrenceOf(".", false, false);
+                if (iconName.isNotEmpty())
+                {
+                    ThemeStaticIcon si;
+                    si.iconName = iconName;
+                    si.x      = child->getIntAttribute("x");
+                    si.y      = child->getIntAttribute("y");
+                    si.width  = child->getIntAttribute("width", 11);
+                    si.height = child->getIntAttribute("height", 9);
+                    theme.staticIcons.push_back(si);
+                }
+            }
+        }
+        else if (tag != "name"
                  && tag != "scrollbar" && tag != "defs" && tag != "style"
                  && child->hasAttribute("x") && child->hasAttribute("width"))
         {
@@ -85,7 +116,7 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
             cd.height = child->getIntAttribute("height", 30);
             theme.customDisplays.push_back(cd);
         }
-        // Silently skip: image, resetButton, scrollbar
+        // Silently skip: image, scrollbar
     }
 
     themes[theme.componentId] = std::move(theme);
@@ -157,15 +188,27 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
         if (btn->getTagName() == "btn")
         {
             int idx = btn->getIntAttribute("index", 0);
-            // Get text content, skip if it contains an <image> child
             auto text = btn->getAllSubText().trim();
-            if (text.isEmpty() && btn->getFirstChildElement() != nullptr)
-                text = ""; // image-based button, leave empty
 
-            // Ensure labels vector is large enough
+            // Extract image href if present (e.g. wf_sine, wf_saw, env_log...)
+            juce::String imageRef;
+            if (auto* img = btn->getChildByName("image"))
+            {
+                auto href = img->getStringAttribute("xlink:href");
+                // Extract filename without path and extension: "./images/slice/wf_sine.png" → "wf_sine"
+                imageRef = href.fromLastOccurrenceOf("/", false, false)
+                               .upToLastOccurrenceOf(".", false, false);
+                if (imageRef.isEmpty())
+                    imageRef = href; // fallback to full href
+            }
+
             while (static_cast<int>(tb.labels.size()) <= idx)
                 tb.labels.push_back("");
             tb.labels[static_cast<size_t>(idx)] = text;
+
+            while (static_cast<int>(tb.imageRefs.size()) <= idx)
+                tb.imageRefs.push_back("");
+            tb.imageRefs[static_cast<size_t>(idx)] = imageRef;
         }
     }
 
@@ -193,14 +236,30 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
     if (auto* param = elem.getChildByName("parameter"))
     {
         td.componentId = param->getStringAttribute("component-id");
-        // Modules with note-select parameter (transformations.xml selector="note-select")
-        static const juce::StringArray noteSelectModules { "m67", "m100" };
+
+        // Modules with note-select parameter (MIDI note name display)
         // m67 (NoteDetect): p1 — m100 (KeybSplit): p1 (lower) and p2 (upper)
+        static const juce::StringArray noteSelectModules { "m67", "m100" };
         bool isNoteModule = noteSelectModules.contains(theme.componentId);
         bool isNoteParam  = (td.componentId == "p1") ||
                             (theme.componentId == "m100" && td.componentId == "p2");
         if (isNoteModule && isNoteParam)
             td.noteFormat = true;
+
+        // Oscillator frequency displays — show note name (C-1..G9) instead of raw number
+        // Main oscillators: m7 (OscA), m8 (OscB), m9 (OscC) — p2 = freq coarse
+        // OscSineBank (m106): p1,p4,p7,p10,p13,p16 = osc coarse per voice
+        static const juce::StringArray oscFreqModules { "m7", "m8", "m9" };
+        static const juce::StringArray oscSineBankFreqParams { "p1","p4","p7","p10","p13","p16" };
+        if (oscFreqModules.contains(theme.componentId) && td.componentId == "p2")
+            td.noteFormat = true;
+        if (theme.componentId == "m106" && oscSineBankFreqParams.contains(td.componentId))
+            td.noteFormat = true;
+
+        // Slave oscillator detune coarse → show as partial ratio (1:1, 2:1, etc.)
+        static const juce::StringArray slaveOscModules { "m10", "m11", "m12", "m13", "m14", "m85" };
+        if (slaveOscModules.contains(theme.componentId) && td.componentId == "p2")
+            td.partialFormat = true;
     }
 
     theme.textDisplays.push_back(td);
@@ -219,4 +278,22 @@ void ThemeData::parseLight(const juce::XmlElement& elem, ModuleTheme& theme)
         tl.ledOnValue = elem.getIntAttribute("ledOnValue");
 
     theme.lights.push_back(tl);
+}
+
+void ThemeData::parseResetButton(const juce::XmlElement& elem, ModuleTheme& theme)
+{
+    ThemeResetButton rb;
+    rb.x = elem.getIntAttribute("x");
+    rb.y = elem.getIntAttribute("y");
+    rb.width  = elem.getIntAttribute("width", 9);
+    rb.height = elem.getIntAttribute("height", 6);
+
+    if (auto* param = elem.getChildByName("parameter"))
+    {
+        rb.componentId = param->getStringAttribute("component-id");
+        // Default value: read from descriptor if available, fallback 64
+        rb.defaultValue = param->getIntAttribute("defaultValue", 64);
+    }
+
+    theme.resetButtons.push_back(rb);
 }

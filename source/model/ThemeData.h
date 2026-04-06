@@ -36,7 +36,8 @@ struct ThemeButton
     bool cyclic = true;                // cyclic=toggle, !cyclic=radio selector
     bool isIncrement = false;          // mode="increment" (arrow buttons)
     bool landscape = false;            // landscape="true" (horizontal layout)
-    std::vector<juce::String> labels;  // indexed by btn index
+    std::vector<juce::String> labels;     // indexed by btn index
+    std::vector<juce::String> imageRefs;  // image href per btn index (e.g. "wf_sine", "wf_saw")
 };
 
 struct ThemeLabel
@@ -50,7 +51,8 @@ struct ThemeTextDisplay
     juce::String componentId;
     int x = 0, y = 0;
     int width = 40, height = 16;
-    bool noteFormat = false;  // true → display as note name (C4, D#3, etc.)
+    bool noteFormat = false;     // true → display as note name (C4, D#3, etc.)
+    bool partialFormat = false;  // true → display as partial ratio (1:1, 2:1, etc.)
 };
 
 struct ThemeLight
@@ -62,11 +64,31 @@ struct ThemeLight
     int ledOnValue = -1;    // if >= 0: LED activates when paired meter reaches this value
 };
 
+struct ThemeGroupBox
+{
+    int x = 0, y = 0, width = 40, height = 30;
+};
+
+struct ThemeResetButton
+{
+    juce::String componentId;
+    int x = 0, y = 0;
+    int width = 9, height = 6;
+    int defaultValue = 64;   // value at which the indicator lights green
+};
+
 struct ThemeCustomDisplay
 {
     juce::String type;         // tag name, e.g. "overdrive-display", "LFODisplay"
     int x = 0, y = 0;
     int width = 40, height = 30;
+};
+
+struct ThemeStaticIcon
+{
+    juce::String iconName;     // e.g. "wf_sine", "wf_saw", "wf_tri", "wf_square"
+    int x = 0, y = 0;
+    int width = 11, height = 9;
 };
 
 struct ModuleTheme
@@ -84,6 +106,9 @@ struct ModuleTheme
     std::vector<ThemeTextDisplay> textDisplays;
     std::vector<ThemeLight> lights;
     std::vector<ThemeCustomDisplay> customDisplays;
+    std::vector<ThemeResetButton> resetButtons;
+    std::vector<ThemeGroupBox> groupBoxes;
+    std::vector<ThemeStaticIcon> staticIcons;
 };
 
 class ThemeData
@@ -106,6 +131,7 @@ private:
     void parseLabel(const juce::XmlElement& elem, ModuleTheme& theme);
     void parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& theme);
     void parseLight(const juce::XmlElement& elem, ModuleTheme& theme);
+    void parseResetButton(const juce::XmlElement& elem, ModuleTheme& theme);
 
     std::map<juce::String, ModuleTheme> themes;
 };

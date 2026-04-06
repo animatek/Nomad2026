@@ -1083,13 +1083,13 @@ label{fill:#000;}
 			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
 			<btn index="3"><image xlink:href="./images/slice/wf_square.png" /></btn>
 		</button>
-		<knob x="20" y="63" size="21">
+		<knob x="20" y="66" size="21">
 			<parameter component-id="p7" alt="pitch mod 1" />
 		</knob>
-		<knob x="64" y="63" size="21">
+		<knob x="64" y="66" size="21">
 			<parameter component-id="p8" alt="pitch mod 2" />
 		</knob>
-		<knob x="108" y="63" size="21">
+		<knob x="108" y="66" size="21">
 			<parameter component-id="p9" alt="fma mod" />
 		</knob>
 		<knob x="185" y="49" size="21">
@@ -3739,7 +3739,8 @@ label{fill:#000;}
 	</module>
 	<module component-id="m9" width="255" height="60">
 		<name>OscC</name>
-		<image x="2" y="7" width="140" height="50" xlink:href="url(#groupbox)" />
+		<image x="2" y="14" width="140" height="43" xlink:href="url(#groupbox)" />
+		<image x="237" y="3" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
 		<connector x="165" y="37" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="FMA" />
 		</connector>
@@ -3782,9 +3783,9 @@ label{fill:#000;}
 		</textDisplay>
 		<label x="5" y="13">Freq</label>
 		<label x="19" y="39">Slv</label>
-		<label x="80" y="10">Coarse</label>
-		<label x="115" y="10">Fine</label>
-		<label x="148" y="9">AM</label>
+		<label x="80" y="13">Coarse</label>
+		<label x="115" y="13">Fine</label>
+		<label x="148" y="13">AM</label>
 		<label x="143" y="38">FMA</label>
 		<resetButton x="118" y="24" width="9" height="6">
 			<parameter component-id="p3" alt="pitch fine" />
