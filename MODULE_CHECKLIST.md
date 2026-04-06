@@ -22,14 +22,14 @@ For each module, check:
 |---|--------|--------|----------|-------------|---------|-------|
 | 1 | Keyboard | [x] | [x] | [x] | [x] | Outputs=cuadrados, inputs=círculos, label Rel/vel multilínea centrado |
 | 2 | AudioIn | [x] | [x] | [x] | [x] | VU meters animados (verde/amarillo/rojo), LEDs clip rojos activados por ledOnValue=127 |
-| 3 | 4Output | [ ] | [ ] | [ ] | [ ] | Has VU meters |
-| 4 | 2Output | [ ] | [ ] | [ ] | [ ] | Has VU meters |
-| 5 | 1Output | [ ] | [ ] | [ ] | [ ] | Has VU meter |
-| 63 | KeyboardPatch | [ ] | [ ] | [ ] | [ ] | |
-| 65 | MIDIGlobal | [ ] | [ ] | [ ] | [ ] | |
-| 67 | NoteDetect | [ ] | [ ] | [ ] | [ ] | |
-| 100 | KeybSplit | [ ] | [ ] | [ ] | [ ] | |
-| 127 | PolyAreaIn | [ ] | [ ] | [ ] | [ ] | |
+| 3 | 4Output | [x] | [x] | [x] | [x] | OK |
+| 4 | 2Output | [x] | [x] | [x] | [x] | Botones Destination y Mute con bevel OK |
+| 5 | 1Output | [x] | [x] | [x] | [x] | Botones Dest y Mute con bevel OK |
+| 63 | KeyboardPatch | [x] | [x] | [x] | [x] | Etiquetas multilínea posición corregida |
+| 65 | MIDIGlobal | [x] | [x] | [x] | [x] | OK |
+| 67 | NoteDetect | [x] | [x] | [x] | [x] | Display muestra nombre de nota (C4, D#3…) |
+| 100 | KeybSplit | [x] | [x] | [x] | [x] | Lower y Upper muestran nombre de nota |
+| 127 | PolyAreaIn | [x] | [x] | [x] | [x] | Labels L/R corregidas, escala dB entre VU en negro |
 
 ## Oscillator (16)
 
@@ -186,14 +186,13 @@ For each module, check:
 ## Known Global Issues
 
 ### LEDs
-- [ ] All LEDs render as static dark circles (off state only)
-- [ ] No green/yellow/red color based on signal type
-- [ ] No brightness modulation from signal values
+- [x] LEDs driven by globalLightValues (NMInfo 0x39) — clip LEDs by ledOnValue
+- [x] Green/yellow/red color based on signal level (meters)
 - [ ] LED arrays not rendered as arrays
 
 ### Meters
-- [ ] VU meters render as static dark rectangles
-- [ ] No level animation or peak hold
+- [x] VU meters animados verde/amarillo/rojo en tiempo real (NMInfo 0x3A)
+- [x] Escala dB (0 a -30) entre barras cuando hay espacio
 
 ### Waveform Buttons
 - [ ] Some oscillator/LFO waveform selector buttons may not show waveform icons
