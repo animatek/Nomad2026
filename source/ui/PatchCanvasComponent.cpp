@@ -3,6 +3,7 @@
 #include <cmath>
 #include <set>
 
+
 // --- PatchCanvas (inner scrollable surface) ---
 
 void PatchCanvas::setLightMeterData(const int lights[128], const int meters[128])
@@ -57,7 +58,9 @@ int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetS
 PatchCanvas::PatchCanvas()
 {
     setSize(canvasWidth, sectionHeight);
-    setWantsKeyboardFocus(true);  // Enable keyboard input for Delete key
+    setWantsKeyboardFocus(true);
+    initDrumPresets();
+    loadDrumPresetsFromFile();
 }
 
 void PatchCanvas::updateSizeForZoom()
@@ -499,7 +502,7 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
 {
     paintModuleBackground(g, m, bounds, theme);
     paintCustomDisplays(g, m, bounds, theme);
-    paintLabels(g, bounds, theme);
+    paintLabels(g, m, bounds, theme);
     paintTextDisplays(g, m, bounds, theme);
     paintSliders(g, m, bounds, theme);
     paintKnobs(g, m, bounds, theme);
@@ -508,6 +511,8 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintStaticIcons(g, bounds, theme);
     paintConnectors(g, m, bounds, theme, container);
     paintLights(g, m, section, bounds, theme);
+    if (m.getDescriptor()->index == 58)
+        paintDrumSynthExtras(g, m, bounds);
 }
 
 void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
@@ -678,6 +683,9 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
     }
 
     // For each input connector, if there's a knob at similar Y and nearby X, draw a connecting line
+    // Skip for m58 (DrumSynth): Vel/Pitch connectors falsely match OSC knobs by proximity
+    if (m.getDescriptor()->index == 58) return;
+
     const int yTolerance = 12;
     g.setColour(juce::Colour(0xff1a1a1a));
     for (auto& tc : theme.connectors)
@@ -722,13 +730,18 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
     }
 }
 
-void PatchCanvas::paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintLabels(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
     g.setColour(juce::Colours::black);
     g.setFont(juce::FontOptions(9.0f));
 
+    static const juce::StringArray boldLabels { "OSC", "Noise Filter", "Bend" };
+
     for (auto& label : theme.labels)
     {
+        bool isBold = m.getDescriptor()->index == 58 && boldLabels.contains(label.text);
+        g.setFont(juce::FontOptions("Fira Sans", 9.0f, isBold ? juce::Font::bold : juce::Font::plain));
+
         if (label.text.containsChar('\n'))
         {
             // Multiline label: use y as top of first line (XML positions are intentional)
@@ -742,6 +755,18 @@ void PatchCanvas::paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, co
                            60, lineH,
                            juce::Justification::centredLeft, true);
             }
+        }
+        else if (m.getDescriptor()->index == 58 && label.text == "Bend")
+        {
+            // DrumSynth: "Bend" label rendered vertically (rotated -90°), bold
+            juce::Graphics::ScopedSaveState ss(g);
+            g.setFont(juce::FontOptions("Fira Sans", 9.0f, juce::Font::bold));
+            int cx = bounds.getX() + label.x + 5;
+            int cy = bounds.getY() + label.y + 20;
+            g.addTransform(juce::AffineTransform::rotation(-juce::MathConstants<float>::halfPi,
+                                                           static_cast<float>(cx),
+                                                           static_cast<float>(cy)));
+            g.drawText("Bend", cx - 20, cy - 5, 40, 10, juce::Justification::centred, true);
         }
         else
         {
@@ -932,6 +957,64 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         p.lineTo(x1, my);
         g.strokePath(p, juce::PathStrokeType(1.0f));
     }
+    else if (iconName == "wf_noise")
+    {
+        // Irregular noise zigzag
+        p.startNewSubPath(x0,              my + ph * 0.1f);
+        p.lineTo(x0 + pw * 0.12f,  y0 + ph * 0.1f);
+        p.lineTo(x0 + pw * 0.25f,  y1 - ph * 0.05f);
+        p.lineTo(x0 + pw * 0.38f,  y0);
+        p.lineTo(x0 + pw * 0.52f,  y1);
+        p.lineTo(x0 + pw * 0.65f,  my - ph * 0.2f);
+        p.lineTo(x0 + pw * 0.78f,  y0 + ph * 0.3f);
+        p.lineTo(x1,               my);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "wf_percosc")
+    {
+        // Exponentially decaying oscillation (percussion hit)
+        p.startNewSubPath(x0,              my);
+        p.lineTo(x0 + pw * 0.08f,  y0);
+        p.lineTo(x0 + pw * 0.18f,  my);
+        p.lineTo(x0 + pw * 0.28f,  y1 + ph * 0.1f);
+        p.lineTo(x0 + pw * 0.38f,  my);
+        p.lineTo(x0 + pw * 0.46f,  y0 + ph * 0.35f);
+        p.lineTo(x0 + pw * 0.54f,  my);
+        p.lineTo(x0 + pw * 0.61f,  y1 + ph * 0.35f);
+        p.lineTo(x0 + pw * 0.68f,  my);
+        p.lineTo(x1,               my);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "wf_formant")
+    {
+        // Complex formant wave: 2 harmonics with envelope
+        for (int i = 0; i <= 32; ++i)
+        {
+            float t   = static_cast<float>(i) / 32.0f;
+            float env = 0.55f + 0.45f * std::sin(t * juce::MathConstants<float>::pi);
+            float val = (std::sin(t * juce::MathConstants<float>::twoPi * 2.0f) * 0.6f
+                       + std::sin(t * juce::MathConstants<float>::twoPi * 5.0f) * 0.4f) * env;
+            float px  = x0 + pw * t;
+            float py  = my - val * ph * 0.5f;
+            if (i == 0) p.startNewSubPath(px, py);
+            else        p.lineTo(px, py);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "wf_spectral")
+    {
+        // Spectral partial bars: 4 bars of decreasing height (1/n)
+        constexpr int nBars = 4;
+        float spacing = pw / static_cast<float>(nBars);
+        float barW    = spacing * 0.55f;
+        for (int i = 0; i < nBars; ++i)
+        {
+            float h   = ph * (1.0f / static_cast<float>(i + 1));
+            float bx2 = x0 + static_cast<float>(i) * spacing + (spacing - barW) * 0.5f;
+            p.addRectangle(bx2, y1 - h, barW, h);
+        }
+        g.fillPath(p);
+    }
     else
     {
         g.drawEllipse(ix + iw * 0.1f, iy + ih * 0.1f, iw * 0.8f, ih * 0.8f, 1.0f);
@@ -1061,12 +1144,11 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                 }
                 else
                 {
-                    // Vertical: index 0 = bottom, last = top (matches original)
-                    int ri = numOptions - 1 - i;
+                    // Vertical: index 0 = top, last = bottom (matches original diReversed buttons)
                     segW = bw;
                     segH = bh / static_cast<float>(numOptions);
                     segX = bx;
-                    segY = by + static_cast<float>(ri) * segH;
+                    segY = by + static_cast<float>(i) * segH;
                 }
 
                 bool selected = (i == val);
@@ -1245,6 +1327,33 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
                 {
                     double ratio = std::pow(2.0, (val - 64.0) / 12.0);
                     displayStr = "x" + juce::String(ratio, 3);
+                }
+            }
+            else if (td.drumHzFormat)
+            {
+                // fmtDrumHz: 20 * 2^(val/24) Hz
+                double hz = 20.0 * std::pow(2.0, val / 24.0);
+                if (hz < 100.0)
+                    displayStr = juce::String(hz, 1) + " Hz";
+                else
+                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
+            }
+            else if (td.drumPartialFormat)
+            {
+                // fmtDrumPartials: val%48==0 → "1:1","2:1","4:1"; else "x0.00"
+                static const char* drumFractions[] = { "1:1", "2:1", "4:1" };
+                if (val % 48 == 0)
+                {
+                    int idx = val / 48;
+                    if (idx >= 0 && idx <= 2)
+                        displayStr = drumFractions[idx];
+                    else
+                        displayStr = juce::String(val);
+                }
+                else
+                {
+                    double ratio = std::pow(2.0, val / 48.0);
+                    displayStr = "x" + juce::String(ratio, 2);
                 }
             }
             else
@@ -2328,6 +2437,39 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         repaint();
                         return;
                     }
+                }
+            }
+
+            // Test DrumSynth preset spinner arrows
+            if (m.getDescriptor()->index == 58)
+            {
+                int numP = static_cast<int>(drumPresets.size());
+                // Preset display: right-click to save/manage
+                juce::Rectangle<int> dispRect(120, 115, 57, 13);
+                if (dispRect.contains(relPos) && e.mods.isRightButtonDown())
+                {
+                    showDrumPresetContextMenu(m, area.section);
+                    return;
+                }
+
+                // Up/Down arrows
+                juce::Rectangle<int> upRect(179, 115, 16, 6);
+                juce::Rectangle<int> dnRect(179, 121, 16, 6);
+                if (upRect.contains(relPos) || dnRect.contains(relPos))
+                {
+                    int key = m.getContainerIndex();
+                    int cur = 0;
+                    auto it = drumPresetState.find(key);
+                    if (it != drumPresetState.end()) cur = it->second;
+
+                    if (upRect.contains(relPos))
+                        cur = juce::jlimit(0, numP - 1, cur - 1);
+                    else
+                        cur = juce::jlimit(0, numP - 1, cur + 1);
+
+                    drumPresetState[key] = cur;
+                    applyDrumPreset(m, area.section, cur);
+                    return;
                 }
             }
 
@@ -3841,4 +3983,231 @@ void PatchCanvasComponent::setPatch(Patch* p, const ModuleDescriptions* md, cons
         scrollTo(polyViewport,   p->getPolyVoiceArea());
         scrollTo(commonViewport, p->getCommonArea());
     }
+}
+
+// ============================================================
+// DrumSynth (m58) — Preset section overlay
+// Draws the Preset display + up/down spinner arrows at the
+// bottom-right of the module (local preset, CtrlIndex=-1).
+// Preset index is stored in drumSynthPresetIndex (module-local
+// state via component-id lookup in drumPresetState map).
+// ============================================================
+
+
+void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds)
+{
+    // Positions from jMod Modules.res (scaled from Delphi coords to classic-theme px):
+    // DisplayDrumSynthPreset: Left=120, Top=116, Width=57
+    // SpinnerDrumSynthPreset: Left=178, Top=117, Width=20, Height=12
+    // Module bounds are already offset by bounds.getTopLeft()
+
+    int bx = bounds.getX();
+    int by = bounds.getY();
+
+    // Preset label "Preset"
+    g.setColour(juce::Colours::black);
+    g.setFont(juce::FontOptions(9.0f));
+    g.drawText("Preset", bx + 120, by + 105, 60, 10, juce::Justification::centredLeft, true);
+
+    // Display background (dark blue, same style as textDisplays)
+    int dispX = bx + 120, dispY = by + 115, dispW = 57, dispH = 13;
+    g.setColour(juce::Colour(0xff2A2560));
+    g.fillRect(dispX, dispY, dispW, dispH);
+    g.setColour(juce::Colour(0xff181440));
+    g.drawLine((float)dispX, (float)dispY, (float)(dispX+dispW), (float)dispY, 1.0f);
+    g.drawLine((float)dispX, (float)dispY, (float)dispX, (float)(dispY+dispH), 1.0f);
+    g.setColour(juce::Colour(0xff4A3FA0));
+    g.drawLine((float)dispX, (float)(dispY+dispH), (float)(dispX+dispW), (float)(dispY+dispH), 1.0f);
+    g.drawLine((float)(dispX+dispW), (float)dispY, (float)(dispX+dispW), (float)(dispY+dispH), 1.0f);
+
+    // Preset name text
+    int presetIdx = 0;
+    auto it = drumPresetState.find(m.getContainerIndex());
+    if (it != drumPresetState.end())
+        presetIdx = it->second;
+    presetIdx = juce::jlimit(0, static_cast<int>(drumPresets.size()) - 1, presetIdx);
+
+    juce::String presetName = drumPresets.empty() ? "none"
+                              : drumPresets[static_cast<size_t>(presetIdx)].name;
+
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::FontOptions(8.5f));
+    g.drawText(presetName, dispX, dispY, dispW, dispH,
+               juce::Justification::centred, true);
+
+    // Up/Down spinner arrows (two stacked mini-buttons)
+    int spX = bx + 179, spY = by + 115, spW = 16, spH = 6;
+    juce::Colour spBase = juce::Colour(0xff909090);
+
+    // Up button
+    g.setColour(spBase);
+    g.fillRect(spX, spY, spW, spH);
+    g.setColour(juce::Colour(0xff222222));
+    g.drawRect(spX, spY, spW, spH, 1);
+    {
+        float cx = spX + spW * 0.5f, cy = spY + spH * 0.5f;
+        juce::Path arrow;
+        arrow.addTriangle(cx, cy - 2.0f, cx - 3.0f, cy + 1.5f, cx + 3.0f, cy + 1.5f);
+        g.setColour(juce::Colours::black);
+        g.fillPath(arrow);
+    }
+
+    // Down button
+    g.setColour(spBase);
+    g.fillRect(spX, spY + spH, spW, spH);
+    g.setColour(juce::Colour(0xff222222));
+    g.drawRect(spX, spY + spH, spW, spH, 1);
+    {
+        float cx = spX + spW * 0.5f, cy = spY + spH * 1.5f;
+        juce::Path arrow;
+        arrow.addTriangle(cx, cy + 2.0f, cx - 3.0f, cy - 1.5f, cx + 3.0f, cy - 1.5f);
+        g.setColour(juce::Colours::black);
+        g.fillPath(arrow);
+    }
+}
+
+// ============================================================
+// DrumSynth preset system
+// p1=MTune p2=STune p3=MDecay p4=SDecay p5=MLevel p6=SLevel
+// p7=Ffreq p8=Fres p9=Fswp p10=Fdcy p11=Fmode p12=Amt p13=Dcy p14=Click p15=Noise
+// ============================================================
+
+void PatchCanvas::initDrumPresets()
+{
+    drumPresets.clear();
+    // Built-in 1: Basic Kick
+    drumPresets.push_back({ "Basic Kick",
+        { 60, 0, 80, 40, 100, 50,   // MTune=113Hz, STune=1:1, MDecay=long, SDecay=med, Mlevel=high, SLevel=mid
+          30, 20, 40, 50, 0,         // Ffreq=low, Fres=low, Fswp=mid, Fdcy=mid, Fmode=HP
+          50, 60, 60, 10 } });       // Amt=mid, BendDcy=mid, Click=high, Noise=low
+
+    // Built-in 2: Basic Snare
+    drumPresets.push_back({ "Basic Snare",
+        { 48, 48, 40, 50, 80, 70,   // MTune=80Hz, STune=2:1, MDecay=med, SDecay=med, levels
+          70, 40, 30, 40, 0,         // Ffreq=mid-high, Fres=mid, Fswp=low, Fdcy=mid, Fmode=HP
+          30, 40, 80, 90 } });       // Amt=low, Dcy=med, Click=high, Noise=high
+}
+
+static juce::File getDrumPresetsFile()
+{
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+               .getChildFile("Nomad2026")
+               .getChildFile("drum_presets.txt");
+}
+
+void PatchCanvas::saveDrumPresetsToFile()
+{
+    auto f = getDrumPresetsFile();
+    f.getParentDirectory().createDirectory();
+    juce::FileOutputStream out(f);
+    if (!out.openedOk()) return;
+    out.setPosition(0);
+    out.truncate();
+
+    // Skip built-in presets (first 2), save only user presets
+    for (size_t i = 2; i < drumPresets.size(); ++i)
+    {
+        auto& p = drumPresets[i];
+        out.writeText(p.name + "|", false, false, nullptr);
+        for (int j = 0; j < 15; ++j)
+            out.writeText(juce::String(p.params[static_cast<size_t>(j)]) + (j < 14 ? "," : ""), false, false, nullptr);
+        out.writeText("\n", false, false, nullptr);
+    }
+}
+
+void PatchCanvas::loadDrumPresetsFromFile()
+{
+    auto f = getDrumPresetsFile();
+    if (!f.existsAsFile()) return;
+    juce::StringArray lines;
+    f.readLines(lines);
+    for (auto& line : lines)
+    {
+        if (line.trim().isEmpty()) continue;
+        auto parts = juce::StringArray::fromTokens(line, "|", "");
+        if (parts.size() < 2) continue;
+        DrumPreset dp;
+        dp.name = parts[0].trim();
+        auto vals = juce::StringArray::fromTokens(parts[1], ",", "");
+        for (int i = 0; i < 15 && i < vals.size(); ++i)
+            dp.params[static_cast<size_t>(i)] = vals[i].getIntValue();
+        drumPresets.push_back(dp);
+    }
+}
+
+void PatchCanvas::applyDrumPreset(Module& m, int section, int presetIdx)
+{
+    if (presetIdx < 0 || presetIdx >= static_cast<int>(drumPresets.size())) return;
+    auto& preset = drumPresets[static_cast<size_t>(presetIdx)];
+
+    // p1..p15 → parameterDescriptor index 0..14
+    for (int i = 0; i < 15; ++i)
+    {
+        auto* param = findParameter(m, "p" + juce::String(i + 1));
+        if (param == nullptr) continue;
+        int newVal = juce::jlimit(0, 127, preset.params[static_cast<size_t>(i)]);
+        int oldVal = param->getValue();
+        param->setValue(newVal);
+        if (parameterChangeCallback)
+            parameterChangeCallback(section, m.getContainerIndex(), param->getDescriptor()->index, newVal);
+        if (paramDragCompleteCallback)
+            paramDragCompleteCallback(section, m.getContainerIndex(), param->getDescriptor()->index, oldVal, newVal);
+    }
+    repaint();
+}
+
+void PatchCanvas::showDrumPresetContextMenu(Module& m, int section)
+{
+    juce::PopupMenu menu;
+    menu.addItem(1, "Save preset...");
+    if (drumPresets.size() > 2)
+    {
+        menu.addSeparator();
+        int id = 100;
+        for (size_t i = 2; i < drumPresets.size(); ++i)
+            menu.addItem(id++, "Delete \"" + drumPresets[i].name + "\"");
+    }
+    menu.showMenuAsync(juce::PopupMenu::Options{}, [this, &m, section](int result)
+    {
+        if (result == 1)
+        {
+            // Save current params as new preset
+            auto* dialog = new juce::AlertWindow("Save Drum Preset", "Preset name:", juce::MessageBoxIconType::NoIcon);
+            dialog->addTextEditor("name", "My Preset", "");
+            dialog->addButton("Save", 1);
+            dialog->addButton("Cancel", 0);
+            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog, &m, section](int r)
+            {
+                if (r == 1)
+                {
+                    DrumPreset dp;
+                    dp.name = dialog->getTextEditorContents("name").trim();
+                    if (dp.name.isEmpty()) dp.name = "Preset " + juce::String(drumPresets.size() - 1);
+                    for (int i = 0; i < 15; ++i)
+                    {
+                        auto* param = findParameter(const_cast<Module&>(m), "p" + juce::String(i + 1));
+                        dp.params[static_cast<size_t>(i)] = (param != nullptr) ? param->getValue() : 64;
+                    }
+                    drumPresets.push_back(dp);
+                    saveDrumPresetsToFile();
+                    repaint();
+                }
+                delete dialog;
+            }), true);
+        }
+        else if (result >= 100)
+        {
+            size_t idx = static_cast<size_t>(result - 100) + 2;
+            if (idx < drumPresets.size())
+            {
+                drumPresets.erase(drumPresets.begin() + static_cast<int>(idx));
+                saveDrumPresetsToFile();
+                // Clamp any active preset index
+                for (auto& kv : drumPresetState)
+                    if (kv.second >= static_cast<int>(drumPresets.size()))
+                        kv.second = static_cast<int>(drumPresets.size()) - 1;
+                repaint();
+            }
+        }
+    });
 }

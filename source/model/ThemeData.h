@@ -51,8 +51,10 @@ struct ThemeTextDisplay
     juce::String componentId;
     int x = 0, y = 0;
     int width = 40, height = 16;
-    bool noteFormat = false;     // true → display as note name (C4, D#3, etc.)
-    bool partialFormat = false;  // true → display as partial ratio (1:1, 2:1, etc.)
+    bool noteFormat = false;        // true → display as note name (C4, D#3, etc.)
+    bool partialFormat = false;     // true → display as partial ratio (1:1, 2:1, etc.)
+    bool drumHzFormat = false;      // true → fmtDrumHz: 20*2^(v/24) Hz
+    bool drumPartialFormat = false; // true → fmtDrumPartials: 1:1/2:1/4:1 or x0.00
 };
 
 struct ThemeLight

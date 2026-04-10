@@ -43,8 +43,8 @@ For each module, check:
 | 12 | OscSlvD | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_tri |
 | 13 | OscSlvE | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
 | 14 | OscSlvA | [x] | [x] | [x] | [x] | Partial display, flechas, waveform radio selector |
-| 31 | Noise | [ ] | [ ] | [ ] | [ ] | Noise generator |
-| 58 | DrumSynth | [ ] | [ ] | [ ] | [ ] | |
+| 31 | Noise | [x] | [x] | [x] | [x] | Noise generator |
+| 58 | DrumSynth | [x] | [x] | [x] | [x] | |
 | 85 | OscSlvFM | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
 | 95 | PercOsc | [ ] | [ ] | [ ] | [ ] | Custom param |
 | 96 | FormantOsc | [ ] | [ ] | [ ] | [ ] | Custom param, needs formant display? |

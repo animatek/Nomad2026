@@ -75,6 +75,7 @@ label{fill:#000;}
 		<knob x="102" y="5" size="21">
 			<parameter component-id="p1" alt="color" />
 		</knob>
+		<image x="207" y="5" width="11" height="9" xlink:href="./images/slice/wf_noise.png" />
 		<label x="74" y="16">White</label>
 		<label x="126" y="17">Colored</label>
 	</module>
@@ -102,7 +103,7 @@ label{fill:#000;}
 		<knob x="70" y="22" size="21">
 			<parameter component-id="p4" alt="decay" />
 		</knob>
-		<button x="217" y="17" width="34" height="16" cyclic="true" landscape="false">
+		<button x="213" y="23" width="26" height="13" cyclic="true" landscape="false">
 			<parameter component-id="p5" alt="punch" />
 			<btn index="1">Punch</btn>
 			<btn index="0">Punch</btn>
@@ -127,6 +128,7 @@ label{fill:#000;}
 		<label x="74" y="9">Dcy</label>
 		<label x="154" y="3">Pitch</label>
 		<label x="184" y="3">Fine</label>
+		<image x="238" y="2" width="11" height="9" xlink:href="./images/slice/wf_percosc.png" />
 		<resetButton x="189" y="14" width="9" height="6">
 			<parameter component-id="p3" alt="detune fine" />
 		</resetButton>
@@ -374,6 +376,7 @@ label{fill:#000;}
 		<label x="120" y="15">Fine</label>
 		<label x="150" y="30">Slv</label>
 		<label x="169" y="1">Timbre</label>
+		<image x="238" y="2" width="11" height="9" xlink:href="./images/slice/wf_formant.png" />
 		<resetButton x="124" y="25" width="9" height="6">
 			<parameter component-id="p3" alt="pitch fine" />
 		</resetButton>
@@ -596,7 +599,7 @@ label{fill:#000;}
 	<module component-id="m58" width="255" height="135">
 		<name>DrumSynth</name>
 		<image x="111" y="4" width="140" height="50" xlink:href="url(#groupbox)" />
-		<image x="23" y="11" width="86" height="120" xlink:href="url(#groupbox)" />
+		<image x="21" y="21" width="88" height="112" xlink:href="url(#groupbox)" />
 		<connector x="4" y="34" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="trig" />
 		</connector>
@@ -609,22 +612,22 @@ label{fill:#000;}
 		<connector x="237" y="116" size="13" class="cAUDIO">
 			<connector component-id="c4" alt="out" />
 		</connector>
-		<knob x="29" y="48" size="21">
+		<knob x="29" y="61" size="21">
 			<parameter component-id="p1" alt="MTune" />
 		</knob>
-		<knob x="77" y="48" size="21">
+		<knob x="77" y="61" size="21">
 			<parameter component-id="p2" alt="STune" />
 		</knob>
-		<knob x="29" y="74" size="21">
+		<knob x="29" y="85" size="21">
 			<parameter component-id="p3" alt="MDecay" />
 		</knob>
-		<knob x="77" y="74" size="21">
+		<knob x="77" y="85" size="21">
 			<parameter component-id="p4" alt="SDecay" />
 		</knob>
-		<knob x="29" y="102" size="21">
+		<knob x="29" y="109" size="21">
 			<parameter component-id="p5" alt="MLevel" />
 		</knob>
-		<knob x="77" y="102" size="21">
+		<knob x="77" y="109" size="21">
 			<parameter component-id="p6" alt="SLevel" />
 		</knob>
 		<knob x="123" y="27" size="21">
@@ -663,18 +666,14 @@ label{fill:#000;}
 			<btn index="0">M</btn>
 		</button>
 		<label x="3" y="19">Trig</label>
-		<!--
-		<light x="7" y="48" width="7" height="7" >
-			<light>light.58.0</light>
-		</light> -->
 		<label x="4" y="57">Vel</label>
 		<label x="1" y="102">Pitch</label>
-		<label x="55" y="12">OSC</label>
-		<label x="29" y="19">Master</label>
-		<label x="74" y="19">Slave</label>
-		<label x="53" y="53">Tune</label>
-		<label x="54" y="79">Dcy</label>
-		<label x="55" y="107">Lev</label>
+		<label x="55" y="24">OSC</label>
+		<label x="29" y="32">Master</label>
+		<label x="74" y="32">Slave</label>
+		<label x="53" y="66">Tune</label>
+		<label x="54" y="90">Dcy</label>
+		<label x="55" y="115">Lev</label>
 		<label x="149" y="4">Noise Filter</label>
 		<label x="123" y="14">Freq</label>
 		<label x="151" y="14">Res</label>
@@ -685,10 +684,10 @@ label{fill:#000;}
 		<label x="152" y="64">Dcy</label>
 		<label x="180" y="64">Click</label>
 		<label x="206" y="64">Noise</label>
-		<textDisplay x="24" y="32" width="40" height="16">
+		<textDisplay x="24" y="45" width="40" height="16">
 			<parameter component-id="p1" alt="MTune" />
 		</textDisplay>
-		<textDisplay x="66" y="32" width="40" height="16">
+		<textDisplay x="66" y="45" width="40" height="16">
 			<parameter component-id="p2" alt="STune" />
 		</textDisplay>
         <light component-id="ledTriggerIn" type="led" x="6" y="50" width="7" height="7" /> 
@@ -1083,13 +1082,13 @@ label{fill:#000;}
 			<btn index="2"><image xlink:href="./images/slice/wf_saw.png" /></btn>
 			<btn index="3"><image xlink:href="./images/slice/wf_square.png" /></btn>
 		</button>
-		<knob x="20" y="66" size="21">
+		<knob x="20" y="63" size="21">
 			<parameter component-id="p7" alt="pitch mod 1" />
 		</knob>
-		<knob x="64" y="66" size="21">
+		<knob x="64" y="63" size="21">
 			<parameter component-id="p8" alt="pitch mod 2" />
 		</knob>
-		<knob x="108" y="66" size="21">
+		<knob x="108" y="63" size="21">
 			<parameter component-id="p9" alt="fma mod" />
 		</knob>
 		<knob x="185" y="49" size="21">
@@ -2161,7 +2160,7 @@ label{fill:#000;}
 		<knob x="167" y="25" size="21">
 			<parameter component-id="p4" alt="spectral shape" />
 		</knob>
-		<button x="203" y="34" width="48" height="16" cyclic="false" landscape="true">
+		<button x="207" y="35" width="38" height="13" cyclic="false" landscape="true">
 			<parameter component-id="p5" alt="partials" />
 			<btn index="0">Odd</btn>
 			<btn index="1">All</btn>
@@ -2200,6 +2199,7 @@ label{fill:#000;}
 		<label x="1" y="42">Pitch</label>
 		<label x="41" y="43">Pitch</label>
 		<label x="85" y="46">FMA</label>
+		<image x="238" y="2" width="11" height="9" xlink:href="./images/slice/wf_spectral.png" />
 		<resetButton x="118" y="16" width="9" height="6">
 			<parameter component-id="p3" alt="freq fine" />
 		</resetButton>
@@ -3739,8 +3739,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m9" width="255" height="60">
 		<name>OscC</name>
-		<image x="2" y="14" width="140" height="43" xlink:href="url(#groupbox)" />
-		<image x="237" y="3" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
+		<image x="2" y="7" width="140" height="50" xlink:href="url(#groupbox)" />
 		<connector x="165" y="37" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="FMA" />
 		</connector>
@@ -3783,9 +3782,9 @@ label{fill:#000;}
 		</textDisplay>
 		<label x="5" y="13">Freq</label>
 		<label x="19" y="39">Slv</label>
-		<label x="80" y="13">Coarse</label>
-		<label x="115" y="13">Fine</label>
-		<label x="148" y="13">AM</label>
+		<label x="80" y="10">Coarse</label>
+		<label x="115" y="10">Fine</label>
+		<label x="148" y="9">AM</label>
 		<label x="143" y="38">FMA</label>
 		<resetButton x="118" y="24" width="9" height="6">
 			<parameter component-id="p3" alt="pitch fine" />

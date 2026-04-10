@@ -249,7 +249,7 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
         // Oscillator frequency displays — show note name (C-1..G9) instead of raw number
         // Main oscillators: m7 (OscA), m8 (OscB), m9 (OscC) — p2 = freq coarse
         // OscSineBank (m106): p1,p4,p7,p10,p13,p16 = osc coarse per voice
-        static const juce::StringArray oscFreqModules { "m7", "m8", "m9" };
+        static const juce::StringArray oscFreqModules { "m7", "m8", "m9", "m95" };
         static const juce::StringArray oscSineBankFreqParams { "p1","p4","p7","p10","p13","p16" };
         if (oscFreqModules.contains(theme.componentId) && td.componentId == "p2")
             td.noteFormat = true;
@@ -260,6 +260,13 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
         static const juce::StringArray slaveOscModules { "m10", "m11", "m12", "m13", "m14", "m85" };
         if (slaveOscModules.contains(theme.componentId) && td.componentId == "p2")
             td.partialFormat = true;
+
+        // DrumSynth (m58): MTune → fmtDrumHz, STune → fmtDrumPartials
+        if (theme.componentId == "m58")
+        {
+            if (td.componentId == "p1") td.drumHzFormat = true;
+            if (td.componentId == "p2") td.drumPartialFormat = true;
+        }
     }
 
     theme.textDisplays.push_back(td);

@@ -124,7 +124,8 @@ private:
     void paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
-    void paintLabels(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintLabels(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
     void paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, juce::Colour moduleBg);
     void paintSliders(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
@@ -211,6 +212,20 @@ private:
     // Rubber-band selection rect (pixel coords, during drag)
     juce::Rectangle<int> rubberBandRect;
     bool showRubberBand = false;
+
+    // DrumSynth (m58) preset system
+    struct DrumPreset
+    {
+        juce::String name;
+        std::array<int, 15> params; // p1..p15 values (p16=mute excluded)
+    };
+    std::vector<DrumPreset> drumPresets;   // built-in (2) + user presets
+    std::map<int, int> drumPresetState;    // containerIndex → preset index
+    void initDrumPresets();
+    void saveDrumPresetsToFile();
+    void loadDrumPresetsFromFile();
+    void applyDrumPreset(Module& m, int section, int presetIdx);
+    void showDrumPresetContextMenu(Module& m, int section);
 
     // Clipboard for copy/paste
     struct ClipboardEntry
