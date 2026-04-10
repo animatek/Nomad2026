@@ -185,12 +185,13 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Respects parameter locks
   - Visual: empty=gray, filled=blue, active=gold
   - Full undo/redo for recall operations
+- [x] **Oscillator module visual pass**: waveform icons added to Noise, PercOsc, FormantOsc, SpectralOsc (matching OscSlv style — small 11×9px static icon, dark rounded box, white waveform)
 
 ### Next Up
+- [ ] **Dark Theme System** — `ColorScheme` struct (~49 fields), runtime-switchable via View menu, Dark palette + Classic dev reference. Spec: `docs/superpowers/specs/2026-04-10-dark-theme-design.md`
 - [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)
 - [ ] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.
 - [ ] **Morph overlay display** — F7 shows morph group assignments on modules, F5 shows morph ranges (start/end values)
-- [ ] **UI/UX design pass** — visual polish for all dialogs and menus
 
 ## Roadmap
 
@@ -303,7 +304,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Per-module verification: layout/size, graphics/custom displays, LEDs/meters, buttons/icons, labels, parameter interaction
   - Categories: In/Out, Oscillator, Filter, Amplifier, Envelope, LFO, FX, Delay, Mixer, Switch, Logic, Sequencer, MIDI, Random
 - [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search
-- [ ] **Dark/Light Theme** - Switchable color themes (Dark default, Light mode) via configurable palette
+- [ ] **Dark/Light Theme** - Switchable color themes via `ColorScheme` struct; Dark palette designed (spec approved 2026-04-10), implementation pending
 - [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
 - [x] **Undo/Redo System** - Full undo/redo for all patch operations
 - [ ] **Keyboard Shortcuts** - Complete keyboard shortcut system matching original editor

@@ -43,14 +43,14 @@ For each module, check:
 | 12 | OscSlvD | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_tri |
 | 13 | OscSlvE | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
 | 14 | OscSlvA | [x] | [x] | [x] | [x] | Partial display, flechas, waveform radio selector |
-| 31 | Noise | [x] | [x] | [x] | [x] | Noise generator |
+| 31 | Noise | [x] | [x] | [x] | [x] | Static icon wf_noise añadido (x=207 y=5) |
 | 58 | DrumSynth | [x] | [x] | [x] | [x] | |
 | 85 | OscSlvFM | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
-| 95 | PercOsc | [ ] | [ ] | [ ] | [ ] | Custom param |
-| 96 | FormantOsc | [ ] | [ ] | [ ] | [ ] | Custom param, needs formant display? |
+| 95 | PercOsc | [~] | [~] | [ ] | [ ] | Static icon wf_percosc añadido; Punch button reubicado (x=213 y=23 26×13) |
+| 96 | FormantOsc | [~] | [~] | [ ] | [ ] | Static icon wf_formant añadido (x=238 y=2) |
 | 97 | MasterOsc | [ ] | [ ] | [ ] | [ ] | Custom param |
 | 106 | OscSineBank | [ ] | [ ] | [ ] | [ ] | |
-| 107 | SpectralOsc | [ ] | [ ] | [ ] | [ ] | Custom param, needs spectral display? |
+| 107 | SpectralOsc | [~] | [~] | [ ] | [ ] | Static icon wf_spectral añadido; Partials button reducido (x=207 y=35 38×13) |
 
 ## LFO (14)
 
