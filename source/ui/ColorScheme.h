@@ -61,6 +61,7 @@ struct ColorScheme
     juce::Colour meterMid;
     juce::Colour meterHigh;
     juce::Colour meterTrack;
+    juce::Colour meterBg;        // meter track background (dark fill behind bars)
 
     // Custom displays (envelopes, LFO, filter curves)
     juce::Colour displayBgCustom;

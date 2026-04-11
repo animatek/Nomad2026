@@ -55,6 +55,7 @@ static ColorScheme makeClassicTheme()
     s.meterMid         = juce::Colour(0xffddcc00);
     s.meterHigh        = juce::Colour(0xffee2200);
     s.meterTrack       = juce::Colour(0xff555555);
+    s.meterBg          = juce::Colour(0xff222222);
     // Custom displays
     s.displayBgCustom     = juce::Colour(0xff1a1a2e);
     s.displayBorderCustom = juce::Colour(0xff444466);
@@ -132,6 +133,7 @@ static ColorScheme makeDarkTheme()
     s.meterMid         = juce::Colour(0xffddcc00);
     s.meterHigh        = juce::Colour(0xffee2200);
     s.meterTrack       = juce::Colour(0xff3a3a3a);
+    s.meterBg          = juce::Colour(0xff1a1a1a);
     // Custom displays
     s.displayBgCustom     = juce::Colour(0xff1a1a2e);
     s.displayBorderCustom = juce::Colour(0xff444466);

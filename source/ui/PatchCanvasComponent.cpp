@@ -786,12 +786,10 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         float cy = static_cast<float>(bounds.getY() + tk.y);
         float sz = static_cast<float>(tk.size);
 
-        const juce::Colour* morphColors = activeScheme_.morphColor;
-
         auto* param = findParameter(m, tk.componentId);
         int morphGroup = (param != nullptr) ? param->getMorphGroup() : -1;
         bool hasMorph = (morphGroup >= 0 && morphGroup < 4);
-        juce::Colour baseColor = hasMorph ? morphColors[morphGroup] : activeScheme_.knobBase;
+        juce::Colour baseColor = hasMorph ? activeScheme_.morphColor[morphGroup] : activeScheme_.knobBase;
 
         // Compute knob geometry first — needed for both wedge and grip
         float normalized = 0.5f;
@@ -1540,7 +1538,7 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             float ly = static_cast<float>(bounds.getY() + tl.y);
 
             // Background
-            g.setColour(activeScheme_.meterTrack);
+            g.setColour(activeScheme_.meterBg);
             g.fillRect(lx, ly, lw, lh);
 
             // Get meter value (0-127)
