@@ -557,7 +557,7 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     if (isSelected(&m))
     {
         g.setColour(activeScheme_.selectionRect);
-        g.drawRoundedRectangle(bounds.toFloat().expanded(1.0f), 3.0f, 2.0f);
+        g.drawRoundedRectangle(bounds.toFloat().reduced(1.5f), 2.5f, 1.0f);
     }
 }
 
