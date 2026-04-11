@@ -553,11 +553,9 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     g.drawLine(x1, y1, x1, y2, 1.0f); // left
     g.drawLine(x2, y1, x2, y2, 1.0f); // right
 
-    // Selection highlight
+    // Selection: border-only highlight drawn in paintModules — no background fill here
     if (isSelected(&m))
     {
-        g.setColour(juce::Colours::white.withAlpha(0.18f));
-        g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
         g.setColour(activeScheme_.selectionRect);
         g.drawRoundedRectangle(bounds.toFloat().expanded(1.0f), 3.0f, 2.0f);
     }
