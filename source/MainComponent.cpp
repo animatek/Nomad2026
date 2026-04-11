@@ -681,8 +681,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(64, "Shake Cables\tS");
     menu.addSeparator();
     juce::PopupMenu themeMenu;
-    bool isDark = (mainLayout->getCanvas().getTheme().gridBackground
-                   == kDarkTheme.gridBackground);
+    bool isDark = (mainLayout->getCanvas().getThemeId() == ThemeId::Dark);
     themeMenu.addItem(70, "Classic", true, !isDark);
     themeMenu.addItem(71, "Dark",    true,  isDark);
     menu.addSubMenu("Theme", themeMenu);
@@ -826,10 +825,10 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     mainLayout->getCanvas().shakeCables();
     break;
   case 70:  // Theme: Classic
-    mainLayout->setTheme(kClassicTheme);
+    mainLayout->setTheme(kClassicTheme, ThemeId::Classic);
     break;
   case 71:  // Theme: Dark
-    mainLayout->setTheme(kDarkTheme);
+    mainLayout->setTheme(kDarkTheme, ThemeId::Dark);
     break;
 
   default:

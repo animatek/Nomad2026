@@ -91,3 +91,5 @@ struct ColorScheme
 
 extern const ColorScheme kClassicTheme;
 extern const ColorScheme kDarkTheme;
+
+enum class ThemeId { Classic, Dark };

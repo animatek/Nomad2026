@@ -47,7 +47,9 @@ public:
     void shakeCables();
 
     void setTheme(const ColorScheme& cs) { activeScheme_ = cs; repaint(); }
+    void setTheme(const ColorScheme& cs, ThemeId id) { activeScheme_ = cs; activeThemeId_ = id; repaint(); }
     const ColorScheme& getTheme() const { return activeScheme_; }
+    ThemeId getThemeId() const { return activeThemeId_; }
 
     // Zoom
     float getZoomLevel() const { return zoomLevel; }
@@ -282,6 +284,7 @@ private:
     // Zoom
     float zoomLevel = 1.0f;
     ColorScheme activeScheme_ = kDarkTheme;
+    ThemeId activeThemeId_ = ThemeId::Dark;
     static constexpr float zoomMin = 0.75f;
     static constexpr float zoomMax = 3.0f;
     static constexpr float zoomStep = 0.1f;
@@ -455,7 +458,13 @@ public:
         polyCanvas.setTheme(cs);
         commonCanvas.setTheme(cs);
     }
+    void setTheme(const ColorScheme& cs, ThemeId id)
+    {
+        polyCanvas.setTheme(cs, id);
+        commonCanvas.setTheme(cs, id);
+    }
     const ColorScheme& getTheme() const { return polyCanvas.getTheme(); }
+    ThemeId getThemeId() const { return polyCanvas.getThemeId(); }
 
     bool isDragging(int section, int moduleId, int parameterId) const
     {
