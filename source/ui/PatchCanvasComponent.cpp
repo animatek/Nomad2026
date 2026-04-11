@@ -1222,11 +1222,11 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
         float sh = static_cast<float>(ts.height);
 
         // Track background
-        g.setColour(juce::Colour(0xff2a2a2a));
+        g.setColour(activeScheme_.resetBg);
         g.fillRect(sx, sy, sw, sh);
 
         // Track border
-        g.setColour(juce::Colour(0xff444444));
+        g.setColour(activeScheme_.resetBorder);
         g.drawRect(sx, sy, sw, sh, 1.0f);
 
         // Get parameter value for grip position
@@ -1241,7 +1241,7 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
         }
 
         // Draw grip
-        g.setColour(juce::Colour(0xffaaaaaa));
+        g.setColour(activeScheme_.resetText);
         bool vertical = (ts.orientation != "horizontal");
         if (vertical)
         {
