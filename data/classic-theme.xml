@@ -51,7 +51,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m30" width="255" height="30">
 		<name>LFOSlvE</name>
-		<connector x="100" y="8" size="13" class="cCONTROL">
+		<connector x="100" y="8" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="mst" />
 		</connector>
 		<connector x="238" y="14" size="13" class="cCONTROL">
@@ -97,13 +97,13 @@ label{fill:#000;}
 		<knob x="151" y="16" size="29">
 			<parameter component-id="p2" alt="pitch" />
 		</knob>
-		<knob x="41" y="22" size="21">
+		<knob x="41" y="30" size="21">
 			<parameter component-id="p3" alt="click" />
 		</knob>
-		<knob x="70" y="22" size="21">
+		<knob x="70" y="30" size="21">
 			<parameter component-id="p4" alt="decay" />
 		</knob>
-		<button x="213" y="23" width="26" height="13" cyclic="true" landscape="false">
+		<button x="222" y="23" width="26" height="13" cyclic="true" landscape="false">
 			<parameter component-id="p5" alt="punch" />
 			<btn index="1">Punch</btn>
 			<btn index="0">Punch</btn>
@@ -124,8 +124,8 @@ label{fill:#000;}
 		</textDisplay>
 		<label x="2" y="13">Amp</label>
 		<label x="19" y="41">Trig</label>
-		<label x="41" y="9">Click</label>
-		<label x="74" y="9">Dcy</label>
+		<label x="41" y="17">Click</label>
+		<label x="74" y="17">Dcy</label>
 		<label x="154" y="3">Pitch</label>
 		<label x="184" y="3">Fine</label>
 		<image x="238" y="2" width="11" height="9" xlink:href="./images/slice/wf_percosc.png" />
@@ -307,7 +307,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m34" width="255" height="30">
 		<name>RndStepGen</name>
-		<connector x="120" y="8" size="13" class="cCONTROL">
+		<connector x="120" y="8" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="mst" />
 		</connector>
 		<connector x="236" y="8" size="13" class="cCONTROL">
@@ -317,7 +317,7 @@ label{fill:#000;}
 			<parameter component-id="p2" alt="rate" />
 		</knob>
 		<label x="100" y="7">Mst</label>
-		<image x="210" y="9" width="17" height="11" xlink:href="./images/slice/decorator_rndgen_diskret.png" />
+		<image x="213" y="6" width="11" height="9" xlink:href="./images/slice/decorator_rndgen_diskret.png" />
 		<textDisplay x="137" y="6" width="36" height="16">
 			<parameter component-id="p2" alt="rate" />
 		</textDisplay>
@@ -325,10 +325,10 @@ label{fill:#000;}
 	<module component-id="m96" width="255" height="60">
 		<name>FormantOsc</name>
 		<image x="4" y="14" width="146" height="45" xlink:href="url(#groupbox)" />
-		<connector x="7" y="37" size="13" class="cAUDIO">
+		<connector x="7" y="37" size="13" class="cCONTROL">
 			<connector component-id="c1" alt="pitch mod 1" />
 		</connector>
-		<connector x="47" y="37" size="13" class="cSLAVE">
+		<connector x="47" y="37" size="13" class="cCONTROL">
 			<connector component-id="c2" alt="pitch mod 2" />
 		</connector>
 		<connector x="150" y="14" size="13" class="cCONTROL">
@@ -507,7 +507,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m29" width="255" height="30">
 		<name>LFOSlvD</name>
-		<connector x="100" y="8" size="13" class="cCONTROL">
+		<connector x="100" y="8" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="mst" />
 		</connector>
 		<connector x="238" y="14" size="13" class="cCONTROL">
@@ -690,7 +690,8 @@ label{fill:#000;}
 		<textDisplay x="66" y="45" width="40" height="16">
 			<parameter component-id="p2" alt="STune" />
 		</textDisplay>
-        <light component-id="ledTriggerIn" type="led" x="6" y="50" width="7" height="7" /> 
+        <light component-id="ledTriggerIn" type="led" x="6" y="50" width="7" height="7" />
+		<image x="239" y="71" width="11" height="9" xlink:href="./images/slice/icon_drum.png" />
 	</module>
 	<module component-id="m82" width="255" height="30">
 		<name>Diode</name>
@@ -769,7 +770,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m27" width="255" height="30">
 		<name>LFOSlvB</name>
-		<connector x="100" y="8" size="13" class="cCONTROL">
+		<connector x="100" y="8" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="mst" />
 		</connector>
 		<connector x="238" y="14" size="13" class="cCONTROL">
@@ -854,7 +855,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m28" width="255" height="30">
 		<name>LFOSlvC</name>
-		<connector x="100" y="8" size="13" class="cCONTROL">
+		<connector x="100" y="8" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="mst" />
 		</connector>
 		<connector x="238" y="14" size="13" class="cCONTROL">
@@ -1035,7 +1036,7 @@ label{fill:#000;}
 			<parameter component-id="p1" alt="density" />
 		</knob>
 		<label x="140" y="9">Density</label>
-		<image x="211" y="9" width="19" height="12" xlink:href="./images/single/decorator.rndgen.logic.png" />
+		<image x="214" y="6" width="11" height="9" xlink:href="./images/single/decorator.rndgen.logic.png" />
 		
 		<light component-id="ledLogicOut" type="led" x="240" y="5" width="7" height="7" /> 
 	</module>
@@ -1261,7 +1262,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m33" width="255" height="30">
 		<name>ClkRndGen</name>
-		<connector x="200" y="8" size="13" class="cCONTROL">
+		<connector x="200" y="8" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="clk" />
 		</connector>
 		<connector x="238" y="14" size="13" class="cCONTROL">
@@ -1278,12 +1279,12 @@ label{fill:#000;}
 			<btn index="1">Col</btn>
 		</button>
 		<label x="182" y="9">Clk</label>
-		<image x="217" y="9" width="17" height="11" xlink:href="./images/slice/decorator_rndgen_diskret.png" />
+		<image x="220" y="9" width="11" height="9" xlink:href="./images/slice/decorator_rndgen_diskret.png" />
 		<light component-id="ledControlOut" type="led" x="240" y="5" width="7" height="7" /> 
 	</module>
 	<module component-id="m24" width="255" height="75">
 		<name>LFOA</name>
-		<connector x="33" y="51" size="13" class="cSLAVE">
+		<connector x="33" y="51" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="rate" />
 		</connector>
 		<connector x="8" y="29" size="13" class="cCONTROL">
@@ -1497,7 +1498,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m26" width="255" height="60">
 		<name>LFOC</name>
-		<connector x="44" y="39" size="13" class="cCONTROL">
+		<connector x="44" y="39" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="rate" />
 		</connector>
 		<connector x="238" y="42" size="13" class="cCONTROL">
@@ -1909,7 +1910,7 @@ label{fill:#000;}
 	<module component-id="m25" width="255" height="75">
 		<name>LFOB</name>
 		<image x="159" y="33" width="74" height="38" xlink:href="url(#groupbox)" />
-		<connector x="24" y="54" size="13" class="cCONTROL">
+		<connector x="24" y="54" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="rate" />
 		</connector>
 		<connector x="5" y="26" size="13" class="cSLAVE">
@@ -2136,7 +2137,7 @@ label{fill:#000;}
 		<connector x="90" y="57" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="fma" />
 		</connector>
-		<connector x="5" y="55" size="13" class="cSLAVE">
+		<connector x="5" y="55" size="13" class="cCONTROL">
 			<connector component-id="c2" alt="pitch mod 1" />
 		</connector>
 		<connector x="47" y="55" size="13" class="cCONTROL">
@@ -2160,7 +2161,7 @@ label{fill:#000;}
 		<knob x="167" y="25" size="21">
 			<parameter component-id="p4" alt="spectral shape" />
 		</knob>
-		<button x="207" y="35" width="38" height="13" cyclic="false" landscape="true">
+		<button x="213" y="35" width="38" height="13" cyclic="false" landscape="true">
 			<parameter component-id="p5" alt="partials" />
 			<btn index="0">Odd</btn>
 			<btn index="1">All</btn>
@@ -2194,8 +2195,8 @@ label{fill:#000;}
 		<label x="38" y="13">Freq</label>
 		<label x="76" y="6">Coarse</label>
 		<label x="114" y="6">Fine</label>
-		<label x="162" y="4">Spectral\n Shape</label>
-		<label x="211" y="24">Partials</label>
+		<label x="159" y="4">Spectral\n Shape</label>
+		<label x="217" y="24">Partials</label>
 		<label x="1" y="42">Pitch</label>
 		<label x="41" y="43">Pitch</label>
 		<label x="85" y="46">FMA</label>
@@ -2327,7 +2328,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m80" width="255" height="60">
 		<name>LFOSlvA</name>
-		<connector x="7" y="19" size="13" class="cCONTROL">
+		<connector x="7" y="19" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="master" />
 		</connector>
 		<connector x="7" y="40" size="13" class="cLOGIC">
@@ -2373,6 +2374,7 @@ label{fill:#000;}
 		<LFODisplay x="200" y="7" width="46" height="20">
 			<phase component-id="p3" alt="phase" />
 			<shape component-id="p4" alt="waveform" />
+			<rate component-id="p2" alt="rate" />
 		</LFODisplay>
 		<light component-id="ledControlOut" type="led" x="240" y="30" width="7" height="7" /> 
 	</module>
@@ -2397,7 +2399,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m97" width="255" height="45">
 		<name>MasterOsc</name>
-		<connector x="151" y="23" size="13" class="cSLAVE">
+		<connector x="151" y="23" size="13" class="cCONTROL">
 			<connector component-id="c1" alt="pitch mod 1" />
 		</connector>
 		<connector x="192" y="23" size="13" class="cCONTROL">
@@ -2608,6 +2610,7 @@ label{fill:#000;}
 		<label x="144" y="95">level</label>
 		<label x="188" y="95">level</label>
 		<label x="227" y="95">level</label>
+		<image x="208" y="126" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
 	</module>
 	<module component-id="m14" width="255" height="60">
 		<name>OscSlvA</name>
@@ -3548,7 +3551,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m99" width="255" height="60">
 		<name>PatternGen</name>
-		<connector x="8" y="41" size="13" class="cCONTROL">
+		<connector x="8" y="41" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="clock" />
 		</connector>
 		<connector x="31" y="41" size="13" class="cLOGIC">
@@ -3571,9 +3574,12 @@ label{fill:#000;}
 			<btn index="0">High</btn>
 			<btn index="1">Low</btn>
 		</button>
-		<knob x="180" y="14" size="21">
+		<button x="180" y="14" width="12" height="21" mode="increment">
 			<parameter component-id="p4" alt="step" />
-		</knob>
+		</button>
+		<textDisplay x="194" y="19" width="25" height="16">
+			<parameter component-id="p4" alt="step" />
+		</textDisplay>
 		<button x="176" y="40" width="34" height="16" cyclic="true" landscape="false">
 			<parameter component-id="p5" alt="mono" />
 			<btn index="0">Mono</btn>
@@ -3789,6 +3795,7 @@ label{fill:#000;}
 		<resetButton x="118" y="24" width="9" height="6">
 			<parameter component-id="p3" alt="pitch fine" />
 		</resetButton>
+		<image x="237" y="5" width="11" height="9" xlink:href="./images/slice/wf_sine.png" />
 	</module>
 	<module component-id="m21" width="255" height="105">
 		<name>Compressor</name>
@@ -4720,7 +4727,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m110" width="255" height="30">
 		<name>RandomGen</name>
-		<connector x="118" y="12" size="13" class="cCONTROL">
+		<connector x="118" y="12" size="13" class="cSLAVE">
 			<connector component-id="c1" alt="master" />
 		</connector>
 		<connector x="235" y="12" size="13" class="cCONTROL">
@@ -4730,7 +4737,7 @@ label{fill:#000;}
 			<parameter component-id="p2" alt="rate" />
 		</knob>
 		<label x="100" y="12">Mst</label>
-		<image x="212" y="9" width="17" height="11" xlink:href="./images/slice/decorator_rndgen.png" />
+		<image x="215" y="6" width="11" height="9" xlink:href="./images/slice/decorator_rndgen.png" />
 		<textDisplay x="140" y="6" width="36" height="16">
 			<parameter component-id="p2" alt="rate" />
 		</textDisplay>

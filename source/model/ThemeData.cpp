@@ -114,6 +114,19 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
             cd.y = child->getIntAttribute("y");
             cd.width = child->getIntAttribute("width", 40);
             cd.height = child->getIntAttribute("height", 30);
+            // Parse LFODisplay sub-elements: <phase>, <shape>, <rate>, <waveform>
+            for (auto* sub = child->getFirstChildElement(); sub != nullptr; sub = sub->getNextElement())
+            {
+                auto subTag = sub->getTagName();
+                if (subTag == "phase")
+                    cd.phaseComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "shape")
+                    cd.shapeComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "rate")
+                    cd.rateComponentId  = sub->getStringAttribute("component-id");
+                else if (subTag == "waveform")
+                    cd.fixedWaveform = sub->getIntAttribute("value", -1);
+            }
             theme.customDisplays.push_back(cd);
         }
         // Silently skip: image, scrollbar
@@ -248,18 +261,53 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
 
         // Oscillator frequency displays — show note name (C-1..G9) instead of raw number
         // Main oscillators: m7 (OscA), m8 (OscB), m9 (OscC) — p2 = freq coarse
-        // OscSineBank (m106): p1,p4,p7,p10,p13,p16 = osc coarse per voice
-        static const juce::StringArray oscFreqModules { "m7", "m8", "m9", "m95" };
-        static const juce::StringArray oscSineBankFreqParams { "p1","p4","p7","p10","p13","p16" };
-        if (oscFreqModules.contains(theme.componentId) && td.componentId == "p2")
-            td.noteFormat = true;
-        if (theme.componentId == "m106" && oscSineBankFreqParams.contains(td.componentId))
+        static const juce::StringArray oscNoteModules { "m7", "m8", "m9" };
+        if (oscNoteModules.contains(theme.componentId) && td.componentId == "p2")
             td.noteFormat = true;
 
-        // Slave oscillator detune coarse → show as partial ratio (1:1, 2:1, etc.)
+        // Advanced oscillators: Hz display (440*2^((v-69)/12))
+        // m95=PercOsc, m96=FormantOsc, m97=MasterOsc, m107=SpectralOsc
+        static const juce::StringArray oscHzModules { "m95", "m96", "m97", "m107" };
+        if (oscHzModules.contains(theme.componentId) && td.componentId == "p2")
+            td.oscHzFormat = true;
+
+        // OscSineBank (m106): tune knobs → partial ratio (1:1, 2:1, etc.)
+        static const juce::StringArray oscSineBankFreqParams { "p1","p4","p7","p10","p13","p16" };
+        if (theme.componentId == "m106" && oscSineBankFreqParams.contains(td.componentId))
+            td.partialFormat = true;
+
+        // Slave oscillator detune coarse → partial ratio
         static const juce::StringArray slaveOscModules { "m10", "m11", "m12", "m13", "m14", "m85" };
         if (slaveOscModules.contains(theme.componentId) && td.componentId == "p2")
             td.partialFormat = true;
+
+        // LFO slave rate → partial ratio (m80=LFOSlvA, m27=B, m28=C, m29=D, m30=E)
+        static const juce::StringArray lfoSlvModules { "m80", "m27", "m28", "m29", "m30" };
+        if (lfoSlvModules.contains(theme.componentId) && td.componentId == "p2")
+            td.partialFormat = true;
+
+        // Random generators rate → partial ratio (m34=RndStepGen, m110=RandomGen)
+        static const juce::StringArray rndGenModules { "m34", "m110" };
+        if (rndGenModules.contains(theme.componentId) && td.componentId == "p2")
+            td.partialFormat = true;
+
+        // LFO rate → fmtLFOHz (440*2^((v-177)/12), shows s or Hz)
+        // m24=LFOA, m25=LFOB, m26=LFOC
+        static const juce::StringArray lfoModules { "m24", "m25", "m26" };
+        if (lfoModules.contains(theme.componentId) && td.componentId == "p1")
+            td.lfoHzFormat = true;
+
+        // Phase display → fmtPhase: v*2.8125-180 degrees
+        // m24=LFOA p7, m25=LFOB p3, m80=LFOSlvA p3
+        bool isPhaseParam = (theme.componentId == "m24" && td.componentId == "p7") ||
+                            (theme.componentId == "m25" && td.componentId == "p3") ||
+                            (theme.componentId == "m80" && td.componentId == "p3");
+        if (isPhaseParam)
+            td.phaseFormat = true;
+
+        // BPM display → fmtBPM (ClkGen m68 p1)
+        if (theme.componentId == "m68" && td.componentId == "p1")
+            td.bpmFormat = true;
 
         // DrumSynth (m58): MTune → fmtDrumHz, STune → fmtDrumPartials
         if (theme.componentId == "m58")
@@ -267,6 +315,10 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
             if (td.componentId == "p1") td.drumHzFormat = true;
             if (td.componentId == "p2") td.drumPartialFormat = true;
         }
+
+        // PatternGen (m99): step p4 → 0=OFF, 1-128=number
+        if (theme.componentId == "m99" && td.componentId == "p4")
+            td.stepFormat = true;
     }
 
     theme.textDisplays.push_back(td);

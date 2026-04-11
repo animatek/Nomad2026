@@ -185,7 +185,15 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Respects parameter locks
   - Visual: empty=gray, filled=blue, active=gold
   - Full undo/redo for recall operations
-- [x] **Oscillator module visual pass**: waveform icons added to Noise, PercOsc, FormantOsc, SpectralOsc (matching OscSlv style — small 11×9px static icon, dark rounded box, white waveform)
+- [x] **Oscillator & LFO module visual pass** (complete — all 30 modules):
+  - All waveform selector buttons now render icons: sine, tri, saw, **inverted saw** (wf_saw_inv), square, noise
+  - Static waveform badges on all slave oscillators and LFOs (11×9px, dark rounded box, white icon)
+  - Random generator visual badges: S&H staircase (RndStepGen/ClkRndGen), smooth curve (RandomGen), pulse train (RndPulsGen)
+  - DrumSynth drum icon badge; PercOsc Click/Decay repositioned, Punch moved right
+  - SpectralOsc label centered, Partials button repositioned
+  - **Display format system**: oscillator Hz (440·2^((v-69)/12)), LFO Hz/seconds, phase degrees, BPM (piecewise), partial ratios (1:1, 2:1…), drum Hz/partials
+  - **LFO waveform display**: phase-offset animation (p7/p3), exponential rate scaling 0.25–8 cycles, clean discontinuity handling for saw/square
+  - **PatternGen step**: increment ▲▼ arrow button replacing knob, OFF/1–127 display, rapid-click safe (no double-click reset)
 - [x] **Dark Theme System**: `ColorScheme` struct (50 fields), runtime-switchable via View → Theme menu
   - Two themes: **Dark** (default, carbon palette) and **Classic** (original colors, dev reference)
   - `ThemeId` enum for identity tracking; no color-comparison fragility

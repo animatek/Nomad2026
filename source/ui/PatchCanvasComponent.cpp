@@ -937,6 +937,13 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         p.lineTo(x1, y1);
         g.strokePath(p, juce::PathStrokeType(1.0f));
     }
+    else if (iconName == "wf_saw_inv")
+    {
+        p.startNewSubPath(x1, y1);
+        p.lineTo(x0, y0);
+        p.lineTo(x0, y1);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
     else if (iconName == "wf_square")
     {
         p.startNewSubPath(x0, my);
@@ -1004,6 +1011,56 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
             p.addRectangle(bx2, y1 - h, barW, h);
         }
         g.fillPath(p);
+    }
+    else if (iconName == "decorator_rndgen")
+    {
+        // Smooth S&H random wave (curved staircase)
+        p.startNewSubPath(x0,               my - ph * 0.15f);
+        p.lineTo         (x0 + pw * 0.22f,  my - ph * 0.15f);
+        p.quadraticTo    (x0 + pw * 0.26f,  my + ph * 0.35f,  x0 + pw * 0.30f, my + ph * 0.35f);
+        p.lineTo         (x0 + pw * 0.52f,  my + ph * 0.35f);
+        p.quadraticTo    (x0 + pw * 0.56f,  y0,               x0 + pw * 0.60f, y0);
+        p.lineTo         (x0 + pw * 0.80f,  y0);
+        p.quadraticTo    (x0 + pw * 0.84f,  my - ph * 0.1f,   x1,              my - ph * 0.1f);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "decorator_rndgen_diskret")
+    {
+        // Discrete stepped random (staircase / sample-hold)
+        p.startNewSubPath(x0,               my);
+        p.lineTo         (x0 + pw * 0.25f,  my);
+        p.lineTo         (x0 + pw * 0.25f,  y0 + ph * 0.2f);
+        p.lineTo         (x0 + pw * 0.50f,  y0 + ph * 0.2f);
+        p.lineTo         (x0 + pw * 0.50f,  y1);
+        p.lineTo         (x0 + pw * 0.75f,  y1);
+        p.lineTo         (x0 + pw * 0.75f,  my - ph * 0.2f);
+        p.lineTo         (x1,               my - ph * 0.2f);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "decorator.rndgen.logic")
+    {
+        // Random pulse train (gate pulses of varying height)
+        float baseline = y1;
+        p.addRectangle(x0,               baseline - ph * 0.5f,  pw * 0.18f, ph * 0.5f);
+        p.addRectangle(x0 + pw * 0.28f,  baseline - ph * 0.85f, pw * 0.18f, ph * 0.85f);
+        p.addRectangle(x0 + pw * 0.56f,  baseline - ph * 0.3f,  pw * 0.18f, ph * 0.3f);
+        p.addRectangle(x0 + pw * 0.80f,  baseline - ph * 0.65f, pw * 0.18f, ph * 0.65f);
+        g.fillPath(p);
+    }
+    else if (iconName == "icon_drum")
+    {
+        // Drum body (ellipse) + drumstick
+        float dw = iw * 0.62f, dh = ih * 0.42f;
+        float dx = ix + (iw - dw) * 0.5f - iw * 0.06f;
+        float dy = iy + ih * 0.42f;
+        g.drawEllipse(dx, dy, dw, dh, 1.0f);
+        juce::Path stick;
+        float sx0 = dx + dw * 0.70f, sy0 = iy + ih * 0.05f;
+        float sx1 = dx + dw * 1.00f, sy1 = iy + ih * 0.44f;
+        stick.startNewSubPath(sx0, sy0);
+        stick.lineTo(sx1, sy1);
+        g.strokePath(stick, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.fillEllipse(sx0 - 1.5f, sy0 - 1.5f, 3.0f, 3.0f);
     }
     else
     {
@@ -1346,6 +1403,57 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
                     displayStr = "x" + juce::String(ratio, 2);
                 }
             }
+            else if (td.oscHzFormat)
+            {
+                // fmtOscHz: 440 * 2^((val-69)/12) Hz — standard MIDI pitch to Hz
+                double hz = 440.0 * std::pow(2.0, (val - 69) / 12.0);
+                if (hz < 10.0)
+                    displayStr = juce::String(hz, 2) + " Hz";
+                else if (hz < 100.0)
+                    displayStr = juce::String(hz, 1) + " Hz";
+                else if (hz < 1000.0)
+                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
+                else
+                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
+            }
+            else if (td.lfoHzFormat)
+            {
+                // fmtLFOHz: 440 * 2^((val-177)/12) — shows "s" when period > 10s
+                double hz = 440.0 * std::pow(2.0, (val - 177) / 12.0);
+                if (hz < 0.1)
+                {
+                    double secs = 1.0 / hz;
+                    if (secs >= 100.0)
+                        displayStr = juce::String(juce::roundToInt(secs)) + " s";
+                    else
+                        displayStr = juce::String(secs, 1) + " s";
+                }
+                else if (hz < 10.0)
+                    displayStr = juce::String(hz, 2) + " Hz";
+                else if (hz < 100.0)
+                    displayStr = juce::String(hz, 1) + " Hz";
+                else
+                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
+            }
+            else if (td.phaseFormat)
+            {
+                // fmtPhase: val * 2.8125 - 180, shows degrees (-180 to 177)
+                int degrees = juce::roundToInt(val * 2.8125 - 180.0);
+                displayStr = juce::String(degrees);
+            }
+            else if (td.bpmFormat)
+            {
+                // fmtBPM: piecewise linear, val=64 → 120 bpm
+                int bpm = val;
+                if (val <= 32)       bpm = 2 * val + 24;
+                else if (val <= 96)  bpm = val + 56;
+                else                 bpm = 2 * val - 40;
+                displayStr = juce::String(bpm) + " bpm";
+            }
+            else if (td.stepFormat)
+            {
+                displayStr = (val == 0) ? "OFF" : juce::String(val);
+            }
             else
             {
                 displayStr = juce::String(val);
@@ -1675,15 +1783,50 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         // --- LFO Display ---
         if (type == "LFODisplay")
         {
-            // Find waveform shape parameter
-            int waveform = 0;
-            for (auto& p : m.getParameters())
+            // Waveform shape: prefer explicit shapeComponentId, else search by name
+            int waveform = (cd.fixedWaveform >= 0) ? cd.fixedWaveform : 0;
+            if (cd.fixedWaveform < 0)
             {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                if (name.contains("waveform") || name.contains("wave") || name.contains("shape"))
+                if (cd.shapeComponentId.isNotEmpty())
                 {
-                    waveform = p.getValue();
-                    break;
+                    auto* sp = findParameter(m, cd.shapeComponentId);
+                    if (sp) waveform = sp->getValue();
+                }
+                else
+                {
+                    for (auto& p : m.getParameters())
+                    {
+                        auto name = p.getDescriptor()->name.toLowerCase();
+                        if (name.contains("waveform") || name.contains("wave") || name.contains("shape"))
+                        { waveform = p.getValue(); break; }
+                    }
+                }
+            }
+
+            // Phase offset: fmtPhase → degrees, convert to [0,1] cycle fraction
+            float phaseOffset = 0.0f;
+            if (cd.phaseComponentId.isNotEmpty())
+            {
+                auto* pp = findParameter(m, cd.phaseComponentId);
+                if (pp)
+                {
+                    float degrees = static_cast<float>(pp->getValue()) * 2.8125f - 180.0f;
+                    phaseOffset = degrees / 360.0f;
+                }
+            }
+
+            // Rate cycles: scale how many cycles are shown (LFOSlvA rate knob)
+            float cycles = 1.0f;
+            if (cd.rateComponentId.isNotEmpty())
+            {
+                auto* rp = findParameter(m, cd.rateComponentId);
+                if (rp)
+                {
+                    auto* rpd = rp->getDescriptor();
+                    int range = rpd->maxValue - rpd->minValue;
+                    float norm = (range > 0) ? static_cast<float>(rp->getValue() - rpd->minValue) / static_cast<float>(range) : 0.5f;
+                    // Exponential scaling: 0.25 cycles (very slow) to 8 cycles (very fast)
+                    cycles = 0.25f * std::pow(32.0f, norm);
                 }
             }
 
@@ -1693,47 +1836,60 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float midY = dy + dh * 0.5f;
             float amp = plotH * 0.45f;
 
-            // Center reference line
-            g.setColour(activeScheme_.displayGrid);
+            // Build wave path first, draw center line behind it
+            // Center reference line behind the wave
+            g.setColour(activeScheme_.displayGrid.withAlpha(0.5f));
             g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
 
             juce::Path wave;
             int steps = static_cast<int>(plotW);
+            float prevWval = 0.0f;
+            bool firstPoint = true;
+            // Discontinuous waveforms (sawtooth, inv-saw, square) need gap detection
+            bool isDiscontinuousWave = (waveform == 2 || waveform == 3 || waveform == 4);
             for (int i = 0; i <= steps; i++)
             {
                 float t = static_cast<float>(i) / static_cast<float>(steps);
+                float tp = std::fmod(t * cycles + phaseOffset + 10.0f, 1.0f);
                 float px = dx + margin + t * plotW;
-                float val = 0.0f;
+                float wval = 0.0f;
 
                 switch (waveform)
                 {
                     case 0: // Sine
-                        val = std::sin(t * juce::MathConstants<float>::twoPi);
+                        wval = std::sin(tp * juce::MathConstants<float>::twoPi);
                         break;
                     case 1: // Triangle
-                        val = (t < 0.25f) ? t * 4.0f : (t < 0.75f) ? 2.0f - t * 4.0f : t * 4.0f - 4.0f;
+                        wval = (tp < 0.25f) ? tp * 4.0f : (tp < 0.75f) ? 2.0f - tp * 4.0f : tp * 4.0f - 4.0f;
                         break;
-                    case 2: // Sawtooth
-                        val = (t < 0.5f) ? t * 2.0f : t * 2.0f - 2.0f;
+                    case 2: // Sawtooth (ramp up: -1 to +1)
+                        wval = 2.0f * tp - 1.0f;
                         break;
-                    case 3: // Inv sawtooth
-                        val = (t < 0.5f) ? -t * 2.0f : 2.0f - t * 2.0f;
+                    case 3: // Inv Sawtooth (ramp down: +1 to -1)
+                        wval = 1.0f - 2.0f * tp;
                         break;
                     case 4: // Square
                     default:
-                        val = (t < 0.5f) ? 1.0f : -1.0f;
+                        wval = (tp < 0.5f) ? 1.0f : -1.0f;
                         break;
                 }
 
-                float py = midY - val * amp;
-                if (i == 0)
+                float py = midY - wval * amp;
+                // Only break the path for waveforms with real discontinuities (jump ~2.0)
+                // Smooth waveforms (sine/triangle) always connect — no threshold check needed
+                bool isDiscontinuity = isDiscontinuousWave && !firstPoint
+                                       && std::abs(wval - prevWval) > 1.5f;
+                if (firstPoint || isDiscontinuity)
                     wave.startNewSubPath(px, py);
                 else
                     wave.lineTo(px, py);
+                prevWval = wval;
+                firstPoint = false;
             }
 
             g.setColour(activeScheme_.displayCurveBlue);
-            g.strokePath(wave, juce::PathStrokeType(1.0f));
+            g.strokePath(wave, juce::PathStrokeType(1.5f,
+                juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             continue;
         }
 
@@ -2207,8 +2363,8 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         g.strokePath(path, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved,
                                                  juce::PathStrokeType::rounded));
 
-        // Colored cable on top
-        g.setColour(cableCol);
+        // Colored cable on top (semi-transparent for better depth perception)
+        g.setColour(cableCol.withAlpha(0.80f));
         g.strokePath(path, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved,
                                                  juce::PathStrokeType::rounded));
     }
@@ -2343,6 +2499,20 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             dragState.startValue = param->getMorphRange();
                             return;
                         }
+                        if (e.getNumberOfClicks() >= 2)
+                        {
+                            // Double-click: reset to default value
+                            auto* pd = param->getDescriptor();
+                            int oldValue = param->getValue();
+                            int defVal = pd->defaultValue;
+                            param->setValue(defVal);
+                            if (parameterChangeCallback)
+                                parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, defVal);
+                            if (paramDragCompleteCallback && defVal != oldValue)
+                                paramDragCompleteCallback(area.section, m.getContainerIndex(), pd->index, oldValue, defVal);
+                            repaint();
+                            return;
+                        }
                         dragState.type = DragState::Knob;
                         dragState.module = &m;
                         dragState.parameter = param;
@@ -2387,6 +2557,20 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             dragState.startValue = param->getMorphRange();
                             return;
                         }
+                        if (e.getNumberOfClicks() >= 2)
+                        {
+                            // Double-click: reset to default value
+                            auto* pd = param->getDescriptor();
+                            int oldValue = param->getValue();
+                            int defVal = pd->defaultValue;
+                            param->setValue(defVal);
+                            if (parameterChangeCallback)
+                                parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, defVal);
+                            if (paramDragCompleteCallback && defVal != oldValue)
+                                paramDragCompleteCallback(area.section, m.getContainerIndex(), pd->index, oldValue, defVal);
+                            repaint();
+                            return;
+                        }
                         dragState.type = DragState::Slider;
                         dragState.module = &m;
                         dragState.parameter = param;
@@ -2412,6 +2596,20 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             showParameterContextMenu(m, area.section, *param);
                             return;
                         }
+                        if (e.getNumberOfClicks() >= 2 && !tb.isIncrement)
+                        {
+                            // Double-click: reset to default value (not for increment buttons)
+                            auto* pd = param->getDescriptor();
+                            int oldValue = param->getValue();
+                            int defVal = pd->defaultValue;
+                            param->setValue(defVal);
+                            if (parameterChangeCallback)
+                                parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, defVal);
+                            if (paramDragCompleteCallback && defVal != oldValue)
+                                paramDragCompleteCallback(area.section, m.getContainerIndex(), pd->index, oldValue, defVal);
+                            repaint();
+                            return;
+                        }
                         dragState.type = DragState::Button;
                         dragState.module = &m;
                         dragState.parameter = param;
@@ -2421,9 +2619,20 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 
                         // Buttons toggle/cycle on click (no drag)
                         auto* pd = param->getDescriptor();
-                        int newValue = param->getValue() + 1;
-                        if (newValue > pd->maxValue)
-                            newValue = pd->minValue;
+                        int newValue;
+                        if (tb.isIncrement)
+                        {
+                            // Top half → +1, bottom half → -1
+                            bool goUp = relPos.y < tb.y + tb.height / 2;
+                            newValue = juce::jlimit(pd->minValue, pd->maxValue,
+                                                    param->getValue() + (goUp ? 1 : -1));
+                        }
+                        else
+                        {
+                            newValue = param->getValue() + 1;
+                            if (newValue > pd->maxValue)
+                                newValue = pd->minValue;
+                        }
 
                         int oldButtonValue = dragState.parameter->getValue();
                         dragState.parameter->setValue(newValue);

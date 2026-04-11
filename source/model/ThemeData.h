@@ -55,6 +55,11 @@ struct ThemeTextDisplay
     bool partialFormat = false;     // true → display as partial ratio (1:1, 2:1, etc.)
     bool drumHzFormat = false;      // true → fmtDrumHz: 20*2^(v/24) Hz
     bool drumPartialFormat = false; // true → fmtDrumPartials: 1:1/2:1/4:1 or x0.00
+    bool oscHzFormat = false;       // true → fmtOscHz: 440*2^((v-69)/12) Hz
+    bool lfoHzFormat = false;       // true → fmtLFOHz: 440*2^((v-177)/12), shows s or Hz
+    bool phaseFormat = false;       // true → fmtPhase: v*2.8125-180 degrees
+    bool bpmFormat = false;         // true → fmtBPM: piecewise linear, shows bpm
+    bool stepFormat = false;        // true → 0=OFF, 1-128=number (PatternGen steps)
 };
 
 struct ThemeLight
@@ -81,9 +86,14 @@ struct ThemeResetButton
 
 struct ThemeCustomDisplay
 {
-    juce::String type;         // tag name, e.g. "overdrive-display", "LFODisplay"
+    juce::String type;              // tag name, e.g. "overdrive-display", "LFODisplay"
     int x = 0, y = 0;
     int width = 40, height = 30;
+    // LFODisplay sub-element component IDs (empty = not present)
+    juce::String phaseComponentId;  // <phase component-id="pN"> → phase param
+    juce::String shapeComponentId;  // <shape component-id="pN"> → waveform shape param
+    juce::String rateComponentId;   // <rate component-id="pN">  → rate param (cycles scaling)
+    int fixedWaveform = -1;         // <waveform value="N"> → fixed shape (-1 = dynamic)
 };
 
 struct ThemeStaticIcon

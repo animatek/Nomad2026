@@ -35,41 +35,41 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 7 | OscA | [x] | [x] | [x] | [x] | Knobs, waveform selector (icons), TextDisplay nota, mute, static icon, groupbox |
-| 8 | OscB | [x] | [x] | [x] | [x] | Igual que OscA |
-| 9 | OscC | [x] | [x] | [x] | [x] | Sine solo, groupbox ajustado, static icon, labels alineados |
+| 7 | OscA | [x] | [x] | [x] | [x] | Waveform selector (sine/tri/saw/square icons), TextDisplay nota, mute, static icon |
+| 8 | OscB | [x] | [x] | [x] | [x] | Igual que OscA, wf_saw_inv icon añadido |
+| 9 | OscC | [x] | [x] | [x] | [x] | Sine only slave, badge wf_sine x=237 y=5, connector colors corregidos |
 | 10 | OscSlvB | [x] | [x] | [x] | [x] | Partial display 1:1, flechas ◄►, static icon wf_square |
 | 11 | OscSlvC | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_saw |
 | 12 | OscSlvD | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_tri |
 | 13 | OscSlvE | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
 | 14 | OscSlvA | [x] | [x] | [x] | [x] | Partial display, flechas, waveform radio selector |
-| 31 | Noise | [x] | [x] | [x] | [x] | Static icon wf_noise añadido (x=207 y=5) |
-| 58 | DrumSynth | [x] | [x] | [x] | [x] | |
+| 31 | Noise | [x] | [x] | [x] | [x] | Static icon wf_noise (x=207 y=5) |
+| 58 | DrumSynth | [x] | [x] | [x] | [x] | MTune=drumHz (20–748 Hz), STune=drumPartials (1:1–×6.26), drum icon badge |
 | 85 | OscSlvFM | [x] | [x] | [x] | [x] | Partial display, flechas, static icon wf_sine |
-| 95 | PercOsc | [~] | [~] | [ ] | [ ] | Static icon wf_percosc añadido; Punch button reubicado (x=213 y=23 26×13) |
-| 96 | FormantOsc | [~] | [~] | [ ] | [ ] | Static icon wf_formant añadido (x=238 y=2) |
-| 97 | MasterOsc | [ ] | [ ] | [ ] | [ ] | Custom param |
-| 106 | OscSineBank | [ ] | [ ] | [ ] | [ ] | |
-| 107 | SpectralOsc | [~] | [~] | [ ] | [ ] | Static icon wf_spectral añadido; Partials button reducido (x=207 y=35 38×13) |
+| 95 | PercOsc | [x] | [x] | [x] | [x] | Static icon wf_percosc; Click/Decay bajados (y=30), Punch movido (x=222) |
+| 96 | FormantOsc | [x] | [x] | [x] | [x] | Static icon wf_formant (x=238 y=2), display oscHzFormat |
+| 97 | MasterOsc | [x] | [x] | [x] | [x] | display oscHzFormat (440·2^((v-69)/12) Hz) |
+| 106 | OscSineBank | [x] | [x] | [x] | [x] | Partial ratios todos los tune; badge wf_sine bajo conector am osc6 |
+| 107 | SpectralOsc | [x] | [x] | [x] | [x] | Static icon wf_spectral; label centrado; Partials (Odd/All) movido x=213 |
 
 ## LFO (14)
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 24 | LFOA | [ ] | [ ] | [ ] | [ ] | LFO display implemented |
-| 25 | LFOB | [ ] | [ ] | [ ] | [ ] | Square/Pulse |
-| 26 | LFOC | [ ] | [ ] | [ ] | [ ] | Multiple LFO |
-| 27 | LFOSlvB | [ ] | [ ] | [ ] | [ ] | Sawtooth slave, custom param |
-| 28 | LFOSlvC | [ ] | [ ] | [ ] | [ ] | Sine slave, custom param |
-| 29 | LFOSlvD | [ ] | [ ] | [ ] | [ ] | Square slave, custom param |
-| 30 | LFOSlvE | [ ] | [ ] | [ ] | [ ] | Triangle slave, custom param |
-| 33 | ClkRndGen | [ ] | [ ] | [ ] | [ ] | |
-| 34 | RndStepGen | [ ] | [ ] | [ ] | [ ] | Custom param |
-| 35 | RndPulsGen | [ ] | [ ] | [ ] | [ ] | |
-| 68 | ClkGen | [ ] | [ ] | [ ] | [ ] | |
-| 80 | LFOSlvA | [ ] | [ ] | [ ] | [ ] | Multiple slave, custom param |
-| 99 | PatternGen | [ ] | [ ] | [ ] | [ ] | Step pattern display? |
-| 110 | RandomGen | [ ] | [ ] | [ ] | [ ] | Custom param |
+| 24 | LFOA | [x] | [x] | [x] | [x] | LFO display animado (fase+rate); waveform icons sine/tri/saw/saw_inv/square/noise; lfoHzFormat; phaseFormat |
+| 25 | LFOB | [x] | [x] | [x] | [x] | LFO display; waveform icons incluyendo wf_saw_inv |
+| 26 | LFOC | [x] | [x] | [x] | [x] | LFO display; waveform icons |
+| 27 | LFOSlvB | [x] | [x] | [x] | [x] | Partial display, badge wf_sine, wf_saw_inv corregido |
+| 28 | LFOSlvC | [x] | [x] | [x] | [x] | Partial display; wf_saw_inv icon |
+| 29 | LFOSlvD | [x] | [x] | [x] | [x] | Partial display; wf_saw_inv icon |
+| 30 | LFOSlvE | [x] | [x] | [x] | [x] | Partial display; wf_saw_inv icon |
+| 33 | ClkRndGen | [x] | [x] | [x] | [x] | decorator_rndgen_diskret badge (x=220 y=9) |
+| 34 | RndStepGen | [x] | [x] | [x] | [x] | decorator_rndgen_diskret badge (x=213 y=6); partial display |
+| 35 | RndPulsGen | [x] | [x] | [x] | [x] | decorator.rndgen.logic badge (x=214 y=6) |
+| 68 | ClkGen | [x] | [x] | [x] | [x] | bpmFormat display (piecewise linear, bpm) |
+| 80 | LFOSlvA | [x] | [x] | [x] | [x] | LFO display animado con rate (p2); phaseFormat; partial display |
+| 99 | PatternGen | [x] | [x] | [x] | [x] | Step: botón incremento ▲▼ + display OFF/1-127; doble-click desactivado en increment |
+| 110 | RandomGen | [x] | [x] | [x] | [x] | decorator_rndgen badge (x=215 y=6); partial display |
 
 ## Envelope (6)
 
@@ -195,8 +195,8 @@ For each module, check:
 - [x] Escala dB (0 a -30) entre barras cuando hay espacio
 
 ### Waveform Buttons
-- [ ] Some oscillator/LFO waveform selector buttons may not show waveform icons
-- [ ] Need to verify each waveform button renders its shape correctly
+- [x] All oscillator/LFO waveform selector buttons render correctly: sine, tri, saw, saw_inv, square, noise
+- [x] Static waveform badges on slave oscillators and LFOs (11×9px, dark rounded box, white icon)
 
 ### Custom Displays Already Implemented
 - [x] ADSR, AD, AHD, Multi-Env envelope displays
