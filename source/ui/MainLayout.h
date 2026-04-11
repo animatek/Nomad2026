@@ -48,6 +48,7 @@ public:
     void resized() override;
 
     PatchCanvasComponent& getCanvas()      { return canvasComponent; }
+    void setTheme(const ColorScheme& cs)   { canvasComponent.setTheme(cs); }
     InspectorPanel&       getInspector()   { return inspectorPanel; }
     PatchBrowserPanel&    getPatchBrowser() { return patchBrowserPanel; }
     StatusBar&            getStatusBar()   { return statusBar; }

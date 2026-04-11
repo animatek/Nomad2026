@@ -679,6 +679,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(-1, zoomLabel, false);
     menu.addSeparator();
     menu.addItem(64, "Shake Cables\tS");
+    menu.addSeparator();
+    juce::PopupMenu themeMenu;
+    bool isDark = (mainLayout->getCanvas().getTheme().gridBackground
+                   == kDarkTheme.gridBackground);
+    themeMenu.addItem(70, "Classic", true, !isDark);
+    themeMenu.addItem(71, "Dark",    true,  isDark);
+    menu.addSubMenu("Theme", themeMenu);
   }
   else if (menuIndex == 3) // Device
   {
@@ -817,6 +824,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 64:  // Shake Cables
     mainLayout->getCanvas().shakeCables();
+    break;
+  case 70:  // Theme: Classic
+    mainLayout->setTheme(kClassicTheme);
+    break;
+  case 71:  // Theme: Dark
+    mainLayout->setTheme(kDarkTheme);
     break;
 
   default:
