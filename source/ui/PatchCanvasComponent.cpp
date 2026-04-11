@@ -731,7 +731,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
 void PatchCanvas::paintLabels(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
-    g.setColour(juce::Colours::black);
+    g.setColour(activeScheme_.moduleText);
     g.setFont(juce::FontOptions(9.0f));
 
     static const juce::StringArray boldLabels { "OSC", "Noise Filter", "Bend" };
@@ -1563,7 +1563,7 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             if (lw >= 60.0f && ly + lh + 12.0f < static_cast<float>(bounds.getBottom()))
             {
                 const int dbMarks[] = { 0, -6, -12, -18, -24, -30 };
-                g.setColour(juce::Colours::black);
+                g.setColour(activeScheme_.moduleText);
                 g.setFont(juce::FontOptions(6.0f));
                 for (int db : dbMarks)
                 {
