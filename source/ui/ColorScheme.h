@@ -11,6 +11,7 @@ struct ColorScheme
     juce::Colour moduleBorder;
     juce::Colour moduleText;
     juce::Colour groupBoxBorder;
+    juce::Colour moduleBg;  // if opaque: overrides descriptor background; if transparent: use XML color
 
     // Knobs
     juce::Colour knobBase;           // fill color for non-morph knobs

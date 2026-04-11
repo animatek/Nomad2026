@@ -493,7 +493,7 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
         if (&m == selectedModule)
         {
             g.setColour(activeScheme_.selectionRect);
-            g.drawRect(rect, 2);
+            g.drawRoundedRectangle(rect.toFloat().expanded(1.0f), 3.0f, 2.0f);
         }
     }
 }
@@ -506,7 +506,10 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintTextDisplays(g, m, bounds, theme);
     paintSliders(g, m, bounds, theme);
     paintKnobs(g, m, bounds, theme);
-    paintButtons(g, m, bounds, theme, m.getDescriptor()->background);
+    auto bgForButtons = activeScheme_.moduleBg.isOpaque()
+        ? activeScheme_.moduleBg
+        : m.getDescriptor()->background;
+    paintButtons(g, m, bounds, theme, bgForButtons);
     paintResetButtons(g, m, bounds, theme);
     paintStaticIcons(g, bounds, theme);
     paintConnectors(g, m, bounds, theme, container);
@@ -517,7 +520,9 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
 
 void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
-    auto bgColour = m.getDescriptor()->background;
+    auto bgColour = activeScheme_.moduleBg.isOpaque()
+        ? activeScheme_.moduleBg
+        : m.getDescriptor()->background;
 
     // Module body (flat background, no title band)
     g.setColour(bgColour);

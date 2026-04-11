@@ -10,6 +10,7 @@ static ColorScheme makeClassicTheme()
     s.moduleBorder    = juce::Colour(0x44000000);
     s.moduleText      = juce::Colours::black.withAlpha(0.7f);
     s.groupBoxBorder  = juce::Colour(0x44000000);
+    s.moduleBg        = juce::Colour();  // transparent = use XML/descriptor color (preserve Classic behavior)
     // Knobs
     s.knobBase        = juce::Colour(0xff989898);
     s.knobBorder      = juce::Colour(0xff666666);
@@ -88,6 +89,7 @@ static ColorScheme makeDarkTheme()
     s.moduleBorder    = juce::Colour(0x44000000);
     s.moduleText      = juce::Colours::white.withAlpha(0.85f);
     s.groupBoxBorder  = juce::Colour(0xff3a3d42);
+    s.moduleBg        = juce::Colour(0xff2D3033);  // uniform dark panel for all modules
     // Knobs (semi-flat option B)
     s.knobBase        = juce::Colour(0xffb8b8b8);
     s.knobBorder      = juce::Colour(0xff55585C);
