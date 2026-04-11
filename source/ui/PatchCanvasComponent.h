@@ -6,6 +6,7 @@
 #include "../model/ThemeData.h"
 #include "QuickAddPopup.h"
 #include "../help/ModuleHelpPopup.h"
+#include "ColorScheme.h"
 #include <set>
 #include <vector>
 #include <map>
@@ -44,6 +45,9 @@ public:
     ~PatchCanvas();
 
     void shakeCables();
+
+    void setTheme(const ColorScheme& cs) { activeScheme_ = cs; repaint(); }
+    const ColorScheme& getTheme() const { return activeScheme_; }
 
     // Zoom
     float getZoomLevel() const { return zoomLevel; }
@@ -277,6 +281,7 @@ private:
 
     // Zoom
     float zoomLevel = 1.0f;
+    ColorScheme activeScheme_ = kDarkTheme;
     static constexpr float zoomMin = 0.75f;
     static constexpr float zoomMax = 3.0f;
     static constexpr float zoomStep = 0.1f;
@@ -444,6 +449,13 @@ public:
         polyCanvas.shakeCables();
         commonCanvas.shakeCables();
     }
+
+    void setTheme(const ColorScheme& cs)
+    {
+        polyCanvas.setTheme(cs);
+        commonCanvas.setTheme(cs);
+    }
+    const ColorScheme& getTheme() const { return polyCanvas.getTheme(); }
 
     bool isDragging(int section, int moduleId, int parameterId) const
     {

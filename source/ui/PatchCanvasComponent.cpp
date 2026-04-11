@@ -333,13 +333,13 @@ juce::Point<int> PatchCanvas::getConnectorPosition(const Module& m, const Connec
 
 void PatchCanvas::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff12122a));
+    g.fillAll(activeScheme_.gridBackground);
 
     // Apply zoom transform — all subsequent drawing is in canvas (logical) coordinates
     g.addTransform(juce::AffineTransform::scale(zoomLevel));
 
     // Draw grid lines at column/row boundaries
-    g.setColour(juce::Colour(0xff1a1a3a));
+    g.setColour(activeScheme_.gridLines);
     auto clip = g.getClipBounds();
 
     int startX = (clip.getX() / gridX) * gridX;
@@ -385,12 +385,12 @@ void PatchCanvas::paint(juce::Graphics& g)
         {
             switch (srcDesc->signalType)
             {
-                case SignalType::Audio:   cableColor = juce::Colour(0xffCB4F4F); break;
-                case SignalType::Control: cableColor = juce::Colour(0xff5A5FB3); break;
-                case SignalType::Logic:   cableColor = juce::Colour(0xffE5DE45); break;
-                case SignalType::MasterSlave: cableColor = juce::Colour(0xffA8A8A8); break;
-                case SignalType::User1:   cableColor = juce::Colour(0xff9AC899); break;
-                case SignalType::User2:   cableColor = juce::Colour(0xffBB00D7); break;
+                case SignalType::Audio:       cableColor = activeScheme_.cableAudio;       break;
+                case SignalType::Control:     cableColor = activeScheme_.cableControl;     break;
+                case SignalType::Logic:       cableColor = activeScheme_.cableLogic;       break;
+                case SignalType::MasterSlave: cableColor = activeScheme_.cableMasterSlave; break;
+                case SignalType::User1:       cableColor = activeScheme_.cableUser1;       break;
+                case SignalType::User2:       cableColor = activeScheme_.cableUser2;       break;
                 default: break;
             }
         }
@@ -414,7 +414,7 @@ void PatchCanvas::paint(juce::Graphics& g)
                      endX, endY);
 
         // Dark outline
-        g.setColour(juce::Colour(0xff111111).withAlpha(0.6f));
+        g.setColour(activeScheme_.gridBackground.withAlpha(0.6f));
         g.strokePath(path, juce::PathStrokeType(4.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
         // Colored cable
@@ -437,7 +437,7 @@ void PatchCanvas::paint(juce::Graphics& g)
         auto rb = rubberBandRect.toFloat();
         g.setColour(juce::Colour(0x33ffffff));
         g.fillRect(rb);
-        g.setColour(juce::Colour(0xffffdd44).withAlpha(0.8f));
+        g.setColour(activeScheme_.snapHighlight.withAlpha(0.8f));
         g.drawRect(rb, 1.5f);
     }
 
@@ -492,7 +492,7 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
         // Draw selection border if this module is selected
         if (&m == selectedModule)
         {
-            g.setColour(juce::Colours::yellow);
+            g.setColour(activeScheme_.selectionRect);
             g.drawRect(rect, 2);
         }
     }
@@ -544,7 +544,7 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
     // Subtle edge lines on all four sides
-    g.setColour(juce::Colour(0x44000000));
+    g.setColour(activeScheme_.moduleBorder);
     float x1 = static_cast<float>(bounds.getX());
     float y1 = static_cast<float>(bounds.getY());
     float x2 = static_cast<float>(bounds.getRight());
@@ -559,7 +559,7 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     {
         g.setColour(juce::Colours::white.withAlpha(0.18f));
         g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
-        g.setColour(juce::Colour(0xffffdd44).withAlpha(0.9f));
+        g.setColour(activeScheme_.snapHighlight.withAlpha(0.9f));
         g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 3.0f, 2.0f);
     }
 }
@@ -604,12 +604,12 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
         // Determine color from CSS class
         juce::Colour connColour = juce::Colours::white;
-        if (tc.cssClass == "cAUDIO")         connColour = juce::Colour(0xffCB4F4F);
-        else if (tc.cssClass == "cCONTROL")  connColour = juce::Colour(0xff5A5FB3);
-        else if (tc.cssClass == "cLOGIC")    connColour = juce::Colour(0xffE5DE45);
-        else if (tc.cssClass == "cSLAVE")    connColour = juce::Colour(0xffA8A8A8);
-        else if (tc.cssClass == "cUSER1")    connColour = juce::Colour(0xff9AC899);
-        else if (tc.cssClass == "cUSER2")    connColour = juce::Colour(0xffBB00D7);
+        if      (tc.cssClass == "cAUDIO")   connColour = activeScheme_.cableAudio;
+        else if (tc.cssClass == "cCONTROL") connColour = activeScheme_.cableControl;
+        else if (tc.cssClass == "cLOGIC")   connColour = activeScheme_.cableLogic;
+        else if (tc.cssClass == "cSLAVE")   connColour = activeScheme_.cableMasterSlave;
+        else if (tc.cssClass == "cUSER1")   connColour = activeScheme_.cableUser1;
+        else if (tc.cssClass == "cUSER2")   connColour = activeScheme_.cableUser2;
 
         // Find the actual connector object and check if output
         bool isOutput = false;
@@ -630,8 +630,8 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
         const float innerRatio = 0.38f;
         const float innerSz = sz * innerRatio;
         const float innerOffset = (sz - innerSz) * 0.5f;
-        const juce::Colour darkHole = juce::Colour(0xff111111);
-        const juce::Colour outline  = juce::Colour(0xff222222);
+        const juce::Colour darkHole = activeScheme_.connHole;
+        const juce::Colour outline  = activeScheme_.connOutline;
 
         if (isOutput)
         {
@@ -786,17 +786,12 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         float cy = static_cast<float>(bounds.getY() + tk.y);
         float sz = static_cast<float>(tk.size);
 
-        static const juce::Colour morphColors[4] = {
-            juce::Colour(0xffCB4F4F),  // Group 1 — red
-            juce::Colour(0xff9AC899),  // Group 2 — green
-            juce::Colour(0xff5A5FB3),  // Group 3 — blue
-            juce::Colour(0xffE5DE45),  // Group 4 — yellow
-        };
+        const juce::Colour* morphColors = activeScheme_.morphColor;
 
         auto* param = findParameter(m, tk.componentId);
         int morphGroup = (param != nullptr) ? param->getMorphGroup() : -1;
         bool hasMorph = (morphGroup >= 0 && morphGroup < 4);
-        juce::Colour baseColor = hasMorph ? morphColors[morphGroup] : juce::Colour(0xff989898);
+        juce::Colour baseColor = hasMorph ? morphColors[morphGroup] : activeScheme_.knobBase;
 
         // Compute knob geometry first — needed for both wedge and grip
         float normalized = 0.5f;
@@ -852,7 +847,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         }
 
         // Outline
-        g.setColour(hasMorph ? baseColor.darker(0.4f) : juce::Colour(0xff666666));
+        g.setColour(hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder);
         g.drawEllipse(rcx, rcy, rSz, rSz, 1.0f);
 
         // Travel-limit tick marks at -135° (7 o'clock) and +135° (5 o'clock)
@@ -862,7 +857,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
             const float tickInner = radius * 1.08f;
             const float tickOuter = radius * 1.45f;
             const float limitAngles[2] = { -135.0f * pi / 180.0f, 135.0f * pi / 180.0f };
-            g.setColour(juce::Colour(0xff333333));
+            g.setColour(activeScheme_.knobTickMark);
             for (float a : limitAngles)
             {
                 float sa = std::sin(a), ca = std::cos(a);
@@ -877,7 +872,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         float sinA   = std::sin(knobAngle);
         float cosA   = std::cos(knobAngle);
 
-        g.setColour(juce::Colours::white);
+        g.setColour(activeScheme_.knobGrip);
         g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
                    centerX + sinA * outerR, centerY - cosA * outerR, 1.5f);
 
@@ -892,13 +887,13 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
             float bodyX = lx + (lockSize - bodyW) * 0.5f;
             float bodyY = ly + lockSize - bodyH;
             // Lock body
-            g.setColour(juce::Colour(0xffE0C030));
+            g.setColour(activeScheme_.lockBody);
             g.fillRoundedRectangle(bodyX, bodyY, bodyW, bodyH, 1.0f);
             // Shackle arc
             float shackleW = bodyW * 0.55f;
             float shackleH = lockSize - bodyH;
             float shackleX = bodyX + (bodyW - shackleW) * 0.5f;
-            g.setColour(juce::Colour(0xffC0A020));
+            g.setColour(activeScheme_.lockShackle);
             juce::Path shackle;
             shackle.addArc(shackleX, ly, shackleW, shackleH * 2.0f,
                            -juce::MathConstants<float>::pi, 0.0f, true);
@@ -1166,12 +1161,12 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                     segLabel = juce::String(i);
 
                 juce::Colour base  = selected ? moduleBg.brighter(0.25f).withSaturation(0.5f) : moduleBg.darker(0.15f);
-                juce::Colour label = selected ? juce::Colour(0xff111111) : juce::Colour(0xff333333);
+                juce::Colour label = selected ? activeScheme_.buttonTextActive : activeScheme_.buttonText;
                 drawBevelSegment(segX, segY, segW, segH, selected, base, segLabel, label, segIcon);
             }
 
             // Outer border
-            g.setColour(juce::Colour(0xff222222));
+            g.setColour(activeScheme_.buttonBorder);
             g.drawRect(bx, by, bw, bh, 1.0f);
             continue;
         }
@@ -1199,20 +1194,20 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             float sy = by + (bh - sq) * 0.5f;
 
             juce::Colour muteBase = isOn ? juce::Colour(0xffcc4444) : moduleBg.darker(0.2f);
-            juce::Colour muteText = isOn ? juce::Colours::white : juce::Colour(0xff444444);
+            juce::Colour muteText = isOn ? juce::Colours::white : activeScheme_.buttonText;
             drawBevelSegment(sx, sy, sq, sq, isOn, muteBase, labelText, muteText);
 
-            g.setColour(juce::Colour(0xff222222));
+            g.setColour(activeScheme_.buttonBorder);
             g.drawRect(sx, sy, sq, sq, 1.0f);
             continue;
         }
 
         juce::Colour base      = isOn ? moduleBg.brighter(0.2f).withSaturation(0.4f) : moduleBg.darker(0.15f);
-        juce::Colour labelCol  = isOn ? juce::Colour(0xff111111) : juce::Colour(0xff333333);
+        juce::Colour labelCol  = isOn ? activeScheme_.buttonTextActive : activeScheme_.buttonText;
         drawBevelSegment(bx, by, bw, bh, isOn, base, labelText, labelCol);
 
         // Outer border
-        g.setColour(juce::Colour(0xff222222));
+        g.setColour(activeScheme_.buttonBorder);
         g.drawRect(bx, by, bw, bh, 1.0f);
     }
 }
@@ -1265,7 +1260,7 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
         // Lock indicator — small yellow dot at bottom-right corner
         if (param != nullptr && param->isLocked())
         {
-            g.setColour(juce::Colour(0xffE0C030));
+            g.setColour(activeScheme_.lockBody);
             g.fillEllipse(sx + sw - 5.0f, sy + sh - 5.0f, 4.0f, 4.0f);
         }
     }
@@ -1284,14 +1279,14 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         float renderH = juce::jmin(dh, 13.0f);
         float renderY = dy + (dh - renderH) * 0.5f;
 
-        g.setColour(juce::Colour(0xff2A2560));
+        g.setColour(activeScheme_.displayBg);
         g.fillRect(dx, renderY, dw, renderH);
 
         // Inner-bevel border: darker on top/left, slightly lighter on bottom/right
-        g.setColour(juce::Colour(0xff181440));
+        g.setColour(activeScheme_.displayBorder);
         g.drawLine(dx, renderY,           dx + dw, renderY,           1.0f);
         g.drawLine(dx, renderY,           dx,       renderY + renderH, 1.0f);
-        g.setColour(juce::Colour(0xff4A3FA0));
+        g.setColour(activeScheme_.displayText);
         g.drawLine(dx,       renderY + renderH, dx + dw, renderY + renderH, 1.0f);
         g.drawLine(dx + dw,  renderY,           dx + dw, renderY + renderH, 1.0f);
 
@@ -1377,9 +1372,9 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             float midX   = dx + dw * 0.5f;
 
             // Button backgrounds
-            g.setColour(juce::Colour(0xff2a2a2a));
+            g.setColour(activeScheme_.resetBg);
             g.fillRect(dx, arrowY, dw, arrowH);
-            g.setColour(juce::Colour(0xff444444));
+            g.setColour(activeScheme_.resetBorder);
             g.drawRect(dx, arrowY, dw, arrowH, 1.0f);
             g.drawLine(midX, arrowY, midX, arrowY + arrowH, 1.0f);
 
@@ -1387,7 +1382,7 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             float lCx = dx + dw * 0.25f, cy = arrowY + arrowH * 0.5f;
             juce::Path la;
             la.addTriangle(lCx - 3.0f, cy, lCx + 2.5f, cy - 2.5f, lCx + 2.5f, cy + 2.5f);
-            g.setColour(juce::Colour(0xffaaaaaa));
+            g.setColour(activeScheme_.resetText);
             g.fillPath(la);
 
             // ► right arrow (increment partial)
@@ -1414,9 +1409,9 @@ void PatchCanvas::paintResetButtons(juce::Graphics& g, const Module& m, juce::Re
 
         juce::Path tri;
         tri.addTriangle(rx, ry, rx + rw, ry, rx + rw * 0.5f, ry + rh);
-        g.setColour(atDefault ? juce::Colour(0xff44cc44) : juce::Colour(0xff2a4a2a));
+        g.setColour(atDefault ? activeScheme_.resetDotOn : activeScheme_.resetDotOff);
         g.fillPath(tri);
-        g.setColour(juce::Colour(0xff111111));
+        g.setColour(activeScheme_.connHole);
         g.strokePath(tri, juce::PathStrokeType(0.5f));
     }
 }
@@ -1526,17 +1521,17 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             if (ledOn)
             {
                 // On: bright red (clipping indicator)
-                g.setColour(juce::Colour(0xffff2200));
+                g.setColour(activeScheme_.ledOn);
                 g.fillEllipse(lx, ly, lw, lh);
-                g.setColour(juce::Colour(0xffff6644));
+                g.setColour(activeScheme_.ledAudioOn);
                 g.drawEllipse(lx, ly, lw, lh, 0.5f);
             }
             else
             {
                 // Off: dark circle
-                g.setColour(juce::Colour(0xff333333));
+                g.setColour(activeScheme_.ledOff);
                 g.fillEllipse(lx, ly, lw, lh);
-                g.setColour(juce::Colour(0xff555555));
+                g.setColour(activeScheme_.meterTrack);
                 g.drawEllipse(lx, ly, lw, lh, 0.5f);
             }
         }
@@ -1545,7 +1540,7 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             float ly = static_cast<float>(bounds.getY() + tl.y);
 
             // Background
-            g.setColour(juce::Colour(0xff222222));
+            g.setColour(activeScheme_.meterTrack);
             g.fillRect(lx, ly, lw, lh);
 
             // Get meter value (0-127)
@@ -1559,9 +1554,9 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
 
                 // Colour: green → yellow → red based on level
                 juce::Colour barColour;
-                if (fill < 0.6f)       barColour = juce::Colour(0xff22cc44);
-                else if (fill < 0.85f) barColour = juce::Colour(0xffddcc00);
-                else                   barColour = juce::Colour(0xffee2200);
+                if (fill < 0.6f)       barColour = activeScheme_.meterLow;
+                else if (fill < 0.85f) barColour = activeScheme_.meterMid;
+                else                   barColour = activeScheme_.meterHigh;
 
                 g.setColour(barColour);
                 g.fillRect(lx, ly, barW, lh);
@@ -1599,11 +1594,11 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         float dh = static_cast<float>(cd.height);
 
         // Dark background
-        g.setColour(juce::Colour(0xff1a1a2e));
+        g.setColour(activeScheme_.displayBgCustom);
         g.fillRect(dx, dy, dw, dh);
 
         // Subtle border
-        g.setColour(juce::Colour(0xff444466));
+        g.setColour(activeScheme_.displayBorderCustom);
         g.drawRect(dx, dy, dw, dh, 0.5f);
 
         auto type = cd.type;
@@ -1677,7 +1672,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                 env.quadraticTo(rx + (rEnd - rx) * 0.6f, baseY, rEnd, baseY);
             }
 
-            g.setColour(juce::Colour(0xff55cc55));
+            g.setColour(activeScheme_.displayCurveGreen);
             g.strokePath(env, juce::PathStrokeType(1.2f));
             continue;
         }
@@ -1704,7 +1699,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float amp = plotH * 0.45f;
 
             // Center reference line
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(activeScheme_.displayGrid);
             g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
 
             juce::Path wave;
@@ -1742,7 +1737,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     wave.lineTo(px, py);
             }
 
-            g.setColour(juce::Colour(0xff55aaff));
+            g.setColour(activeScheme_.displayCurveBlue);
             g.strokePath(wave, juce::PathStrokeType(1.0f));
             continue;
         }
@@ -1769,7 +1764,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float plotH = dh - margin * 2;
 
             // Reference diagonal
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(activeScheme_.displayGrid);
             g.drawLine(dx + margin, dy + dh - margin, dx + dw - margin, dy + margin, 0.5f);
 
             // Transfer curve
@@ -1796,7 +1791,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     curve.lineTo(px, py);
             }
 
-            g.setColour(juce::Colour(0xffff8844));
+            g.setColour(activeScheme_.displayCurveWarm);
             g.strokePath(curve, juce::PathStrokeType(1.2f));
             continue;
         }
@@ -1825,7 +1820,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float midY = dy + dh * 0.5f;
 
             // Reference line
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(activeScheme_.displayGrid);
             g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
 
             juce::Path filt;
@@ -1869,7 +1864,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     filt.lineTo(px, py);
             }
 
-            g.setColour(juce::Colour(0xff55aaff));
+            g.setColour(activeScheme_.displayCurveBlue);
             g.strokePath(filt, juce::PathStrokeType(1.2f));
             continue;
         }
@@ -1894,7 +1889,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float plotH = dh - margin * 2;
             float midY = dy + dh * 0.5f;
 
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(activeScheme_.displayGrid);
             g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
 
             juce::Path eq;
@@ -1927,7 +1922,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     eq.lineTo(px, py);
             }
 
-            g.setColour(juce::Colour(0xffaaaa55));
+            g.setColour(activeScheme_.displayCurveYellow);
             g.strokePath(eq, juce::PathStrokeType(1.2f));
             continue;
         }
@@ -1952,7 +1947,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float plotH = dh - margin * 2;
 
             // Unity diagonal reference
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(activeScheme_.displayGrid);
             g.drawLine(dx + margin, dy + dh - margin, dx + dw - margin, dy + margin, 0.5f);
 
             juce::Path curve;
@@ -1990,7 +1985,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     curve.lineTo(px, py);
             }
 
-            g.setColour(juce::Colour(0xffcc5555));
+            g.setColour(activeScheme_.displayCurveRed);
             g.strokePath(curve, juce::PathStrokeType(1.2f));
             continue;
         }
@@ -2003,7 +1998,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float plotH = dh - margin * 2;
             float midY = dy + dh * 0.5f;
 
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(activeScheme_.displayGrid);
             g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
 
             int nPeaks = 3;
@@ -2031,7 +2026,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     wave.lineTo(px, py);
             }
 
-            g.setColour(juce::Colour(0xffaa55cc));
+            g.setColour(activeScheme_.displayCurvePurple);
             g.strokePath(wave, juce::PathStrokeType(1.0f));
             continue;
         }
@@ -2041,7 +2036,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         label = label.replace("-display", "").replace("-envelope", " env")
                      .replace("-editor", "").replace("Display", "");
 
-        g.setColour(juce::Colour(0xff666688));
+        g.setColour(activeScheme_.displayBorderCustom);
         g.setFont(juce::FontOptions(juce::jmin(7.0f, dh - 2.0f)));
         g.drawText(label,
                    static_cast<int>(dx + 1), static_cast<int>(dy + 1),
@@ -2180,7 +2175,17 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         auto srcPos = getConnectorPosition(*srcModule, *conn.output, yOffset);
         auto dstPos = getConnectorPosition(*dstModule, *conn.input, yOffset);
 
-        auto cableCol = getSignalColour(conn.output->getDescriptor()->signalType);
+        juce::Colour cableCol = activeScheme_.cableAudio;
+        switch (conn.output->getDescriptor()->signalType)
+        {
+            case SignalType::Audio:       cableCol = activeScheme_.cableAudio;       break;
+            case SignalType::Control:     cableCol = activeScheme_.cableControl;     break;
+            case SignalType::Logic:       cableCol = activeScheme_.cableLogic;       break;
+            case SignalType::MasterSlave: cableCol = activeScheme_.cableMasterSlave; break;
+            case SignalType::User1:       cableCol = activeScheme_.cableUser1;       break;
+            case SignalType::User2:       cableCol = activeScheme_.cableUser2;       break;
+            default: cableCol = getSignalColour(conn.output->getDescriptor()->signalType); break;
+        }
 
         // Draw a curved cable with optional shake offset
         juce::Path path;
@@ -4011,12 +4016,12 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
 
     // Display background (dark blue, same style as textDisplays)
     int dispX = bx + 120, dispY = by + 115, dispW = 57, dispH = 13;
-    g.setColour(juce::Colour(0xff2A2560));
+    g.setColour(activeScheme_.displayBg);
     g.fillRect(dispX, dispY, dispW, dispH);
-    g.setColour(juce::Colour(0xff181440));
+    g.setColour(activeScheme_.displayBorder);
     g.drawLine((float)dispX, (float)dispY, (float)(dispX+dispW), (float)dispY, 1.0f);
     g.drawLine((float)dispX, (float)dispY, (float)dispX, (float)(dispY+dispH), 1.0f);
-    g.setColour(juce::Colour(0xff4A3FA0));
+    g.setColour(activeScheme_.displayText);
     g.drawLine((float)dispX, (float)(dispY+dispH), (float)(dispX+dispW), (float)(dispY+dispH), 1.0f);
     g.drawLine((float)(dispX+dispW), (float)dispY, (float)(dispX+dispW), (float)(dispY+dispH), 1.0f);
 
@@ -4037,12 +4042,12 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
 
     // Up/Down spinner arrows (two stacked mini-buttons)
     int spX = bx + 179, spY = by + 115, spW = 16, spH = 6;
-    juce::Colour spBase = juce::Colour(0xff909090);
+    juce::Colour spBase = activeScheme_.knobBase;
 
     // Up button
     g.setColour(spBase);
     g.fillRect(spX, spY, spW, spH);
-    g.setColour(juce::Colour(0xff222222));
+    g.setColour(activeScheme_.buttonBorder);
     g.drawRect(spX, spY, spW, spH, 1);
     {
         float cx = spX + spW * 0.5f, cy = spY + spH * 0.5f;
@@ -4055,7 +4060,7 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
     // Down button
     g.setColour(spBase);
     g.fillRect(spX, spY + spH, spW, spH);
-    g.setColour(juce::Colour(0xff222222));
+    g.setColour(activeScheme_.buttonBorder);
     g.drawRect(spX, spY + spH, spW, spH, 1);
     {
         float cx = spX + spW * 0.5f, cy = spY + spH * 1.5f;
