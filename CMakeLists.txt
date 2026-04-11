@@ -28,6 +28,7 @@ set(NOMAD_SHARED_SOURCES
     source/ui/MainLayout.cpp
     source/ui/ModuleBrowserPanel.cpp
     source/ui/PatchCanvasComponent.cpp
+    source/ui/ColorScheme.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
