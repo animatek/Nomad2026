@@ -489,12 +489,6 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
         else
             paintModuleFallback(g, m, rect);
 
-        // Draw selection border if this module is selected
-        if (&m == selectedModule)
-        {
-            g.setColour(activeScheme_.selectionRect);
-            g.drawRoundedRectangle(rect.toFloat().expanded(1.0f), 3.0f, 2.0f);
-        }
     }
 }
 
@@ -544,7 +538,7 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
 
     // Module name (no band, text directly on background)
     auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY() + 2, bounds.getWidth(), 12);
-    g.setColour(juce::Colours::black.withAlpha(0.7f));
+    g.setColour(activeScheme_.moduleText);
     g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
@@ -564,8 +558,8 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     {
         g.setColour(juce::Colours::white.withAlpha(0.18f));
         g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
-        g.setColour(activeScheme_.snapHighlight.withAlpha(0.9f));
-        g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 3.0f, 2.0f);
+        g.setColour(activeScheme_.selectionRect);
+        g.drawRoundedRectangle(bounds.toFloat().expanded(1.0f), 3.0f, 2.0f);
     }
 }
 
