@@ -1062,6 +1062,70 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         g.strokePath(stick, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         g.fillEllipse(sx0 - 1.5f, sy0 - 1.5f, 3.0f, 3.0f);
     }
+    else if (iconName == "decoration-15")
+    {
+        // VCA triangle symbol (▷): audio in → amplifier triangle → audio out
+        float midY = iy + ih * 0.5f;
+        float leftX = ix + iw * 0.15f;
+        float tipX  = ix + iw * 0.85f;
+        float topY  = iy + ih * 0.1f;
+        float botY  = iy + ih * 0.9f;
+        juce::Path tri;
+        tri.startNewSubPath(leftX, topY);
+        tri.lineTo(leftX, botY);
+        tri.lineTo(tipX, midY);
+        tri.closeSubPath();
+        g.strokePath(tri, juce::PathStrokeType(1.0f));
+        // Line extends left to reach the connector circle
+        g.drawLine(ix - iw * 0.5f, midY, leftX, midY, 1.0f);
+    }
+    else if (iconName == "decoration-6")
+    {
+        // Box/processor symbol (□) with entry/exit lines reaching connectors
+        float midY = iy + ih * 0.5f;
+        float bx = ix + iw * 0.1f;
+        float by = iy + ih * 0.15f;
+        float bw = iw * 0.8f;
+        float bh = ih * 0.7f;
+        // Left entry line extending to reach the left connector circle
+        g.drawLine(ix - iw * 0.5f, midY, bx, midY, 1.0f);
+        // Box
+        g.drawRect(bx, by, bw, bh, 1.0f);
+        // Right exit line to reach the right connector circle
+        g.drawLine(bx + bw, midY, ix + iw + iw * 0.3f, midY, 1.0f);
+    }
+    else if (iconName == "env_multi_bipolar")
+    {
+        // Bipolar envelope: ramp up above midline, ramp down below, return to mid
+        // Represents +/- (both positive and negative excursions)
+        float mid = my;
+        float amp  = ph * 0.42f;
+        p.startNewSubPath(x0, mid);
+        p.lineTo(x0 + pw * 0.25f, mid - amp);   // rise to positive peak
+        p.lineTo(x0 + pw * 0.50f, mid);          // back to zero
+        p.lineTo(x0 + pw * 0.75f, mid + amp);   // fall to negative peak
+        p.lineTo(x1,              mid);           // return to zero
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "env_multi_uni-exp")
+    {
+        // Unipolar exponential: attack ramp with exponential curve (convex up)
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 24; ++i)
+        {
+            float t = static_cast<float>(i) / 24.0f;
+            float e = 1.0f - std::exp(-4.0f * t);   // concave exponential rise
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "env_multi_uni-lin")
+    {
+        // Unipolar linear: straight diagonal ramp from bottom-left to top-right
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x1, y0);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
     else
     {
         g.drawEllipse(ix + iw * 0.1f, iy + ih * 0.1f, iw * 0.8f, ih * 0.8f, 1.0f);
@@ -1454,6 +1518,116 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             {
                 displayStr = (val == 0) ? "OFF" : juce::String(val);
             }
+            else if (td.adsrTimeFormat)
+            {
+                static const char* tbl[] = {
+                    "0.5m","0.7m","1.0m","1.3m","1.5m","1.8m","2.1m","2.3m","2.6m","2.9m","3.2m","3.5m",
+                    "3.9m","4.2m","4.6m","4.9m","5.3m","5.7m","6.1m","6.6m","7.0m","7.5m","8.0m","8.5m",
+                    "9.1m","9.7m","10m","11m","12m","13m","13m","14m","15m","16m","17m","19m","20m",
+                    "21m","23m","24m","26m","28m","30m","32m","35m","37m","40m","43m","47m","51m",
+                    "55m","59m","64m","69m","75m","81m","88m","95m","103m","112m","122m","132m","143m",
+                    "156m","170m","185m","201m","219m","238m","260m","283m","308m","336m","367m","400m",
+                    "436m","476m","520m","567m","619m","676m","738m","806m","881m","962m","1.1s","1.1s",
+                    "1.3s","1.4s","1.5s","1.6s","1.8s","2.0s","2.1s","2.3s","2.6s","2.8s","3.1s","3.3s",
+                    "3.7s","4.0s","4.4s","4.8s","5.2s","5.7s","6.3s","6.8s","7.5s","8.2s","9.0s","9.8s",
+                    "10.7s","11.7s","12.8s","14.0s","15.3s","16.8s","18.3s","20.1s","21.9s","24.0s","26.3s",
+                    "28.7s","31.4s","34.4s","37.6s","41.1s","45.0s"
+                };
+                int idx = juce::jlimit(0, 127, val);
+                displayStr = tbl[idx];
+            }
+            else if (td.envAttackFormat)
+            {
+                static const char* tbl[] = {
+                    "Fast","0.53m","0.56m","0.59m","0.63m","0.67m","0.71m","0.75m","0.79m","0.84m","0.89m",
+                    "0.94m","1.00m","1.06m","1.12m","1.19m","1.26m","1.33m","1.41m","1.50m","1.59m","1.68m",
+                    "1.78m","1.89m","2.00m","2.12m","2.24m","2.38m","2.52m","2.67m","2.83m","3.00m","3.17m",
+                    "3.36m","3.56m","3.78m","4.00m","4.24m","4.49m","4.76m","5.04m","5.34m","5.66m","5.99m",
+                    "6.35m","6.73m","7.13m","7.55m","8.00m","8.48m","8.98m","9.51m","10.1m","10.7m","11.3m",
+                    "12.0m","12.7m","13.5m","14.3m","15.1m","16.0m","17.0m","18.0m","19.0m","20.2m","21.4m",
+                    "22.6m","24.0m","25.4m","26.9m","28.5m","30.2m","32.0m","33.9m","35.9m","38.1m","40.3m",
+                    "42.7m","45.3m","47.9m","50.8m","53.8m","57.0m","60.4m","64.0m","67.8m","71.8m","76.1m",
+                    "80.6m","85.4m","90.5m","95.9m","102m","108m","114m","121m","128m","136m","144m","152m",
+                    "161m","171m","181m","192m","203m","215m","228m","242m","256m","271m","287m","304m",
+                    "323m","342m","362m","384m","406m","431m","456m","483m","512m","542m","575m","609m",
+                    "645m","683m","724m","767m"
+                };
+                int idx = juce::jlimit(0, 127, val);
+                displayStr = tbl[idx];
+            }
+            else if (td.envReleaseFormat)
+            {
+                static const char* tbl[] = {
+                    "Fast","41.4m","42.9m","44.4m","45.9m","47.6m","49.2m","51.0m","52.8m","54.6m","56.6m",
+                    "58.6m","60.6m","62.8m","65.0m","67.3m","69.6m","72.1m","74.6m","77.3m","80.0m","82.8m",
+                    "85.7m","88.8m","91.9m","95.1m","98.5m","102m","106m","109m","113m","117m","121m",
+                    "126m","130m","135m","139m","144m","149m","155m","160m","166m","171m","178m","184m",
+                    "190m","197m","204m","211m","219m","226m","234m","243m","251m","260m","269m","279m",
+                    "288m","299m","309m","320m","331m","343m","355m","368m","381m","394m","408m","422m",
+                    "437m","453m","469m","485m","502m","520m","538m","557m","577m","597m","618m","640m",
+                    "663m","686m","710m","735m","761m","788m","816m","844m","874m","905m","937m","970m",
+                    "1.00s","1.04s","1.08s","1.11s","1.15s","1.19s","1.24s","1.28s","1.33s","1.37s","1.42s",
+                    "1.47s","1.52s","1.58s","1.63s","1.69s","1.75s","1.81s","1.87s","1.94s","2.01s","2.08s",
+                    "2.15s","2.23s","2.31s","2.39s","2.47s","2.56s","2.65s","2.74s","2.84s","2.94s","3.04s",
+                    "3.15s","3.26s"
+                };
+                int idx = juce::jlimit(0, 127, val);
+                displayStr = tbl[idx];
+            }
+            else if (td.filterHz1Format)
+            {
+                // fmtFilterHz1: 504 * 2^((val-64)/12) — FilterA (6dB LP), FilterB (6dB HP)
+                double hz = 504.0 * std::pow(2.0, (val - 64) / 12.0);
+                if (hz < 1000.0)
+                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
+                else if (hz < 10000.0)
+                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
+                else
+                    displayStr = juce::String(hz / 1000.0, 1) + " kHz";
+            }
+            else if (td.filterHz2Format)
+            {
+                // fmtFilterHz2: 330 * 2^((val-60)/12) — FilterC/D/E/F
+                double hz = 330.0 * std::pow(2.0, (val - 60) / 12.0);
+                if (hz < 1000.0)
+                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
+                else if (hz < 10000.0)
+                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
+                else
+                    displayStr = juce::String(hz / 1000.0, 1) + " kHz";
+            }
+            else if (td.eqHzFormat)
+            {
+                // fmtEqHz: 471 * 2^((val-60)/12) — EqMid, EqShelving frequency
+                double hz = 471.0 * std::pow(2.0, (val - 60) / 12.0);
+                if (hz < 1000.0)
+                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
+                else if (hz < 10000.0)
+                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
+                else
+                    displayStr = juce::String(hz / 1000.0, 1) + " kHz";
+            }
+            else if (td.eqGainFormat)
+            {
+                // (val-64) * 0.28125 dB — EqMid, EqShelving gain
+                // Verified: val=43 → -5.9 dB, val=64 → 0.0 dB, val=127 → +17.7 dB
+                double db = (val - 64) * 0.28125;
+                displayStr = juce::String(db, 1) + " dB";
+            }
+            else if (td.eqBwFormat)
+            {
+                // val / 75.0 Oct — EqMid bandwidth
+                // Verified: val=69 → 0.92 Oct
+                double oct = val / 75.0;
+                displayStr = juce::String(oct, 2) + " Oct";
+            }
+            else if (td.vowelFormat)
+            {
+                // VocalFilter vowel names (DATA_VOWELS from nmformat.js)
+                static const char* vowels[] = { "A","E","I","O","U","Y","AA","AE","OE" };
+                int idx = juce::jlimit(0, 8, val);
+                displayStr = vowels[idx];
+            }
             else
             {
                 displayStr = juce::String(val);
@@ -1523,6 +1697,18 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
 {
     for (auto& si : theme.staticIcons)
     {
+        // Decoration icons (decoration-N): drawn at exact XML position/size, no box, no scale
+        if (si.iconName.startsWith("decoration-"))
+        {
+            float ix = static_cast<float>(bounds.getX() + si.x);
+            float iy = static_cast<float>(bounds.getY() + si.y);
+            float iw = static_cast<float>(si.width);
+            float ih = static_cast<float>(si.height);
+            g.setColour(activeScheme_.moduleText);
+            drawButtonIcon(g, si.iconName, ix, iy, iw, ih, activeScheme_.moduleText);
+            continue;
+        }
+
         const float scale  = 1.14f;
         const float pad    = 4.0f;
         const float margin = 2.0f;   // min gap from module edge
@@ -1706,73 +1892,267 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
 
         auto type = cd.type;
 
-        // --- Envelope displays (ADSR, AD, AHD, multi-env) ---
-        if (type == "adsr-envelope" || type == "adsr-mod-envelope"
-            || type == "ad-envelope" || type == "ahd-envelope"
-            || type == "multi-env-display")
+        // --- Multi-Env display ---
+        if (type == "multi-env-display")
         {
-            // Draw a generic envelope shape using module parameters
-            // Try to find attack/decay/sustain/release params
-            float a = 0.3f, d = 0.3f, s = 0.7f, r = 0.3f;
+            // Read levels L1-L4 (p1-p4) and times T1-T5 (p5-p9)
+            // Java MultiEnvelope: level is inverted (127-val), so val=0→top, val=127→bottom
+            // → normalized display level = 1.0 - val/127
+            float levels[5] = { 0.0f, 0.5f, 0.5f, 0.5f, 0.5f };  // L0=start, L1-L4
+            float times[5]  = { 64.0f, 64.0f, 64.0f, 64.0f, 64.0f };  // T1-T5
 
-            // Search for params by name heuristic
-            for (auto& p : m.getParameters())
+            for (int i = 0; i < 4; i++)
             {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                auto* pd = p.getDescriptor();
-                int range = pd->maxValue - pd->minValue;
-                float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
-
-                if (name.contains("attack"))       a = norm;
-                else if (name.contains("decay"))   d = norm;
-                else if (name.contains("sustain")) s = norm;
-                else if (name.contains("release")) r = norm;
+                if (cd.levelIds[i].isNotEmpty())
+                {
+                    auto* p = findParameter(m, cd.levelIds[i]);
+                    if (p) levels[i + 1] = 1.0f - static_cast<float>(p->getValue()) / 127.0f;
+                }
+            }
+            for (int i = 0; i < 5; i++)
+            {
+                if (cd.timeIds[i].isNotEmpty())
+                {
+                    auto* p = findParameter(m, cd.timeIds[i]);
+                    if (p) times[i] = static_cast<float>(p->getValue());
+                }
             }
 
-            // AHD: hold instead of sustain+release
-            bool isAD = (type == "ad-envelope");
-            bool isAHD = (type == "ahd-envelope");
+            // Sustain segment: 0=none, 1-4=hold at that level
+            int sustainSeg = 0;
+            if (cd.sustainComponentId.isNotEmpty())
+            {
+                auto* p = findParameter(m, cd.sustainComponentId);
+                if (p) sustainSeg = p->getValue();  // 0=-- (no sustain), 1-4
+            }
+
+            // Curve type: 0=all-lin (bipolar), 1=rising-LOG/falling-EXP, 2=rising-LOG/falling-LIN
+            int curveType = 0;
+            if (cd.curveComponentId.isNotEmpty())
+            {
+                auto* p = findParameter(m, cd.curveComponentId);
+                if (p) curveType = p->getValue();
+            }
+
+            // Start level: 0.5 for bipolar (curveType=0), 0 for unipolar
+            levels[0] = (curveType == 0) ? 0.5f : 0.0f;
 
             float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
-            float baseY = dy + dh - margin;
-            float startX = dx + margin;
+            float plotW  = dw - margin * 2.0f;
+            float plotH  = dh - margin * 2.0f;
+            float origX  = dx + margin;
+            float origY  = dy + dh - margin;
+            auto sX = [&](float px) { return origX + px; };
+            auto sY = [&](float ny) { return origY - ny * plotH; };
+
+            // Draw reference line for bipolar mode (at 45% height like Java)
+            if (curveType == 0)
+            {
+                g.setColour(activeScheme_.displayCurveGreen.withAlpha(0.35f));
+                float refY = dy + dh * 0.45f;
+                g.drawLine(origX, refY, origX + plotW, refY, 0.5f);
+            }
+
+            // Distribute time segments proportionally
+            float totalT = 0.0f;
+            for (int i = 0; i < 5; i++) totalT += times[i];
+            if (totalT < 1.0f) totalT = 1.0f;
+
+            // If sustain: reserve 20% of width for hold, rest distributed among T1-T5
+            float holdW = (sustainSeg > 0) ? plotW * 0.18f : 0.0f;
+            float segW  = plotW - holdW;
 
             juce::Path env;
-            if (isAD)
-            {
-                float ax = startX + a * plotW * 0.5f;
-                float dEnd = startX + plotW;
-                env.startNewSubPath(startX, baseY);
-                env.quadraticTo(startX + (ax - startX) * 0.5f, dy + margin, ax, dy + margin);
-                env.quadraticTo(ax + (dEnd - ax) * 0.5f, baseY * 0.3f + (dy + margin) * 0.7f, dEnd, baseY);
-            }
-            else if (isAHD)
-            {
-                float ax = startX + a * plotW * 0.3f;
-                float hEnd = ax + plotW * 0.3f;
-                float dEnd = startX + plotW;
-                env.startNewSubPath(startX, baseY);
-                env.quadraticTo(startX + (ax - startX) * 0.5f, dy + margin, ax, dy + margin);
-                env.lineTo(hEnd, dy + margin);
-                env.quadraticTo(hEnd + (dEnd - hEnd) * 0.5f, baseY, dEnd, baseY);
-            }
-            else
-            {
-                // ADSR
-                float segW = plotW * 0.25f;
-                float ax = startX + a * segW;
-                float dx2 = ax + d * segW;
-                float susY = baseY - s * plotH;
-                float rx = startX + segW * 3.0f;
-                float rEnd = rx + r * segW;
+            float curX = 0.0f;
+            env.startNewSubPath(sX(curX), sY(levels[0]));
 
-                env.startNewSubPath(startX, baseY);
-                env.quadraticTo(startX + (ax - startX) * 0.4f, dy + margin, ax, dy + margin);
-                env.quadraticTo(ax + (dx2 - ax) * 0.6f, susY, dx2, susY);
-                env.lineTo(rx, susY);
-                env.quadraticTo(rx + (rEnd - rx) * 0.6f, baseY, rEnd, baseY);
+            for (int i = 0; i < 5; i++)  // segments 1-5 (T1-T5)
+            {
+                float w = times[i] / totalT * segW;
+                float y0 = levels[i];      // start level
+                float y1 = (i < 4) ? levels[i + 1] : levels[0];  // end level (T5→back to start)
+                float x0 = curX;
+                float x1 = curX + w;
+
+                // Rising = LOG, Falling = EXP or LIN based on curveType
+                // curveType=0: all LIN
+                if (curveType == 0 || juce::approximatelyEqual(y0, y1))
+                {
+                    env.lineTo(sX(x1), sY(y1));
+                }
+                else if (y1 > y0)
+                {
+                    // Rising → LOG: ctrl1=(x0, (y0+y1)/2+small), ctrl2=((x0+x1)/2, y1)
+                    // Java log: ctrl1=(srcX, (srcY-destY)/2+destY), ctrl2=((destX-srcX)/2+srcX, destY)
+                    // In our space (y goes up when ny increases): same formula
+                    env.cubicTo(sX(x0),           sY((y0 - y1) * 0.5f + y1),
+                                sX((x1 - x0) * 0.5f + x0), sY(y1),
+                                sX(x1),            sY(y1));
+                }
+                else
+                {
+                    // Falling → EXP or LIN
+                    if (curveType == 1)
+                    {
+                        // EXP: ctrl1=((x1-x0)/2+x0, y0), ctrl2=(x1, (y1-y0)/2+y0)
+                        // Java exp: ctrl1=((destX-srcX)/2+srcX, srcY), ctrl2=(destX, (destY-srcY)/2+srcY)
+                        env.cubicTo(sX((x1 - x0) * 0.5f + x0), sY(y0),
+                                    sX(x1),                     sY((y1 - y0) * 0.5f + y0),
+                                    sX(x1),                     sY(y1));
+                    }
+                    else
+                    {
+                        env.lineTo(sX(x1), sY(y1));
+                    }
+                }
+
+                curX = x1;
+
+                // Insert sustain hold after segment sustainSeg
+                if (sustainSeg > 0 && (i + 1) == sustainSeg)
+                {
+                    curX += holdW;
+                    env.lineTo(sX(curX), sY(y1));
+                }
+            }
+
+            g.setColour(activeScheme_.displayCurveGreen);
+            g.strokePath(env, juce::PathStrokeType(1.2f));
+            continue;
+        }
+
+        // --- Envelope displays (ADSR, AD, AHD) ---
+        if (type == "adsr-envelope" || type == "adsr-mod-envelope"
+            || type == "ad-envelope" || type == "ahd-envelope")
+        {
+            // Normalized envelope values [0..1] — matches JTEnvelopeDisplay.java
+            float va = 0.3f, vd = 0.3f, vh = 0.3f, vs = 0.7f, vr = 0.3f;
+
+            auto paramNorm = [&](const juce::String& compId) -> float {
+                auto* p = findParameter(m, compId);
+                if (!p) return -1.0f;
+                auto* pd = p->getDescriptor();
+                int range = pd->maxValue - pd->minValue;
+                return (range > 0) ? static_cast<float>(p->getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
+            };
+
+            // Explicit component IDs from theme XML
+            if (cd.attackComponentId.isNotEmpty())  { float v = paramNorm(cd.attackComponentId);  if (v >= 0) va = v; }
+            if (cd.decayComponentId.isNotEmpty())   { float v = paramNorm(cd.decayComponentId);   if (v >= 0) vd = v; }
+            if (cd.holdComponentId.isNotEmpty())    { float v = paramNorm(cd.holdComponentId);    if (v >= 0) vh = v; }
+            if (cd.sustainComponentId.isNotEmpty()) { float v = paramNorm(cd.sustainComponentId); if (v >= 0) vs = v; }
+            if (cd.releaseComponentId.isNotEmpty()) { float v = paramNorm(cd.releaseComponentId); if (v >= 0) vr = v; }
+
+            // Fallback: name heuristic (skip morph parameters)
+            if (cd.attackComponentId.isEmpty() || cd.decayComponentId.isEmpty())
+            {
+                for (auto& p : m.getParameters())
+                {
+                    auto* pd = p.getDescriptor();
+                    if (pd->paramClass == "morph") continue;
+                    auto name = pd->name.toLowerCase();
+                    int range = pd->maxValue - pd->minValue;
+                    float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
+
+                    if (cd.attackComponentId.isEmpty()  && name.contains("attack"))   va = norm;
+                    if (cd.decayComponentId.isEmpty()   && name.contains("decay"))    vd = norm;
+                    if (cd.holdComponentId.isEmpty()    && name.contains("hold"))     vh = norm;
+                    if (cd.sustainComponentId.isEmpty() && name.contains("sustain"))  vs = norm;
+                    if (cd.releaseComponentId.isEmpty() && name.contains("release"))  vr = norm;
+                }
+            }
+
+            // INV button (Mod-Env p9): flip envelope vertically
+            bool inverse = false;
+            if (cd.inverseComponentId.isNotEmpty())
+            {
+                auto* p = findParameter(m, cd.inverseComponentId);
+                if (p && p->getValue() != 0) inverse = true;
+            }
+
+            bool isAD  = (type == "ad-envelope");
+            bool isAHD = (type == "ahd-envelope");
+            bool hEnabled  = isAHD;
+            bool srEnabled = !isAD && !isAHD;  // ADSR and Mod-Env have sustain+release
+
+            // Java: segments = 2 + (hEnabled?1:0) + (srEnabled?2:0)
+            float segs = 2.0f + (hEnabled ? 1.0f : 0.0f) + (srEnabled ? 2.0f : 0.0f);
+
+            // Pixel helpers — port of JTEnvelopeDisplay AffineTransform
+            float margin = 2.0f;
+            float plotW  = dw - margin * 2.0f;
+            float plotH  = dh - margin * 2.0f;
+            float origX  = dx + margin;
+            float origY  = dy + dh - margin;  // y=0 baseline
+
+            auto sX = [&](float nx) { return origX + nx * plotW / segs; };
+            // inverse flips the graph: peak becomes trough and vice versa
+            auto sY = [&](float ny) {
+                return inverse ? (origY - (1.0f - ny) * plotH) : (origY - ny * plotH);
+            };
+
+            juce::Path env;
+            env.startNewSubPath(sX(0.0f), sY(0.0f));
+            float left = 0.0f;
+
+            // ----- Attack -----
+            {
+                float prevLeft = left;
+                left += va;
+                if (srEnabled)
+                {
+                    // LOG attack (configureADSR / Mod-Env)
+                    // Java: curveTo((0, 0.25), (0, 1), (va, 1))
+                    env.cubicTo(sX(prevLeft), sY(0.25f),
+                                sX(prevLeft), sY(1.0f),
+                                sX(left),     sY(1.0f));
+                }
+                else
+                {
+                    // LIN attack (configureAD / configureAHD)
+                    env.lineTo(sX(left), sY(1.0f));
+                }
+            }
+
+            // ----- Hold (AHD only) -----
+            if (hEnabled)
+            {
+                left += vh;
+                env.lineTo(sX(left), sY(1.0f));
+            }
+
+            // ----- Decay -----
+            {
+                float decayW = srEnabled ? (vd * (1.0f - vs)) : vd;
+                float decayY = srEnabled ? vs : 0.0f;
+                float l = left;
+                left += decayW;
+                // Java: curveTo((l, (1-dy)*0.5+dy), ((left-l)*0.5+l, dy), (left, dy))
+                env.cubicTo(sX(l),                      sY((1.0f - decayY) * 0.5f + decayY),
+                            sX((left - l) * 0.5f + l),  sY(decayY),
+                            sX(left),                   sY(decayY));
+            }
+
+            // ----- Sustain hold + Release (ADSR / Mod-Env) -----
+            if (srEnabled)
+            {
+                // Sustain filler fills remaining space to keep total = segs
+                // Java: sx = 1 + (1-vd*(1-vs)) + (1-vr*vs) + (1-va) + (hEnabled?(1-vh):0)
+                float sx = 1.0f + (1.0f - vd * (1.0f - vs))
+                                + (1.0f - vr * vs)
+                                + (1.0f - va)
+                                + (hEnabled ? (1.0f - vh) : 0.0f);
+                left += sx;
+                env.lineTo(sX(left), sY(vs));
+
+                // Release
+                float rx = vr * vs;
+                float l  = left;
+                left += rx;
+                // Java: curveTo((l, rx), (l, 0), (left, 0))
+                env.cubicTo(sX(l),    sY(rx),
+                            sX(l),    sY(0.0f),
+                            sX(left), sY(0.0f));
             }
 
             g.setColour(activeScheme_.displayCurveGreen);
