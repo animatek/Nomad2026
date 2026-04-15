@@ -1174,19 +1174,40 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             }
             else
             {
-                float half = bh * 0.5f;
-                // Up arrow
+                // Divide into 3 bands: top arrow / value / bottom arrow
+                float arrowH = bh * 0.32f;
+                float valH   = bh * 0.36f;
+                float topMid = by + arrowH * 0.5f;
+                float botMid = by + bh - arrowH * 0.5f;
+
+                // Up arrow (top third)
                 juce::Path upArr;
-                upArr.addTriangle(cx, by + half * 0.2f,
-                                  cx - bw * 0.3f, by + half * 0.8f,
-                                  cx + bw * 0.3f, by + half * 0.8f);
+                upArr.addTriangle(cx, by + arrowH * 0.15f,
+                                  cx - bw * 0.3f, by + arrowH * 0.85f,
+                                  cx + bw * 0.3f, by + arrowH * 0.85f);
                 g.fillPath(upArr);
-                // Down arrow
+                juce::ignoreUnused(topMid, valH);
+
+                // Current value (middle band)
+                if (param != nullptr)
+                {
+                    g.setColour(activeScheme_.moduleText);
+                    g.setFont(juce::Font(juce::FontOptions().withHeight(7.5f)));
+                    juce::String valStr = juce::String(val);
+                    g.drawText(valStr,
+                               static_cast<int>(bx), static_cast<int>(by + arrowH),
+                               static_cast<int>(bw), static_cast<int>(valH),
+                               juce::Justification::centred, false);
+                    g.setColour(juce::Colour(0xffcccccc));
+                }
+
+                // Down arrow (bottom third)
                 juce::Path downArr;
-                downArr.addTriangle(cx, by + half + half * 0.8f,
-                                    cx - bw * 0.3f, by + half + half * 0.2f,
-                                    cx + bw * 0.3f, by + half + half * 0.2f);
+                downArr.addTriangle(cx, by + bh - arrowH * 0.15f,
+                                    cx - bw * 0.3f, by + bh - arrowH * 0.85f,
+                                    cx + bw * 0.3f, by + bh - arrowH * 0.85f);
                 g.fillPath(downArr);
+                juce::ignoreUnused(botMid);
             }
             continue;
         }
@@ -1255,11 +1276,12 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                 }
                 else
                 {
-                    // Vertical: index 0 = top, last = bottom (matches original diReversed buttons)
+                    // Vertical: index 0 = top by default; reversed buttons use bottom-to-top
                     segW = bw;
                     segH = bh / static_cast<float>(numOptions);
                     segX = bx;
-                    segY = by + static_cast<float>(i) * segH;
+                    int renderIdx = tb.reversed ? (numOptions - 1 - i) : i;
+                    segY = by + static_cast<float>(renderIdx) * segH;
                 }
 
                 bool selected = (i == val);
@@ -2330,133 +2352,283 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         // --- Filter displays ---
         if (type == "filter-e-display" || type == "filter-f-display")
         {
-            float cutoff = 0.5f, reso = 0.0f;
-            int filterType = 0;
+            g.saveState();
+            g.reduceClipRegion(juce::Rectangle<int>(dx, dy, dw, dh));
 
-            for (auto& p : m.getParameters())
+            // Map normalised 0..1 → pixel (coords outside 0..1 are clipped)
+            auto mpx = [&](float n) { return dx + n * dw; };
+            auto mpy = [&](float n) { return dy + n * dh; };
+
+            // Angle-based Bezier control points (Java FilterE/F Point.setBezier)
+            // Returns {ctrl1x, ctrl1y, ctrl2x, ctrl2y}
+            auto sb = [](float sx, float sy, float ex, float ey,
+                         float d1, float d2, float a1_deg, float a2_deg)
+                -> std::array<float,4>
             {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                auto* pd = p.getDescriptor();
+                const float r = juce::MathConstants<float>::pi / 180.0f;
+                return { sx + d1*std::cos(a1_deg*r), sy + d1*std::sin(a1_deg*r),
+                         ex + d2*std::cos(a2_deg*r), ey + d2*std::sin(a2_deg*r) };
+            };
+
+            auto normParam = [](const Parameter* p, float def) -> float {
+                if (p == nullptr) return def;
+                auto* pd = p->getDescriptor();
                 int range = pd->maxValue - pd->minValue;
-                float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
+                return (range > 0) ? static_cast<float>(p->getValue() - pd->minValue)
+                                     / static_cast<float>(range) : def;
+            };
 
-                if (name.contains("freq") || name.contains("cutoff"))  cutoff = norm;
-                else if (name.contains("reson"))                        reso = norm;
-                else if (name.contains("filter type") || name.contains("type")) filterType = p.getValue();
-            }
-
-            float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
-            float midY = dy + dh * 0.5f;
-
-            // Reference line
+            const float resAmp = 0.45f;
             g.setColour(activeScheme_.displayGrid);
-            g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
+            g.drawHorizontalLine(static_cast<int>(mpy(resAmp)), dx, dx + dw);
 
             juce::Path filt;
-            int steps = static_cast<int>(plotW);
-            for (int i = 0; i <= steps; i++)
+            filt.startNewSubPath(mpx(-0.1f), mpy(1.1f)); // MOVETO (outside, will be clipped)
+
+            if (type == "filter-f-display")
             {
-                float t = static_cast<float>(i) / static_cast<float>(steps);
-                float freq = t;
-                float response = 0.0f;
+                // === FilterF.java: LP-only, slopes 12/18/24 dB ===
+                float cutNorm = normParam(findParameter(m, cd.cutoffComponentId), 0.5f);
+                float resoNorm = normParam(findParameter(m, cd.resonanceComponentId), 0.0f);
+                int   slopeVal = 0;
+                if (auto* pS = findParameter(m, cd.slopeComponentId)) slopeVal = pS->getValue();
 
-                float cutFreq = cutoff;
-                float dist = (freq - cutFreq) * 4.0f;
-                float resoBoost = reso * 0.5f * std::exp(-dist * dist * 8.0f);
+                float co        = cutNorm * 0.8f + 0.1f;          // Java: cutOff/127*0.8+0.1
+                float resonance = (1.0f - resoNorm) * resAmp;     // Java: (1-reso)*resAmplitude
+                float slope     = (2.0f - slopeVal) * 0.1f;       // Java: (2-slope)*0.1
 
-                switch (filterType)
+                filt.lineTo(mpx(-0.1f), mpy(resAmp));
+                float p2x = -0.2f + co;
+                filt.lineTo(mpx(p2x), mpy(resAmp));
+
+                float p3x = co, p3y = resonance;
+                float ang3 = 110.0f + 70.0f * resonance / resAmp;
+                auto  c3 = sb(p2x, resAmp, p3x, p3y, 0.1f, 0.1f, 0.0f, ang3);
+                filt.cubicTo(mpx(c3[0]), mpy(c3[1]), mpx(c3[2]), mpy(c3[3]), mpx(p3x), mpy(p3y));
+
+                float p4x = 0.3f + co + slope, p4y = 1.1f;
+                float ang4 = 70.0f - 70.0f * resonance / resAmp;
+                auto  c4 = sb(p3x, p3y, p4x, p4y, 0.1f, 0.1f, ang4, -110.0f);
+                filt.cubicTo(mpx(c4[0]), mpy(c4[1]), mpx(c4[2]), mpy(c4[3]), mpx(p4x), mpy(p4y));
+
+                filt.lineTo(mpx(-0.1f), mpy(1.1f));
+            }
+            else // filter-e-display
+            {
+                // === FilterE.java: LP/BP/HP/BR, slopes 12/24 dB ===
+                float cutNorm  = normParam(findParameter(m, cd.cutoffComponentId), 0.5f);
+                float resoNorm = normParam(findParameter(m, cd.resonanceComponentId), 0.0f);
+                int   typeVal  = 0;
+                if (auto* pT = findParameter(m, cd.typeComponentId))       typeVal  = pT->getValue();
+                int   slopeVal = 1;
+                if (auto* pS = findParameter(m, cd.slopeComponentId))      slopeVal = pS->getValue();
+                int   gcVal    = 1;
+                if (auto* pG = findParameter(m, cd.gainControlComponentId)) gcVal   = pG->getValue();
+
+                float co   = cutNorm * 0.8f + 0.1f;  // Java: cutOff*0.8+0.1
+                float reso = resoNorm;                // 0..1
+                int   sl   = slopeVal;                // 0=12 dB, 1=24 dB
+                int   gc   = gcVal;                   // 0=full, 1=half
+                float gainOffset = (gc == 0) ? 1.0f : 0.5f;
+
+                switch (typeVal)
                 {
-                    case 0: // LP
-                        response = 1.0f / (1.0f + std::exp(dist * 6.0f)) + resoBoost;
-                        break;
-                    case 1: // BP
-                        response = std::exp(-dist * dist * 4.0f) * (0.8f + resoBoost);
-                        break;
-                    case 2: // HP
-                        response = 1.0f / (1.0f + std::exp(-dist * 6.0f)) + resoBoost;
-                        break;
-                    case 3: // BR (notch)
-                        response = 1.0f - std::exp(-dist * dist * 4.0f) * 0.8f;
-                        break;
-                    default:
-                        response = 1.0f / (1.0f + std::exp(dist * 6.0f)) + resoBoost;
-                        break;
+                case 2: // HP
+                {
+                    float p1x = co - 0.5f + sl*0.25f;
+                    float p1y = 1.1f + resAmp*0.5f*reso*gc;
+                    filt.lineTo(mpx(p1x), mpy(p1y));
+
+                    float p2x = co, p2y = resAmp - reso*resAmp*gainOffset;
+                    auto  c2  = sb(p1x, p1y, p2x, p2y,
+                                   0.05f, 0.2f+0.1f*reso,
+                                   -70.0f+40.0f*sl, 180.0f-80.0f*reso);
+                    filt.cubicTo(mpx(c2[0]), mpy(c2[1]), mpx(c2[2]), mpy(c2[3]), mpx(p2x), mpy(p2y));
+
+                    float p3x = co + 0.1f + sl*0.15f, p3y = resAmp + resAmp*0.5f*reso*gc;
+                    auto  c3  = sb(p2x, p2y, p3x, p3y,
+                                   0.05f*reso, 0.05f+0.05f*reso,
+                                   80.0f*reso, 180.0f);
+                    filt.cubicTo(mpx(c3[0]), mpy(c3[1]), mpx(c3[2]), mpy(c3[3]), mpx(p3x), mpy(p3y));
+
+                    filt.lineTo(mpx(1.5f),  mpy(p3y));
+                    filt.lineTo(mpx(1.1f),  mpy(1.1f));
+                    filt.lineTo(mpx(-0.1f), mpy(1.1f));
+                    break;
                 }
+                case 0: // LP
+                {
+                    float py1 = resAmp + resAmp*0.5f*reso*gc;
+                    filt.lineTo(mpx(-0.3f), mpy(py1));
 
-                response = juce::jlimit(0.0f, 1.0f, response);
-                float px = dx + margin + t * plotW;
-                float py = dy + dh - margin - response * plotH;
+                    float p2x = -0.1f + co - sl*0.15f;
+                    filt.lineTo(mpx(p2x), mpy(py1));
 
-                if (i == 0)
-                    filt.startNewSubPath(px, py);
-                else
-                    filt.lineTo(px, py);
+                    float p3x = co, p3y = resAmp - reso*resAmp*gainOffset;
+                    auto  c3  = sb(p2x, py1, p3x, p3y,
+                                   0.05f+0.05f*reso, 0.05f*reso,
+                                   0.0f, 180.0f-80.0f*reso);
+                    filt.cubicTo(mpx(c3[0]), mpy(c3[1]), mpx(c3[2]), mpy(c3[3]), mpx(p3x), mpy(p3y));
+
+                    float p4x = 0.5f + co - sl*0.25f, p4y = 1.1f + resAmp*0.5f*reso*gc;
+                    auto  c4  = sb(p3x, p3y, p4x, p4y,
+                                   0.2f+0.1f*reso, 0.05f,
+                                   (85.0f-15.0f*sl)*reso, -150.0f+40.0f*sl);
+                    filt.cubicTo(mpx(c4[0]), mpy(c4[1]), mpx(c4[2]), mpy(c4[3]), mpx(p4x), mpy(p4y));
+
+                    filt.lineTo(mpx(1.1f),  mpy(1.1f));
+                    filt.lineTo(mpx(-0.1f), mpy(1.1f));
+                    break;
+                }
+                case 1: // BP
+                {
+                    float leftEnd  = (sl == 0) ? -0.65f + co + 0.12f*reso : -0.45f + co + 0.06f*reso;
+                    float rightEnd = (sl == 0) ?  0.65f + co - 0.12f*reso :  0.45f + co - 0.06f*reso;
+                    float py1  = 1.1f + resAmp*0.5f*reso*gc;
+                    filt.lineTo(mpx(-0.1f), mpy(py1));
+                    filt.lineTo(mpx(leftEnd), mpy(py1));
+
+                    float p3x = co, p3y = resAmp - reso*resAmp*gainOffset;
+                    float lSO = 0.25f, lSE = (sl == 1) ? 0.25f : 0.25f+0.15f*reso;
+                    float a3a = -50.0f - 40.0f*reso - 20.0f*sl;
+                    float a3b = 180.0f - 80.0f*reso;
+                    auto  c3  = sb(leftEnd, py1, p3x, p3y, lSO, lSE, a3a, a3b);
+                    filt.cubicTo(mpx(c3[0]), mpy(c3[1]), mpx(c3[2]), mpy(c3[3]), mpx(p3x), mpy(p3y));
+
+                    auto  c4  = sb(p3x, p3y, rightEnd, py1, lSE, lSO, 180.0f-a3b, 180.0f-a3a);
+                    filt.cubicTo(mpx(c4[0]), mpy(c4[1]), mpx(c4[2]), mpy(c4[3]), mpx(rightEnd), mpy(py1));
+
+                    filt.lineTo(mpx(1.1f),  mpy(py1));
+                    filt.lineTo(mpx(1.1f),  mpy(1.1f));
+                    filt.lineTo(mpx(-0.1f), mpy(1.1f));
+                    break;
+                }
+                case 3: // BR (notch)
+                {
+                    float gOff3 = (gc == 0) ? 0.35f : 0.0f;
+                    float py1   = resAmp + resAmp*gOff3*reso;
+                    filt.lineTo(mpx(-0.5f), mpy(py1));
+
+                    float p2x = -0.45f + (0.15f-0.1f*sl)*reso + co - sl*0.05f;
+                    filt.lineTo(mpx(p2x), mpy(py1));
+
+                    float lSO, lSE, res3;
+                    if (sl == 0) { lSO = 0.3f; lSE = 0.2f; res3 = 1.0f; }
+                    else         { lSO = 0.2f; lSE = 0.4f; res3 = 1.0f + resAmp*0.8f*(1.0f-reso); }
+
+                    float p3x = co, p3y = res3;
+                    auto  c3  = sb(p2x, py1, p3x, p3y, lSO, lSE, 0.0f, -90.0f);
+                    filt.cubicTo(mpx(c3[0]), mpy(c3[1]), mpx(c3[2]), mpy(c3[3]), mpx(p3x), mpy(p3y));
+
+                    float p4x = 0.45f - (0.15f-0.1f*sl)*reso + co + sl*0.05f;
+                    auto  c4  = sb(p3x, p3y, p4x, py1, lSE, lSO, -90.0f, 180.0f);
+                    filt.cubicTo(mpx(c4[0]), mpy(c4[1]), mpx(c4[2]), mpy(c4[3]), mpx(p4x), mpy(py1));
+
+                    filt.lineTo(mpx(1.1f),  mpy(py1));
+                    filt.lineTo(mpx(1.1f),  mpy(1.1f));
+                    filt.lineTo(mpx(-0.1f), mpy(1.1f));
+                    break;
+                }
+                default:
+                    filt.lineTo(mpx(1.1f),  mpy(1.1f));
+                    filt.lineTo(mpx(-0.1f), mpy(1.1f));
+                    break;
+                }
             }
 
             g.setColour(activeScheme_.displayCurveBlue);
             g.strokePath(filt, juce::PathStrokeType(1.2f));
+            g.restoreState();
             continue;
         }
 
         // --- EQ displays ---
         if (type == "eq-mid-display" || type == "eq-shelving-display")
         {
-            float freq = 0.5f, gain = 0.5f, bw = 0.5f;
-            for (auto& p : m.getParameters())
-            {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                auto* pd = p.getDescriptor();
+            g.saveState();
+            g.reduceClipRegion(juce::Rectangle<int>(dx, dy, dw, dh));
+
+            auto mpx = [&](float n) { return dx + n * dw; };
+            auto mpy = [&](float n) { return dy + n * dh; };
+
+            auto normParam = [](const Parameter* p, float def) -> float {
+                if (p == nullptr) return def;
+                auto* pd = p->getDescriptor();
                 int range = pd->maxValue - pd->minValue;
-                float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
+                return (range > 0) ? static_cast<float>(p->getValue() - pd->minValue)
+                                     / static_cast<float>(range) : def;
+            };
 
-                if (name.contains("freq"))           freq = norm;
-                else if (name.contains("gain"))      gain = norm;
-                else if (name.contains("bandwidth")) bw   = norm;
-            }
+            float freq = normParam(findParameter(m, cd.freqComponentId), 0.5f);
+            float gain = normParam(findParameter(m, cd.gainComponentId), 0.5f);
+            float bw   = normParam(findParameter(m, cd.bwComponentId),   0.5f);
 
-            float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
-            float midY = dy + dh * 0.5f;
-
+            const float baseline = 0.5f;
             g.setColour(activeScheme_.displayGrid);
-            g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
+            g.drawHorizontalLine(static_cast<int>(mpy(baseline)), dx, dx + dw);
 
             juce::Path eq;
-            int steps = static_cast<int>(plotW);
-            float gainAmt = (gain - 0.5f) * 2.0f; // -1 to +1
 
-            for (int i = 0; i <= steps; i++)
+            if (type == "eq-shelving-display")
             {
-                float t = static_cast<float>(i) / static_cast<float>(steps);
-                float response;
+                // === EqualizerShelve.java: lo/hi shelf ===
+                // typeComponentId = p3 (mode: 0=Lo, 1=Hi), added to XML
+                int mode = 0;
+                if (auto* pM = findParameter(m, cd.typeComponentId)) mode = pM->getValue();
 
-                if (type == "eq-shelving-display")
+                float shelfY = 1.0f - gain; // Java: setGain → Y = 1-gain
+                float tx1 = freq * 0.7f;
+                float tx2 = (freq + 0.2f) * 0.7f;
+
+                eq.startNewSubPath(mpx(-0.01f), mpy(1.01f));
+                if (mode == 0) // Lo-shelf: left portion at shelfY, right at baseline
                 {
-                    // Shelf: sigmoid transition
-                    response = 0.5f + gainAmt * 0.4f / (1.0f + std::exp(-(t - freq) * 12.0f));
+                    eq.lineTo(mpx(-0.01f), mpy(shelfY));
+                    eq.lineTo(mpx(tx1),    mpy(shelfY));
+                    eq.lineTo(mpx(tx2),    mpy(baseline));
+                    eq.lineTo(mpx(1.10f),  mpy(baseline));
+                    eq.lineTo(mpx(1.01f),  mpy(1.01f));
                 }
-                else
+                else // Hi-shelf: mirrored — left at baseline, right at shelfY
                 {
-                    // Parametric peak — BW=0→wide (factor 1.5), BW=1→narrow (factor 6.0)
-                    float bwFactor = 1.5f + bw * 4.5f;
-                    float dist = (t - freq) * bwFactor;
-                    response = 0.5f + gainAmt * 0.4f * std::exp(-dist * dist);
+                    float htx1 = 1.0f - tx2;
+                    float htx2 = 1.0f - tx1;
+                    eq.lineTo(mpx(-0.01f), mpy(baseline));
+                    eq.lineTo(mpx(htx1),   mpy(baseline));
+                    eq.lineTo(mpx(htx2),   mpy(shelfY));
+                    eq.lineTo(mpx(1.01f),  mpy(shelfY));
+                    eq.lineTo(mpx(1.01f),  mpy(1.01f));
                 }
+                eq.lineTo(mpx(-0.01f), mpy(1.10f));
+            }
+            else // eq-mid-display
+            {
+                // === EqualizerMid.java: parametric peak/cut ===
+                // EXP bezier rise from baseline to peak, LOG bezier fall back to baseline.
+                // Y: 0=top (boost), 0.5=flat (baseline), 1=bottom (cut)
+                float p2x = freq - bw/2.0f - 0.05f;
+                float p4x = freq + bw/2.0f + 0.05f;
 
-                float px = dx + margin + t * plotW;
-                float py = dy + dh - margin - response * plotH;
+                // EXP: ctrl1=((ex-sx)/2+sx, sy), ctrl2=(ex, (ey-sy)/2+sy)
+                float eC1x = (freq-p2x)/2.0f + p2x, eC1y = baseline;
+                float eC2x = freq,                    eC2y = (gain-baseline)/2.0f + baseline;
+                // LOG: ctrl1=(sx, (sy-ey)/2+ey), ctrl2=((ex-sx)/2+sx, ey)
+                float lC1x = freq,                    lC1y = (gain-baseline)/2.0f + baseline;
+                float lC2x = (p4x-freq)/2.0f + freq, lC2y = baseline;
 
-                if (i == 0)
-                    eq.startNewSubPath(px, py);
-                else
-                    eq.lineTo(px, py);
+                eq.startNewSubPath(mpx(-0.1f),  mpy(1.1f));
+                eq.lineTo(mpx(-0.1f),  mpy(baseline));
+                eq.lineTo(mpx(p2x),    mpy(baseline));
+                eq.cubicTo(mpx(eC1x), mpy(eC1y), mpx(eC2x), mpy(eC2y), mpx(freq), mpy(gain));
+                eq.cubicTo(mpx(lC1x), mpy(lC1y), mpx(lC2x), mpy(lC2y), mpx(p4x),  mpy(baseline));
+                eq.lineTo(mpx(1.1f),   mpy(baseline));
+                eq.lineTo(mpx(1.1f),   mpy(1.1f));
+                eq.lineTo(mpx(-0.1f),  mpy(1.1f));
             }
 
             g.setColour(activeScheme_.displayCurveYellow);
             g.strokePath(eq, juce::PathStrokeType(1.2f));
+            g.restoreState();
             continue;
         }
 
@@ -3003,6 +3175,41 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 juce::Rectangle<int> btnRect(tb.x, tb.y, tb.width, tb.height);
                 if (btnRect.contains(relPos))
                 {
+                    // isCall buttons: trigger a method action rather than a parameter change
+                    if (tb.isCall)
+                    {
+                        if (tb.callMethod == "rnd")
+                        {
+                            for (auto& p : m.getParameters())
+                            {
+                                auto* pd = p.getDescriptor();
+                                if (pd->name.startsWith("band "))
+                                {
+                                    int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue + 1);
+                                    p.setValue(rndVal);
+                                    if (parameterChangeCallback)
+                                        parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, rndVal);
+                                }
+                            }
+                            repaint();
+                        }
+                        else if (tb.callMethod == "min" || tb.callMethod == "max")
+                        {
+                            bool doMax = (tb.callMethod == "max");
+                            for (auto& p : m.getParameters())
+                            {
+                                auto* pd = p.getDescriptor();
+                                if (pd->maxValue - pd->minValue <= 1) continue; // skip binary params (bypass etc)
+                                int newVal = doMax ? pd->maxValue : pd->minValue;
+                                p.setValue(newVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);
+                            }
+                            repaint();
+                        }
+                        return;
+                    }
+
                     auto* param = findParameter(m, tb.componentId);
                     if (param != nullptr)
                     {

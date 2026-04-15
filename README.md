@@ -194,6 +194,19 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - **Display format system**: oscillator Hz (440·2^((v-69)/12)), LFO Hz/seconds, phase degrees, BPM (piecewise), partial ratios (1:1, 2:1…), drum Hz/partials
   - **LFO waveform display**: phase-offset animation (p7/p3), exponential rate scaling 0.25–8 cycles, clean discontinuity handling for saw/square
   - **PatternGen step**: increment ▲▼ arrow button replacing knob, OFF/1–127 display, rapid-click safe (no double-click reset)
+- [x] **Envelope module visual pass** (complete — all envelope modules):
+  - ADSR/AD/AHD envelope custom displays rendering with Bezier curves and INV flag
+  - Multi-Env (m52): 3 curve-shape icons (bipolar, uni-exp, uni-lin) in landscape selector
+  - ADSR time format, attack/release lookup tables (128-entry ms/s display)
+- [x] **Filter module visual pass** (complete — all filter/EQ/vocoder modules):
+  - **TextDisplay formatters**: filterHz1 `504·2^((v-64)/12)`, filterHz2 `330·2^((v-60)/12)`, eqHz `471·2^((v-60)/12)`, eqGain `(v-64)·0.28125 dB`, eqBw `v/75 Oct`, vowel (A/E/I/O/U/Y/AA/AE/OE for VocalFilter)
+  - **FilterE/F displays**: angle-based Bezier LP/BP/HP/BR curves with slope (12/24 dB) and gain-control support
+  - **EqMid display**: EXP/LOG Bezier bell curve, live bandwidth and gain tracking
+  - **EqShelving display**: Lo-shelf and Hi-shelf modes (mirrored), live gain tracking
+  - **Vocoder**: routing-line display (band→output mapping), 16 increment buttons with value readout, Rnd randomize action button
+  - **FilterBank**: Min/Max action buttons (set all 14 bands to min or max), fixed groupbox width overflow
+  - **FilterE button order**: `reverse="true"` attribute on vertical radio buttons (BR top → LP bottom, matching hardware values)
+  - **Bug fix**: morph-parameter pollution in display lookups — switched to component-ID-based `findParameter()` instead of name matching
 - [x] **Dark Theme System**: `ColorScheme` struct (50 fields), runtime-switchable via View → Theme menu
   - Two themes: **Dark** (default, carbon palette) and **Classic** (original colors, dev reference)
   - `ThemeId` enum for identity tracking; no color-comparison fragility

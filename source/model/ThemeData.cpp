@@ -89,9 +89,12 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
             else if (href.contains("/images/"))
             {
                 // Static waveform / decoration icon (e.g. wf_sine.png)
+                // Only accept icons we can actually draw: wf_* waveforms and decoration-N
                 juce::String iconName = href.fromLastOccurrenceOf("/", false, false)
                                             .upToLastOccurrenceOf(".", false, false);
-                if (iconName.isNotEmpty())
+                bool canDraw = iconName.startsWith("wf_")
+                            || (iconName.startsWith("decoration-") && !iconName.contains("."));
+                if (canDraw)
                 {
                     ThemeStaticIcon si;
                     si.iconName = iconName;
@@ -151,6 +154,20 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                     cd.curveComponentId = sub->getStringAttribute("component-id");
                 else if (subTag == "bandwidth")
                     cd.bwComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "frequency")
+                    cd.freqComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "gain")
+                    cd.gainComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "cutoff")
+                    cd.cutoffComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "resonance")
+                    cd.resonanceComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "type")
+                    cd.typeComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "slope")
+                    cd.slopeComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "gain-control")
+                    cd.gainControlComponentId = sub->getStringAttribute("component-id");
                 else if (subTag.startsWith("band") && subTag.length() <= 6)
                 {
                     int idx = subTag.substring(4).getIntValue();
@@ -221,6 +238,7 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
     tb.cyclic = (elem.getStringAttribute("cyclic", "true") == "true");
     tb.isIncrement = (elem.getStringAttribute("mode") == "increment");
     tb.landscape = (elem.getStringAttribute("landscape") == "true");
+    tb.reversed = (elem.getStringAttribute("reverse") == "true");
 
     if (auto* param = elem.getChildByName("parameter"))
         tb.componentId = param->getStringAttribute("component-id");

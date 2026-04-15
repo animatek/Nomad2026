@@ -38,6 +38,7 @@ struct ThemeButton
     bool landscape = false;            // landscape="true" (horizontal layout)
     std::vector<juce::String> labels;     // indexed by btn index
     std::vector<juce::String> imageRefs;  // image href per btn index (e.g. "wf_sine", "wf_saw")
+    bool reversed = false;     // vertical radio buttons: render index 0 at bottom
     bool isCall = false;       // button triggers a call action, not a parameter change
     juce::String callMethod;   // e.g. "rnd" (Vocoder Rnd button)
 };
@@ -118,6 +119,15 @@ struct ThemeCustomDisplay
     juce::String curveComponentId;   // <curve component-id="pN"> (curve type)
     juce::String bwComponentId;      // <bandwidth component-id="pN"> (EqMid)
     juce::String bandIds[16];        // <band0..band15 component-id="pN"> (Vocoder)
+    // EQ display sub-element component IDs (eq-mid-display, eq-shelving-display)
+    juce::String freqComponentId;    // <frequency component-id="pN">
+    juce::String gainComponentId;    // <gain component-id="pN">
+    // Filter display sub-element component IDs (filter-e-display, filter-f-display)
+    juce::String cutoffComponentId;       // <cutoff component-id="pN">
+    juce::String resonanceComponentId;    // <resonance component-id="pN">
+    juce::String typeComponentId;         // <type component-id="pN">
+    juce::String slopeComponentId;        // <slope component-id="pN">
+    juce::String gainControlComponentId;  // <gain-control component-id="pN">
 };
 
 struct ThemeStaticIcon
