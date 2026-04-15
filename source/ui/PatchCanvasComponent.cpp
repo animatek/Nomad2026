@@ -2403,7 +2403,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         // --- EQ displays ---
         if (type == "eq-mid-display" || type == "eq-shelving-display")
         {
-            float freq = 0.5f, gain = 0.5f;
+            float freq = 0.5f, gain = 0.5f, bw = 0.5f;
             for (auto& p : m.getParameters())
             {
                 auto name = p.getDescriptor()->name.toLowerCase();
@@ -2411,8 +2411,9 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                 int range = pd->maxValue - pd->minValue;
                 float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
 
-                if (name.contains("freq"))      freq = norm;
-                else if (name.contains("gain")) gain = norm;
+                if (name.contains("freq"))           freq = norm;
+                else if (name.contains("gain"))      gain = norm;
+                else if (name.contains("bandwidth")) bw   = norm;
             }
 
             float margin = 2.0f;
@@ -2439,8 +2440,9 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                 }
                 else
                 {
-                    // Parametric peak
-                    float dist = (t - freq) * 5.0f;
+                    // Parametric peak — BW=0→wide (factor 1.5), BW=1→narrow (factor 6.0)
+                    float bwFactor = 1.5f + bw * 4.5f;
+                    float dist = (t - freq) * bwFactor;
                     response = 0.5f + gainAmt * 0.4f * std::exp(-dist * dist);
                 }
 
