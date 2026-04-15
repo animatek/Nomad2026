@@ -38,6 +38,8 @@ struct ThemeButton
     bool landscape = false;            // landscape="true" (horizontal layout)
     std::vector<juce::String> labels;     // indexed by btn index
     std::vector<juce::String> imageRefs;  // image href per btn index (e.g. "wf_sine", "wf_saw")
+    bool isCall = false;       // button triggers a call action, not a parameter change
+    juce::String callMethod;   // e.g. "rnd" (Vocoder Rnd button)
 };
 
 struct ThemeLabel
@@ -60,6 +62,15 @@ struct ThemeTextDisplay
     bool phaseFormat = false;       // true → fmtPhase: v*2.8125-180 degrees
     bool bpmFormat = false;         // true → fmtBPM: piecewise linear, shows bpm
     bool stepFormat = false;        // true → 0=OFF, 1-128=number (PatternGen steps)
+    bool adsrTimeFormat = false;    // true → fmtAdsrTime: lookup 128 entries (ms/s)
+    bool envAttackFormat = false;   // true → fmtEnvelopeAttack: lookup 128 entries
+    bool envReleaseFormat = false;  // true → fmtEnvelopeRelease: lookup 128 entries
+    bool filterHz1Format = false;   // true → 504*2^((v-64)/12) Hz (FilterA, FilterB)
+    bool filterHz2Format = false;   // true → 330*2^((v-60)/12) Hz (FilterC/D/E/F)
+    bool eqHzFormat = false;        // true → 471*2^((v-60)/12) Hz (EqMid, EqShelving)
+    bool eqGainFormat = false;      // true → (v-64)*0.28125 dB (EqMid, EqShelving)
+    bool eqBwFormat = false;        // true → v/75.0 Oct (EqMid bandwidth)
+    bool vowelFormat = false;       // true → vowel name: A/E/I/O/U/Y/AA/AE/OE (VocalFilter)
 };
 
 struct ThemeLight
@@ -90,10 +101,23 @@ struct ThemeCustomDisplay
     int x = 0, y = 0;
     int width = 40, height = 30;
     // LFODisplay sub-element component IDs (empty = not present)
-    juce::String phaseComponentId;  // <phase component-id="pN"> → phase param
-    juce::String shapeComponentId;  // <shape component-id="pN"> → waveform shape param
-    juce::String rateComponentId;   // <rate component-id="pN">  → rate param (cycles scaling)
-    int fixedWaveform = -1;         // <waveform value="N"> → fixed shape (-1 = dynamic)
+    juce::String phaseComponentId;   // <phase component-id="pN"> → phase param
+    juce::String shapeComponentId;   // <shape component-id="pN"> → waveform shape param
+    juce::String rateComponentId;    // <rate component-id="pN">  → rate param (cycles scaling)
+    int fixedWaveform = -1;          // <waveform value="N"> → fixed shape (-1 = dynamic)
+    // Envelope display sub-element component IDs
+    juce::String attackComponentId;  // <attack component-id="pN">
+    juce::String decayComponentId;   // <decay component-id="pN">
+    juce::String sustainComponentId; // <sustain component-id="pN">
+    juce::String releaseComponentId; // <release component-id="pN">
+    juce::String holdComponentId;    // <hold component-id="pN"> (AHD)
+    juce::String inverseComponentId; // <inverse component-id="pN"> (Mod-Env INV button)
+    // Multi-Env display sub-element component IDs
+    juce::String levelIds[4];        // <l0..l3 component-id="pN">
+    juce::String timeIds[5];         // <t0..t4 component-id="pN">
+    juce::String curveComponentId;   // <curve component-id="pN"> (curve type)
+    juce::String bwComponentId;      // <bandwidth component-id="pN"> (EqMid)
+    juce::String bandIds[16];        // <band0..band15 component-id="pN"> (Vocoder)
 };
 
 struct ThemeStaticIcon
