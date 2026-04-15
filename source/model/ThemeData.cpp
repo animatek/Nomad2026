@@ -149,6 +149,14 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                 else if (subTag == "t4") cd.timeIds[4] = sub->getStringAttribute("component-id");
                 else if (subTag == "curve")
                     cd.curveComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "bandwidth")
+                    cd.bwComponentId = sub->getStringAttribute("component-id");
+                else if (subTag.startsWith("band") && subTag.length() <= 6)
+                {
+                    int idx = subTag.substring(4).getIntValue();
+                    if (idx >= 0 && idx < 16)
+                        cd.bandIds[idx] = sub->getStringAttribute("component-id");
+                }
             }
             theme.customDisplays.push_back(cd);
         }
@@ -246,6 +254,13 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
                 tb.imageRefs.push_back("");
             tb.imageRefs[static_cast<size_t>(idx)] = imageRef;
         }
+    }
+
+    // Detect <call component="..." method="rnd"> (Vocoder Rnd button)
+    if (auto* call = elem.getChildByName("call"))
+    {
+        tb.isCall    = true;
+        tb.callMethod = call->getStringAttribute("method");
     }
 
     theme.buttons.push_back(tb);
