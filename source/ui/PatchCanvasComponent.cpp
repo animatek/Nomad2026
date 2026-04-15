@@ -2523,6 +2523,39 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             continue;
         }
 
+        // --- Vocoder routing display ---
+        if (type == "vocoder-display")
+        {
+            // Black background with border
+            g.setColour(activeScheme_.displayBg);
+            g.fillRect(dx, dy, dw, dh);
+            g.setColour(activeScheme_.displayBorder);
+            g.drawRect(dx, dy, dw, dh, 1.0f);
+
+            // Draw routing lines: band[i] = output band index (1-based, 0=off)
+            // Line: top row at column (band[i]-1) → bottom row at column i
+            constexpr int kBands = 16;
+            float space   = dw / static_cast<float>(kBands);
+            float loffset = dx + space * 0.5f;
+            float top     = dy + 1.0f;
+            float bot     = dy + dh - 1.0f;
+
+            g.setColour(juce::Colour(0xff00cc44));  // green routing lines (matches original)
+            for (int i = 0; i < kBands; ++i)
+            {
+                if (cd.bandIds[i].isEmpty()) continue;
+                auto* param = findParameter(m, cd.bandIds[i]);
+                if (param == nullptr) continue;
+                int bandVal = param->getValue();
+                if (bandVal <= 0) continue;  // 0 = off, no line
+
+                float x0 = loffset + static_cast<float>(bandVal - 1) * space;  // output column
+                float x1 = loffset + static_cast<float>(i) * space;            // input column
+                g.drawLine(x0, top, x1, bot, 1.0f);
+            }
+            continue;
+        }
+
         // --- Phaser display ---
         if (type == "phaser-display")
         {
