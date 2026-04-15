@@ -75,19 +75,19 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 20 | ADSR | [ ] | [ ] | [ ] | [ ] | ADSR display implemented |
-| 23 | Mod-Env | [ ] | [ ] | [ ] | [ ] | Modulated envelope |
-| 46 | AHD | [ ] | [ ] | [ ] | [ ] | AHD display implemented |
-| 52 | Multi-Env | [ ] | [ ] | [ ] | [ ] | Multi-env display implemented |
-| 71 | EnvFollower | [ ] | [ ] | [ ] | [ ] | |
-| 84 | AD-Env | [ ] | [ ] | [ ] | [ ] | AD display implemented |
+| 20 | ADSR | [x] | [x] | [ ] | [x] | ADSR display con Bezier curves e INV flag |
+| 23 | Mod-Env | [x] | [x] | [ ] | [x] | Modulated envelope display |
+| 46 | AHD | [x] | [x] | [ ] | [x] | AHD display implementado |
+| 52 | Multi-Env | [x] | [x] | [ ] | [x] | Multi-env display; iconos bipolar/uni-exp/uni-lin |
+| 71 | EnvFollower | [x] | [x] | [ ] | [x] | |
+| 84 | AD-Env | [x] | [x] | [ ] | [x] | AD display implementado |
 
 ## Filter (11)
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
 | 32 | FilterBank | [x] | [x] | [ ] | [x] | Min/Max action buttons centrados bajo los faders |
-| 45 | VocalFilter | [ ] | [ ] | [ ] | [ ] | |
+| 45 | VocalFilter | [x] | [x] | [ ] | [x] | Vowel display (A/E/I/O/U/Y/AA/AE/OE), formatters |
 | 49 | FilterD | [x] | [x] | [ ] | [x] | Bracket routing in→HP/BP/LP; conector in reposicionado a x=189 |
 | 50 | FilterC | [x] | [x] | [ ] | [x] | Bracket routing in→HP/BP/LP |
 | 51 | FilterE | [x] | [x] | [ ] | [x] | Filter display, reverse button order |
