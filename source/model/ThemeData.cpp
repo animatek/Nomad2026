@@ -114,7 +114,7 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
             cd.y = child->getIntAttribute("y");
             cd.width = child->getIntAttribute("width", 40);
             cd.height = child->getIntAttribute("height", 30);
-            // Parse LFODisplay sub-elements: <phase>, <shape>, <rate>, <waveform>
+            // Parse sub-elements: LFO (phase/shape/rate/waveform) + envelope (attack/decay/sustain/release/hold)
             for (auto* sub = child->getFirstChildElement(); sub != nullptr; sub = sub->getNextElement())
             {
                 auto subTag = sub->getTagName();
@@ -126,6 +126,29 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                     cd.rateComponentId  = sub->getStringAttribute("component-id");
                 else if (subTag == "waveform")
                     cd.fixedWaveform = sub->getIntAttribute("value", -1);
+                else if (subTag == "attack")
+                    cd.attackComponentId  = sub->getStringAttribute("component-id");
+                else if (subTag == "decay")
+                    cd.decayComponentId   = sub->getStringAttribute("component-id");
+                else if (subTag == "sustain")
+                    cd.sustainComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "release")
+                    cd.releaseComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "hold")
+                    cd.holdComponentId    = sub->getStringAttribute("component-id");
+                else if (subTag == "inverse")
+                    cd.inverseComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "l0") cd.levelIds[0] = sub->getStringAttribute("component-id");
+                else if (subTag == "l1") cd.levelIds[1] = sub->getStringAttribute("component-id");
+                else if (subTag == "l2") cd.levelIds[2] = sub->getStringAttribute("component-id");
+                else if (subTag == "l3") cd.levelIds[3] = sub->getStringAttribute("component-id");
+                else if (subTag == "t0") cd.timeIds[0] = sub->getStringAttribute("component-id");
+                else if (subTag == "t1") cd.timeIds[1] = sub->getStringAttribute("component-id");
+                else if (subTag == "t2") cd.timeIds[2] = sub->getStringAttribute("component-id");
+                else if (subTag == "t3") cd.timeIds[3] = sub->getStringAttribute("component-id");
+                else if (subTag == "t4") cd.timeIds[4] = sub->getStringAttribute("component-id");
+                else if (subTag == "curve")
+                    cd.curveComponentId = sub->getStringAttribute("component-id");
             }
             theme.customDisplays.push_back(cd);
         }
@@ -319,6 +342,58 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
         // PatternGen (m99): step p4 → 0=OFF, 1-128=number
         if (theme.componentId == "m99" && td.componentId == "p4")
             td.stepFormat = true;
+
+        // fmtAdsrTime: m20(ADSR), m23(Mod-Env), m46(AHD), m52(Multi-Env), m84(AD-Env)
+        {
+            static const std::map<juce::String, juce::StringArray> adsrTimeMap {
+                { "m20", { "p2", "p3", "p5" } },
+                { "m23", { "p1", "p2", "p4" } },
+                { "m46", { "p1", "p2", "p3" } },
+                { "m52", { "p5", "p6", "p7", "p8", "p9" } },
+                { "m84", { "p1", "p2" } }
+            };
+            auto it = adsrTimeMap.find(theme.componentId);
+            if (it != adsrTimeMap.end() && it->second.contains(td.componentId))
+                td.adsrTimeFormat = true;
+        }
+
+        // fmtEnvelopeAttack / fmtEnvelopeRelease: m71 (EnvFollower)
+        if (theme.componentId == "m71")
+        {
+            if (td.componentId == "p1") td.envAttackFormat  = true;
+            if (td.componentId == "p2") td.envReleaseFormat = true;
+        }
+
+        // fmtFilterHz1: 504*2^((v-64)/12) — FilterA (m86/p1), FilterB (m87/p1)
+        static const juce::StringArray filterHz1Modules { "m86", "m87" };
+        if (filterHz1Modules.contains(theme.componentId) && td.componentId == "p1")
+            td.filterHz1Format = true;
+
+        // fmtFilterHz2: 330*2^((v-60)/12) — FilterC(m50/p2), FilterD(m49/p2),
+        //                                     FilterE(m51/p5), FilterF(m92/p2)
+        if ((theme.componentId == "m50" && td.componentId == "p2") ||
+            (theme.componentId == "m49" && td.componentId == "p2") ||
+            (theme.componentId == "m51" && td.componentId == "p5") ||
+            (theme.componentId == "m92" && td.componentId == "p2"))
+            td.filterHz2Format = true;
+
+        // fmtEqHz: 471*2^((v-60)/12) — EqMid (m103/p1), EqShelving (m104/p1)
+        static const juce::StringArray eqModules { "m103", "m104" };
+        if (eqModules.contains(theme.componentId) && td.componentId == "p1")
+            td.eqHzFormat = true;
+
+        // EqGain: (v-64)*0.28125 dB — EqMid (m103/p2), EqShelving (m104/p2)
+        if (eqModules.contains(theme.componentId) && td.componentId == "p2")
+            td.eqGainFormat = true;
+
+        // EqBandwidth: v/75.0 Oct — EqMid only (m103/p3)
+        if (theme.componentId == "m103" && td.componentId == "p3")
+            td.eqBwFormat = true;
+
+        // Vowels: VocalFilter (m45) p1=left, p2=middle, p3=right
+        static const juce::StringArray vowelParams { "p1", "p2", "p3" };
+        if (theme.componentId == "m45" && vowelParams.contains(td.componentId))
+            td.vowelFormat = true;
     }
 
     theme.textDisplays.push_back(td);
