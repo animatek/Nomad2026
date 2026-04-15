@@ -40,7 +40,8 @@ struct ThemeButton
     std::vector<juce::String> imageRefs;  // image href per btn index (e.g. "wf_sine", "wf_saw")
     bool reversed = false;     // vertical radio buttons: render index 0 at bottom
     bool isCall = false;       // button triggers a call action, not a parameter change
-    juce::String callMethod;   // e.g. "rnd" (Vocoder Rnd button)
+    juce::String callMethod;   // e.g. "rnd", "shift", "invert", "min", "max"
+    int callValue = 0;         // e.g. shift amount (-2..+2) for "shift" method
 };
 
 struct ThemeLabel
@@ -128,6 +129,10 @@ struct ThemeCustomDisplay
     juce::String typeComponentId;         // <type component-id="pN">
     juce::String slopeComponentId;        // <slope component-id="pN">
     juce::String gainControlComponentId;  // <gain-control component-id="pN">
+    // Multimode-routing bracket (FilterC / FilterD)
+    int mmInX = 0, mmInY = 0;            // audio input connector centre
+    int mmOutX = 0;                       // output connector centre x (HP/BP/LP share same x)
+    int mmHpY = 0, mmBpY = 0, mmLpY = 0; // HP / BP / LP output connector centres y
 };
 
 struct ThemeStaticIcon

@@ -93,15 +93,17 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                 juce::String iconName = href.fromLastOccurrenceOf("/", false, false)
                                             .upToLastOccurrenceOf(".", false, false);
                 bool canDraw = iconName.startsWith("wf_")
-                            || (iconName.startsWith("decoration-") && !iconName.contains("."));
+                            || (iconName.startsWith("decoration-") && !iconName.contains("."))
+                            || iconName == "ds-2-7" || iconName == "ds-2-8";
                 if (canDraw)
                 {
                     ThemeStaticIcon si;
                     si.iconName = iconName;
                     si.x      = child->getIntAttribute("x");
                     si.y      = child->getIntAttribute("y");
-                    si.width  = child->getIntAttribute("width", 11);
-                    si.height = child->getIntAttribute("height", 9);
+                    int sizeAttr = child->getIntAttribute("size", 0);
+                    si.width  = child->getIntAttribute("width",  sizeAttr > 0 ? sizeAttr : 11);
+                    si.height = child->getIntAttribute("height", sizeAttr > 0 ? sizeAttr : 9);
                     theme.staticIcons.push_back(si);
                 }
             }
@@ -168,6 +170,18 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                     cd.slopeComponentId = sub->getStringAttribute("component-id");
                 else if (subTag == "gain-control")
                     cd.gainControlComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "in-pos")
+                {
+                    cd.mmInX = sub->getIntAttribute("x");
+                    cd.mmInY = sub->getIntAttribute("y");
+                }
+                else if (subTag == "out-pos")
+                {
+                    cd.mmOutX = sub->getIntAttribute("x");
+                    cd.mmHpY  = sub->getIntAttribute("hp");
+                    cd.mmBpY  = sub->getIntAttribute("bp");
+                    cd.mmLpY  = sub->getIntAttribute("lp");
+                }
                 else if (subTag.startsWith("band") && subTag.length() <= 6)
                 {
                     int idx = subTag.substring(4).getIntValue();
@@ -277,8 +291,9 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
     // Detect <call component="..." method="rnd"> (Vocoder Rnd button)
     if (auto* call = elem.getChildByName("call"))
     {
-        tb.isCall    = true;
+        tb.isCall     = true;
         tb.callMethod = call->getStringAttribute("method");
+        tb.callValue  = call->getIntAttribute("value", 0);
     }
 
     theme.buttons.push_back(tb);

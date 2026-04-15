@@ -1126,6 +1126,47 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         p.lineTo(x1, y0);
         g.strokePath(p, juce::PathStrokeType(1.0f));
     }
+    else if (iconName == "ds-2-8")
+    {
+        // 6dB low-pass filter curve: flat passband, then rolls off
+        // Matches FilterA (6dB LPF): flat left, gentle curve down to right
+        p.startNewSubPath(x0, my - ph * 0.45f);
+        p.lineTo(x0 + pw * 0.40f, my - ph * 0.45f);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float fval = -ph * 0.45f + ph * 0.9f * (1.0f - std::exp(-3.5f * t));
+            p.lineTo(x0 + pw * (0.40f + 0.60f * t), my + fval);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "ds-2-7")
+    {
+        // 6dB high-pass filter curve: rolls off at low freqs, flat passband
+        // Matches FilterB (6dB HPF): curve up from bottom-left, flat on right
+        p.startNewSubPath(x0, my + ph * 0.45f);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float fval = ph * 0.45f - ph * 0.9f * (1.0f - std::exp(-3.5f * t));
+            p.lineTo(x0 + pw * (0.60f * t), my + fval);
+        }
+        p.lineTo(x1, my - ph * 0.45f);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "vocoder_emp")
+    {
+        // High-freq emphasis filter curve: flat at low end, rises at high freqs (shelving boost)
+        p.startNewSubPath(x0, my + ph * 0.15f);
+        p.lineTo(x0 + pw * 0.45f, my + ph * 0.15f);
+        for (int i = 1; i <= 16; ++i)
+        {
+            float t  = static_cast<float>(i) / 16.0f;
+            float yv = ph * 0.15f - ph * 0.6f * (1.0f - std::exp(-4.0f * t));
+            p.lineTo(x0 + pw * (0.45f + 0.55f * t), my + yv);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
     else
     {
         g.drawEllipse(ix + iw * 0.1f, iy + ih * 0.1f, iw * 0.8f, ih * 0.8f, 1.0f);
@@ -1719,8 +1760,9 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
 {
     for (auto& si : theme.staticIcons)
     {
-        // Decoration icons (decoration-N): drawn at exact XML position/size, no box, no scale
-        if (si.iconName.startsWith("decoration-"))
+        // Decoration and filter-curve icons: drawn at exact XML position/size, no box, no scale
+        if (si.iconName.startsWith("decoration-")
+            || si.iconName == "ds-2-7" || si.iconName == "ds-2-8")
         {
             float ix = static_cast<float>(bounds.getX() + si.x);
             float iy = static_cast<float>(bounds.getY() + si.y);
@@ -1904,15 +1946,23 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         float dw = static_cast<float>(cd.width);
         float dh = static_cast<float>(cd.height);
 
-        // Dark background
-        g.setColour(activeScheme_.displayBgCustom);
-        g.fillRect(dx, dy, dw, dh);
-
-        // Subtle border
-        g.setColour(activeScheme_.displayBorderCustom);
-        g.drawRect(dx, dy, dw, dh, 0.5f);
-
         auto type = cd.type;
+
+        // Routing brackets are transparent overlays — no background box
+        if (type == "multimode-routing")
+        {
+            // handled below
+        }
+        else
+        {
+            // Dark background
+            g.setColour(activeScheme_.displayBgCustom);
+            g.fillRect(dx, dy, dw, dh);
+
+            // Subtle border
+            g.setColour(activeScheme_.displayBorderCustom);
+            g.drawRect(dx, dy, dw, dh, 0.5f);
+        }
 
         // --- Multi-Env display ---
         if (type == "multi-env-display")
@@ -2769,6 +2819,38 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             continue;
         }
 
+        // --- Multimode routing bracket (FilterC / FilterD) ---
+        if (type == "multimode-routing")
+        {
+            float bx0 = static_cast<float>(bounds.getX());
+            float by0 = static_cast<float>(bounds.getY());
+
+            float inX  = bx0 + static_cast<float>(cd.mmInX);
+            float outX = bx0 + static_cast<float>(cd.mmOutX);
+            float hpY  = by0 + static_cast<float>(cd.mmHpY);
+            float bpY  = by0 + static_cast<float>(cd.mmBpY);
+            float lpY  = by0 + static_cast<float>(cd.mmLpY);
+
+            // Vertical bar: fixed distance from outputs, placed before the HP/BP/LP labels
+            float barX   = outX - 28.0f;  // bar well to the left of the labels (~x=209)
+            float lineEnd = outX - 18.0f; // lines stop just before the label text (~x=219)
+
+            g.setColour(juce::Colour(0xff888888)); // grey
+
+            // Horizontal line from in connector to bar, at BP level (centre of bracket)
+            g.drawLine(inX + 7.0f, bpY, barX, bpY, 1.0f);
+
+            // Vertical bar connecting HP to LP
+            g.drawLine(barX, hpY, barX, lpY, 1.0f);
+
+            // Short horizontal lines from bar to just before the labels
+            g.drawLine(barX, hpY, lineEnd, hpY, 1.0f);
+            g.drawLine(barX, bpY, lineEnd, bpY, 1.0f);
+            g.drawLine(barX, lpY, lineEnd, lpY, 1.0f);
+
+            continue;
+        }
+
         // --- Fallback: label with type name ---
         auto label = cd.type;
         label = label.replace("-display", "").replace("-envelope", " env")
@@ -3201,6 +3283,37 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                                 auto* pd = p.getDescriptor();
                                 if (pd->maxValue - pd->minValue <= 1) continue; // skip binary params (bypass etc)
                                 int newVal = doMax ? pd->maxValue : pd->minValue;
+                                p.setValue(newVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);
+                            }
+                            repaint();
+                        }
+                        else if (tb.callMethod == "shift")
+                        {
+                            int shiftAmt = tb.callValue;
+                            for (auto& p : m.getParameters())
+                            {
+                                auto* pd = p.getDescriptor();
+                                if (!pd->name.startsWith("band ")) continue;
+                                int newVal;
+                                if (shiftAmt == 0)
+                                    newVal = pd->index + 1; // reset to identity (band[i] = i+1)
+                                else
+                                    newVal = juce::jlimit(0, pd->maxValue, p.getValue() + shiftAmt);
+                                p.setValue(newVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);
+                            }
+                            repaint();
+                        }
+                        else if (tb.callMethod == "invert")
+                        {
+                            for (auto& p : m.getParameters())
+                            {
+                                auto* pd = p.getDescriptor();
+                                if (!pd->name.startsWith("band ")) continue;
+                                int newVal = (p.getValue() > 0) ? (pd->maxValue + 1 - p.getValue()) : 0;
                                 p.setValue(newVal);
                                 if (parameterChangeCallback)
                                     parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);

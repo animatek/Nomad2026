@@ -165,7 +165,7 @@ label{fill:#000;}
 		<knob x="160" y="5" size="21">
 			<parameter component-id="p1" alt="frequency" />
 		</knob>
-		<image x="219" y="9" size="16" xlink:href="./images/slice/ds-2-8.png" />
+		<image x="219" y="9" width="16" height="16" xlink:href="./images/slice/ds-2-8.png" />
 		<label x="217" y="0">6dB</label>
 		<textDisplay x="107" y="7" width="40" height="16">
 			<parameter component-id="p1" alt="frequency" />
@@ -248,12 +248,12 @@ label{fill:#000;}
 			<btn index="1">B</btn>
 			<btn index="0">B</btn>
 		</button>
-		<button x="6" y="82" width="24" height="12" cyclic="true" landscape="true">
+		<button x="101" y="82" width="24" height="12" cyclic="true" landscape="true">
 			<call method="min" />
 			<btn index="0">Min</btn>
 			<btn index="1">Min</btn>
 		</button>
-		<button x="32" y="82" width="24" height="12" cyclic="true" landscape="true">
+		<button x="129" y="82" width="24" height="12" cyclic="true" landscape="true">
 			<call method="max" />
 			<btn index="0">Max</btn>
 			<btn index="1">Max</btn>
@@ -1617,8 +1617,8 @@ label{fill:#000;}
 		</connector>
 		<button x="2" y="44" width="20" height="12" cyclic="true" landscape="false">
 			<parameter component-id="p18" alt="high freq emphasis" />
-			<btn index="0">Emp</btn>
-			<btn index="1">Emp</btn>
+			<btn index="0"><image xlink:href="./images/slice/vocoder_emp.png" /></btn>
+			<btn index="1"><image xlink:href="./images/slice/vocoder_emp.png" /></btn>
 		</button>
 		<button x="2" y="60" width="20" height="12" cyclic="true" landscape="false">
 			<parameter component-id="p19" alt="monitor" />
@@ -1723,7 +1723,37 @@ label{fill:#000;}
 		 	<btn index="0"><image xlink:href="url(#btn-up-arrow)" /></btn>
 		 	<btn index="1"><image xlink:href="url(#btn-down-arrow)" /></btn>
 		</button>
-		<button x="173" y="103" width="16" height="10" cyclic="true" landscape="true">
+		<button x="27" y="103" width="18" height="10" cyclic="true" landscape="true">
+			<call method="shift" value="-2" />
+			<btn index="0">-2</btn>
+			<btn index="1">-2</btn>
+		</button>
+		<button x="48" y="103" width="18" height="10" cyclic="true" landscape="true">
+			<call method="shift" value="-1" />
+			<btn index="0">-1</btn>
+			<btn index="1">-1</btn>
+		</button>
+		<button x="69" y="103" width="18" height="10" cyclic="true" landscape="true">
+			<call method="shift" value="0" />
+			<btn index="0">0</btn>
+			<btn index="1">0</btn>
+		</button>
+		<button x="90" y="103" width="18" height="10" cyclic="true" landscape="true">
+			<call method="shift" value="1" />
+			<btn index="0">+1</btn>
+			<btn index="1">+1</btn>
+		</button>
+		<button x="111" y="103" width="18" height="10" cyclic="true" landscape="true">
+			<call method="shift" value="2" />
+			<btn index="0">+2</btn>
+			<btn index="1">+2</btn>
+		</button>
+		<button x="132" y="103" width="20" height="10" cyclic="true" landscape="true">
+			<call method="invert" />
+			<btn index="0">INV</btn>
+			<btn index="1">INV</btn>
+		</button>
+		<button x="157" y="103" width="16" height="10" cyclic="true" landscape="true">
 			<call component="vocoderDisp" method="rnd" />
 			<btn index="0">Rnd</btn>
 			<btn index="1">Rnd</btn>
@@ -3695,11 +3725,10 @@ label{fill:#000;}
 	</module>
 	<module component-id="m49" width="255" height="75">
 		<name>FilterD</name>
-		<image x="4" y="16" width="130" height="52" xlink:href="url(#groupbox)" />
 		<connector x="21" y="50" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="freq mod" />
 		</connector>
-		<connector x="200" y="39" size="13" class="cAUDIO">
+		<connector x="189" y="39" size="13" class="cAUDIO">
 			<connector component-id="c2" alt="in" />
 		</connector>
 		<connector x="236" y="24" size="13" class="cAUDIO">
@@ -3739,6 +3768,10 @@ label{fill:#000;}
 		<resetButton x="109" y="27" width="9" height="6">
 			<parameter component-id="p3" alt="kbt" />
 		</resetButton>
+		<multimode-routing x="189" y="16" width="54" height="48">
+			<in-pos x="189" y="46" />
+			<out-pos x="236" hp="30" bp="46" lp="62" />
+		</multimode-routing>
 	</module>
 	<module component-id="m22" width="255" height="30">
 		<name>PartialGen</name>
@@ -4342,7 +4375,6 @@ label{fill:#000;}
 	</module>
 	<module component-id="m50" width="255" height="60">
 		<name>FilterC</name>
-		<image x="6" y="15" width="80" height="40" xlink:href="url(#groupbox)" />
 		<connector x="189" y="28" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="in" />
 		</connector>
@@ -4378,6 +4410,10 @@ label{fill:#000;}
 		<textDisplay x="100" y="23" width="25" height="16">
 			<parameter component-id="p3" alt="resonance" />
 		</textDisplay>
+		<multimode-routing x="189" y="8" width="55" height="50">
+			<in-pos x="189" y="34" />
+			<out-pos x="237" hp="19" bp="34" lp="49" />
+		</multimode-routing>
 	</module>
 	<module component-id="m91" width="255" height="105">
 		<name>CtrlSeq</name>

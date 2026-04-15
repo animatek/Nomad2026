@@ -203,8 +203,10 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - **FilterE/F displays**: angle-based Bezier LP/BP/HP/BR curves with slope (12/24 dB) and gain-control support
   - **EqMid display**: EXP/LOG Bezier bell curve, live bandwidth and gain tracking
   - **EqShelving display**: Lo-shelf and Hi-shelf modes (mirrored), live gain tracking
-  - **Vocoder**: routing-line display (band→output mapping), 16 increment buttons with value readout, Rnd randomize action button
-  - **FilterBank**: Min/Max action buttons (set all 14 bands to min or max), fixed groupbox width overflow
+  - **Vocoder**: routing-line display (band→output mapping), 16 increment buttons with value readout, Rnd randomize action button, shift buttons **-2/-1/0/+1/+2/INV** (shift all band routes or invert), Emp button shows hi-freq emphasis curve
+  - **FilterBank**: Min/Max action buttons centered below faders (set all 14 bands to min or max)
+  - **FilterA/B**: 6 dB LP/HP filter curve icons drawn in code (ds-2-8 / ds-2-7)
+  - **FilterC/D**: multimode routing bracket — gray lines connecting audio `in` to HP/BP/LP outputs; transparent overlay (no background box)
   - **FilterE button order**: `reverse="true"` attribute on vertical radio buttons (BR top → LP bottom, matching hardware values)
   - **Bug fix**: morph-parameter pollution in display lookups — switched to component-ID-based `findParameter()` instead of name matching
 - [x] **Dark Theme System**: `ColorScheme` struct (50 fields), runtime-switchable via View → Theme menu

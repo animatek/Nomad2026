@@ -86,17 +86,17 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 32 | FilterBank | [ ] | [ ] | [ ] | [ ] | 14-band, complex UI |
+| 32 | FilterBank | [x] | [x] | [ ] | [x] | Min/Max action buttons centrados bajo los faders |
 | 45 | VocalFilter | [ ] | [ ] | [ ] | [ ] | |
-| 49 | FilterD | [ ] | [ ] | [ ] | [ ] | Dynamic multimode, custom param |
-| 50 | FilterC | [ ] | [ ] | [ ] | [ ] | Static multimode, custom param |
-| 51 | FilterE | [ ] | [ ] | [ ] | [ ] | Filter display implemented, custom param |
-| 86 | FilterA | [ ] | [ ] | [ ] | [ ] | 6dB LP |
-| 87 | FilterB | [ ] | [ ] | [ ] | [ ] | 6dB HP |
-| 92 | FilterF | [ ] | [ ] | [ ] | [ ] | Filter display implemented, custom param |
-| 103 | EqMid | [ ] | [ ] | [ ] | [ ] | EQ display implemented |
-| 104 | EqShelving | [ ] | [ ] | [ ] | [ ] | EQ display implemented |
-| 108 | Vocoder | [ ] | [ ] | [ ] | [ ] | 16-band, needs vocoder display? |
+| 49 | FilterD | [x] | [x] | [ ] | [x] | Bracket routing in→HP/BP/LP; conector in reposicionado a x=189 |
+| 50 | FilterC | [x] | [x] | [ ] | [x] | Bracket routing in→HP/BP/LP |
+| 51 | FilterE | [x] | [x] | [ ] | [x] | Filter display, reverse button order |
+| 86 | FilterA | [x] | [x] | [ ] | [x] | Curva LP 6dB (ds-2-8) dibujada en código |
+| 87 | FilterB | [x] | [x] | [ ] | [x] | Curva HP 6dB (ds-2-7) dibujada en código |
+| 92 | FilterF | [x] | [x] | [ ] | [x] | Filter display implemented |
+| 103 | EqMid | [x] | [x] | [ ] | [x] | EQ display implemented |
+| 104 | EqShelving | [x] | [x] | [ ] | [x] | EQ display implemented |
+| 108 | Vocoder | [x] | [x] | [ ] | [x] | Display routing, botones shift -2/-1/0/+1/+2/INV, Emp con curva |
 
 ## Mixer (13)
 
@@ -208,7 +208,6 @@ For each module, check:
 - [x] Phaser display
 
 ### Custom Displays Missing
-- [ ] Vocoder 16-band display
 - [ ] Spectral Oscillator display
 - [ ] Formant Oscillator display
 - [ ] Step sequencer position indicators
