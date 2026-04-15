@@ -3265,13 +3265,11 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             for (auto& p : m.getParameters())
                             {
                                 auto* pd = p.getDescriptor();
-                                if (pd->name.startsWith("band "))
-                                {
-                                    int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue + 1);
-                                    p.setValue(rndVal);
-                                    if (parameterChangeCallback)
-                                        parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, rndVal);
-                                }
+                                if (pd->maxValue - pd->minValue <= 1) continue; // skip binary params (bypass etc)
+                                int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue - pd->minValue + 1) + pd->minValue;
+                                p.setValue(rndVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, rndVal);
                             }
                             repaint();
                         }

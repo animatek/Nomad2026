@@ -258,20 +258,25 @@ label{fill:#000;}
 			<btn index="0">Max</btn>
 			<btn index="1">Max</btn>
 		</button>
-		<label x="9"  y="14">50</label>
-		<label x="26" y="14">75</label>
-		<label x="40" y="14">110</label>
-		<label x="58" y="14">170</label>
-		<label x="75" y="14">250</label>
-		<label x="93" y="14">380</label>
-		<label x="109" y="14">570</label>
-		<label x="127" y="14">850</label>
-		<label x="144" y="14">1.3</label>
-		<label x="162" y="14">1.9</label>
-		<label x="178" y="14">2.9</label>
-		<label x="196" y="14">4.2</label>
-		<label x="212" y="14">6.4</label>
-		<label x="230" y="14">8.3</label>
+		<button x="157" y="82" width="24" height="12" cyclic="true" landscape="true">
+			<call method="rnd" />
+			<btn index="0">Rnd</btn>
+			<btn index="1">Rnd</btn>
+		</button>
+		<label x="12" y="14">50</label>
+		<label x="28" y="14">75</label>
+		<label x="44" y="14">110</label>
+		<label x="61" y="14">170</label>
+		<label x="78" y="14">250</label>
+		<label x="94" y="14">380</label>
+		<label x="111" y="14">570</label>
+		<label x="128" y="14">850</label>
+		<label x="146" y="14">1.3</label>
+		<label x="163" y="14">1.9</label>
+		<label x="180" y="14">2.9</label>
+		<label x="197" y="14">4.2</label>
+		<label x="214" y="14">6.4</label>
+		<label x="231" y="14">8.3</label>
 		<slider x="11" y="28" width="12" height="50" orientation="vertical">
 			<parameter component-id="p1" alt="50" />
 		</slider>
