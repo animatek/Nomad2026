@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Nomad2026 VERSION 0.1.0 LANGUAGES C CXX)
+project(Nomad2026 VERSION 0.5.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,6 +23,9 @@ set(NOMAD_SHARED_SOURCES
     source/model/PatchSerializer.cpp
     source/model/PchFileIO.cpp
     source/model/ThemeData.cpp
+
+    # Value Formatters (ported from nmformat.js)
+    source/format/ValueFormatters.cpp
 
     # UI
     source/ui/MainLayout.cpp
@@ -73,7 +76,7 @@ set(NOMAD_SHARED_SOURCES
 juce_add_gui_app(Nomad2026
     PRODUCT_NAME "Nomad2026"
     COMPANY_NAME "Nomad2026"
-    VERSION "0.1.0"
+    VERSION "0.5.0"
 )
 
 target_sources(Nomad2026 PRIVATE
@@ -93,7 +96,7 @@ if(NOMAD_BUILD_PLUGIN)
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT TRUE
         EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-        VERSION "0.1.0"
+        VERSION "0.5.0"
     )
 
     target_sources(Nomad2026Plugin PRIVATE
@@ -129,7 +132,7 @@ foreach(target ${NOMAD_TARGETS})
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_APPLICATION_NAME_STRING="Nomad2026"
-        JUCE_APPLICATION_VERSION_STRING="0.1.0"
+        JUCE_APPLICATION_VERSION_STRING="0.5.0"
         JUCE_VST3_CAN_REPLACE_VST2=0
     )
 

@@ -1,5 +1,6 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
+#include "../format/ValueFormatters.h"
 #include <cmath>
 #include <set>
 
@@ -1094,6 +1095,141 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         // Right exit line to reach the right connector circle
         g.drawLine(bx + bw, midY, ix + iw + iw * 0.3f, midY, 1.0f);
     }
+    else if (iconName == "decoration-7")
+    {
+        // Fade curves: two parentheses "( )" — audio fade/routing pair
+        float midY = iy + ih * 0.5f;
+        juce::Path left, right;
+        float r  = ih * 0.45f;
+        float lx = ix + iw * 0.25f;
+        float rx = ix + iw * 0.75f;
+        left.startNewSubPath (lx + r * 0.4f, midY - r);
+        left.quadraticTo     (lx - r * 0.5f, midY,  lx + r * 0.4f, midY + r);
+        right.startNewSubPath(rx - r * 0.4f, midY - r);
+        right.quadraticTo    (rx + r * 0.5f, midY,  rx - r * 0.4f, midY + r);
+        g.strokePath(left,  juce::PathStrokeType(1.0f));
+        g.strokePath(right, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "decoration-8")
+    {
+        // 1to2Fade: long input line → small triangle → short split
+        float midY = iy + ih * 0.5f;
+        float triX = ix + iw * 0.72f;
+        float triH = ih * 0.55f;
+        g.drawLine(ix, midY, triX, midY, 1.0f);
+        juce::Path tri;
+        tri.startNewSubPath(triX, midY - triH * 0.5f);
+        tri.lineTo(triX, midY + triH * 0.5f);
+        tri.lineTo(triX + iw * 0.12f, midY);
+        tri.closeSubPath();
+        g.strokePath(tri, juce::PathStrokeType(1.0f));
+        g.drawLine(triX + iw * 0.12f, midY, ix + iw, midY, 1.0f);
+    }
+    else if (iconName == "decoration-9")
+    {
+        // 2to1Fade: short input → small triangle → long output line
+        float midY = iy + ih * 0.5f;
+        float triX = ix + iw * 0.18f;
+        float triH = ih * 0.55f;
+        g.drawLine(ix, midY, triX, midY, 1.0f);
+        juce::Path tri;
+        tri.startNewSubPath(triX, midY - triH * 0.5f);
+        tri.lineTo(triX, midY + triH * 0.5f);
+        tri.lineTo(triX + iw * 0.10f, midY);
+        tri.closeSubPath();
+        g.strokePath(tri, juce::PathStrokeType(1.0f));
+        g.drawLine(triX + iw * 0.10f, midY, ix + iw, midY, 1.0f);
+    }
+    else if (iconName == "decoration-11")
+    {
+        // LevAdd: line → sum circle (⊕) → line
+        float midY = iy + ih * 0.5f;
+        float r    = juce::jmin(ih * 0.40f, iw * 0.10f);
+        float cx   = ix + iw * 0.60f;
+        g.drawLine(ix, midY, cx - r, midY, 1.0f);
+        g.drawEllipse(cx - r, midY - r, r * 2.0f, r * 2.0f, 1.0f);
+        // plus sign inside
+        g.drawLine(cx - r * 0.55f, midY, cx + r * 0.55f, midY, 1.0f);
+        g.drawLine(cx, midY - r * 0.55f, cx, midY + r * 0.55f, 1.0f);
+        g.drawLine(cx + r, midY, ix + iw, midY, 1.0f);
+    }
+    else if (iconName == "decoration-12")
+    {
+        // LevMult / Amplifier: line → VCA triangle ▷ → short exit
+        float midY = iy + ih * 0.5f;
+        float triL = ix + iw * 0.60f;
+        float triR = ix + iw * 0.82f;
+        float triH = ih * 0.70f;
+        g.drawLine(ix, midY, triL, midY, 1.0f);
+        juce::Path tri;
+        tri.startNewSubPath(triL, midY - triH * 0.5f);
+        tri.lineTo(triL, midY + triH * 0.5f);
+        tri.lineTo(triR, midY);
+        tri.closeSubPath();
+        g.strokePath(tri, juce::PathStrokeType(1.0f));
+        g.drawLine(triR, midY, ix + iw, midY, 1.0f);
+    }
+    else if (iconName == "decoration-13")
+    {
+        // X-Fade: horizontal line with vertical crossbar at end
+        float midY = iy + ih * 0.5f;
+        g.drawLine(ix, midY, ix + iw * 0.80f, midY, 1.0f);
+        g.drawLine(ix + iw * 0.80f, iy + ih * 0.15f,
+                   ix + iw * 0.80f, iy + ih * 0.85f, 1.0f);
+    }
+    else if (iconName == "decoration-14")
+    {
+        // OnOff: horizontal line that steps down, break, then step up again
+        float midY = iy + ih * 0.5f;
+        float dipY = iy + ih * 0.85f;
+        float x1v = ix + iw * 0.72f;
+        float x2v = ix + iw * 0.82f;
+        g.drawLine(ix, midY, x1v, midY, 1.0f);
+        g.drawLine(x1v, midY, x1v, dipY, 1.0f);
+        g.drawLine(x2v, midY, ix + iw, midY, 1.0f);
+    }
+    else if (iconName == "decoration-17")
+    {
+        // Pan curve bump (small arch)
+        juce::Path arch;
+        float y1v = iy + ih * 0.85f;
+        arch.startNewSubPath(ix + iw * 0.1f, y1v);
+        arch.quadraticTo(ix + iw * 0.5f, iy + ih * 0.05f,
+                         ix + iw * 0.9f, y1v);
+        g.strokePath(arch, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "decoration-18")
+    {
+        // Pan: horizontal line with vertical bars at both ends (stereo routing)
+        float midY = iy + ih * 0.5f;
+        float x0v = ix + iw * 0.15f;
+        float x1v = ix + iw * 0.85f;
+        g.drawLine(x0v, midY, x1v, midY, 1.0f);
+        g.drawLine(x0v, iy + ih * 0.15f, x0v, iy + ih * 0.85f, 1.0f);
+        g.drawLine(x1v, iy + ih * 0.15f, x1v, iy + ih * 0.85f, 1.0f);
+    }
+    else if (iconName == "decoration-2")
+    {
+        // GainControl: long input → small step box → line → VCA triangle
+        float midY = iy + ih * 0.5f;
+        float bx = ix + iw * 0.30f;
+        float by = iy + ih * 0.30f;
+        float bw = iw * 0.10f;
+        float bh = ih * 0.40f;
+        g.drawLine(ix, midY, bx, midY, 1.0f);
+        g.drawRect(bx, by, bw, bh, 1.0f);
+        float triL = ix + iw * 0.70f;
+        float triR = ix + iw * 0.90f;
+        float triH = ih * 0.70f;
+        g.drawLine(bx + bw, midY, triL, midY, 1.0f);
+        juce::Path tri;
+        tri.startNewSubPath(triL, midY - triH * 0.5f);
+        tri.lineTo(triL, midY + triH * 0.5f);
+        tri.lineTo(triR, midY);
+        tri.closeSubPath();
+        g.strokePath(tri, juce::PathStrokeType(1.0f));
+        g.drawLine(triR, midY, ix + iw, midY, 1.0f);
+    }
     else if (iconName == "env_multi_bipolar")
     {
         // Bipolar envelope: ramp up above midline, ramp down below, return to mid
@@ -1476,225 +1612,13 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             int val = param->getValue();
             juce::String displayStr;
 
-            if (td.noteFormat)
-            {
-                // Clavia convention: MIDI 0=C0, MIDI 60=C5, MIDI 127=G10
-                static const char* noteNames[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B" };
-                int octave = val / 12;
-                displayStr = juce::String(noteNames[val % 12]) + juce::String(octave);
-            }
-            else if (td.partialFormat)
-            {
-                // Slave oscillator partial ratio (nmformat.js fmtPartials)
-                // Values at multiples of 12 offset by 4: 4,16,28,40,52,64,76,88,100,112,124
-                static const char* partialFractions[] =
-                    { "1:32","1:16","1:8","1:4","1:2","1:1","2:1","4:1","8:1","16:1","32:1" };
-                if ((val + 8) % 12 == 0)
-                {
-                    int idx = val / 12;
-                    if (idx >= 0 && idx <= 10)
-                        displayStr = partialFractions[idx];
-                    else
-                        displayStr = juce::String(val);
-                }
-                else
-                {
-                    double ratio = std::pow(2.0, (val - 64.0) / 12.0);
-                    displayStr = "x" + juce::String(ratio, 3);
-                }
-            }
-            else if (td.drumHzFormat)
-            {
-                // fmtDrumHz: 20 * 2^(val/24) Hz
-                double hz = 20.0 * std::pow(2.0, val / 24.0);
-                if (hz < 100.0)
-                    displayStr = juce::String(hz, 1) + " Hz";
-                else
-                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
-            }
-            else if (td.drumPartialFormat)
-            {
-                // fmtDrumPartials: val%48==0 → "1:1","2:1","4:1"; else "x0.00"
-                static const char* drumFractions[] = { "1:1", "2:1", "4:1" };
-                if (val % 48 == 0)
-                {
-                    int idx = val / 48;
-                    if (idx >= 0 && idx <= 2)
-                        displayStr = drumFractions[idx];
-                    else
-                        displayStr = juce::String(val);
-                }
-                else
-                {
-                    double ratio = std::pow(2.0, val / 48.0);
-                    displayStr = "x" + juce::String(ratio, 2);
-                }
-            }
-            else if (td.oscHzFormat)
-            {
-                // fmtOscHz: 440 * 2^((val-69)/12) Hz — standard MIDI pitch to Hz
-                double hz = 440.0 * std::pow(2.0, (val - 69) / 12.0);
-                if (hz < 10.0)
-                    displayStr = juce::String(hz, 2) + " Hz";
-                else if (hz < 100.0)
-                    displayStr = juce::String(hz, 1) + " Hz";
-                else if (hz < 1000.0)
-                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
-                else
-                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
-            }
-            else if (td.lfoHzFormat)
-            {
-                // fmtLFOHz: 440 * 2^((val-177)/12) — shows "s" when period > 10s
-                double hz = 440.0 * std::pow(2.0, (val - 177) / 12.0);
-                if (hz < 0.1)
-                {
-                    double secs = 1.0 / hz;
-                    if (secs >= 100.0)
-                        displayStr = juce::String(juce::roundToInt(secs)) + " s";
-                    else
-                        displayStr = juce::String(secs, 1) + " s";
-                }
-                else if (hz < 10.0)
-                    displayStr = juce::String(hz, 2) + " Hz";
-                else if (hz < 100.0)
-                    displayStr = juce::String(hz, 1) + " Hz";
-                else
-                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
-            }
-            else if (td.phaseFormat)
-            {
-                // fmtPhase: val * 2.8125 - 180, shows degrees (-180 to 177)
-                int degrees = juce::roundToInt(val * 2.8125 - 180.0);
-                displayStr = juce::String(degrees);
-            }
-            else if (td.bpmFormat)
-            {
-                // fmtBPM: piecewise linear, val=64 → 120 bpm
-                int bpm = val;
-                if (val <= 32)       bpm = 2 * val + 24;
-                else if (val <= 96)  bpm = val + 56;
-                else                 bpm = 2 * val - 40;
-                displayStr = juce::String(bpm) + " bpm";
-            }
-            else if (td.stepFormat)
-            {
-                displayStr = (val == 0) ? "OFF" : juce::String(val);
-            }
-            else if (td.adsrTimeFormat)
-            {
-                static const char* tbl[] = {
-                    "0.5m","0.7m","1.0m","1.3m","1.5m","1.8m","2.1m","2.3m","2.6m","2.9m","3.2m","3.5m",
-                    "3.9m","4.2m","4.6m","4.9m","5.3m","5.7m","6.1m","6.6m","7.0m","7.5m","8.0m","8.5m",
-                    "9.1m","9.7m","10m","11m","12m","13m","13m","14m","15m","16m","17m","19m","20m",
-                    "21m","23m","24m","26m","28m","30m","32m","35m","37m","40m","43m","47m","51m",
-                    "55m","59m","64m","69m","75m","81m","88m","95m","103m","112m","122m","132m","143m",
-                    "156m","170m","185m","201m","219m","238m","260m","283m","308m","336m","367m","400m",
-                    "436m","476m","520m","567m","619m","676m","738m","806m","881m","962m","1.1s","1.1s",
-                    "1.3s","1.4s","1.5s","1.6s","1.8s","2.0s","2.1s","2.3s","2.6s","2.8s","3.1s","3.3s",
-                    "3.7s","4.0s","4.4s","4.8s","5.2s","5.7s","6.3s","6.8s","7.5s","8.2s","9.0s","9.8s",
-                    "10.7s","11.7s","12.8s","14.0s","15.3s","16.8s","18.3s","20.1s","21.9s","24.0s","26.3s",
-                    "28.7s","31.4s","34.4s","37.6s","41.1s","45.0s"
-                };
-                int idx = juce::jlimit(0, 127, val);
-                displayStr = tbl[idx];
-            }
-            else if (td.envAttackFormat)
-            {
-                static const char* tbl[] = {
-                    "Fast","0.53m","0.56m","0.59m","0.63m","0.67m","0.71m","0.75m","0.79m","0.84m","0.89m",
-                    "0.94m","1.00m","1.06m","1.12m","1.19m","1.26m","1.33m","1.41m","1.50m","1.59m","1.68m",
-                    "1.78m","1.89m","2.00m","2.12m","2.24m","2.38m","2.52m","2.67m","2.83m","3.00m","3.17m",
-                    "3.36m","3.56m","3.78m","4.00m","4.24m","4.49m","4.76m","5.04m","5.34m","5.66m","5.99m",
-                    "6.35m","6.73m","7.13m","7.55m","8.00m","8.48m","8.98m","9.51m","10.1m","10.7m","11.3m",
-                    "12.0m","12.7m","13.5m","14.3m","15.1m","16.0m","17.0m","18.0m","19.0m","20.2m","21.4m",
-                    "22.6m","24.0m","25.4m","26.9m","28.5m","30.2m","32.0m","33.9m","35.9m","38.1m","40.3m",
-                    "42.7m","45.3m","47.9m","50.8m","53.8m","57.0m","60.4m","64.0m","67.8m","71.8m","76.1m",
-                    "80.6m","85.4m","90.5m","95.9m","102m","108m","114m","121m","128m","136m","144m","152m",
-                    "161m","171m","181m","192m","203m","215m","228m","242m","256m","271m","287m","304m",
-                    "323m","342m","362m","384m","406m","431m","456m","483m","512m","542m","575m","609m",
-                    "645m","683m","724m","767m"
-                };
-                int idx = juce::jlimit(0, 127, val);
-                displayStr = tbl[idx];
-            }
-            else if (td.envReleaseFormat)
-            {
-                static const char* tbl[] = {
-                    "Fast","41.4m","42.9m","44.4m","45.9m","47.6m","49.2m","51.0m","52.8m","54.6m","56.6m",
-                    "58.6m","60.6m","62.8m","65.0m","67.3m","69.6m","72.1m","74.6m","77.3m","80.0m","82.8m",
-                    "85.7m","88.8m","91.9m","95.1m","98.5m","102m","106m","109m","113m","117m","121m",
-                    "126m","130m","135m","139m","144m","149m","155m","160m","166m","171m","178m","184m",
-                    "190m","197m","204m","211m","219m","226m","234m","243m","251m","260m","269m","279m",
-                    "288m","299m","309m","320m","331m","343m","355m","368m","381m","394m","408m","422m",
-                    "437m","453m","469m","485m","502m","520m","538m","557m","577m","597m","618m","640m",
-                    "663m","686m","710m","735m","761m","788m","816m","844m","874m","905m","937m","970m",
-                    "1.00s","1.04s","1.08s","1.11s","1.15s","1.19s","1.24s","1.28s","1.33s","1.37s","1.42s",
-                    "1.47s","1.52s","1.58s","1.63s","1.69s","1.75s","1.81s","1.87s","1.94s","2.01s","2.08s",
-                    "2.15s","2.23s","2.31s","2.39s","2.47s","2.56s","2.65s","2.74s","2.84s","2.94s","3.04s",
-                    "3.15s","3.26s"
-                };
-                int idx = juce::jlimit(0, 127, val);
-                displayStr = tbl[idx];
-            }
-            else if (td.filterHz1Format)
-            {
-                // fmtFilterHz1: 504 * 2^((val-64)/12) — FilterA (6dB LP), FilterB (6dB HP)
-                double hz = 504.0 * std::pow(2.0, (val - 64) / 12.0);
-                if (hz < 1000.0)
-                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
-                else if (hz < 10000.0)
-                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
-                else
-                    displayStr = juce::String(hz / 1000.0, 1) + " kHz";
-            }
-            else if (td.filterHz2Format)
-            {
-                // fmtFilterHz2: 330 * 2^((val-60)/12) — FilterC/D/E/F
-                double hz = 330.0 * std::pow(2.0, (val - 60) / 12.0);
-                if (hz < 1000.0)
-                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
-                else if (hz < 10000.0)
-                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
-                else
-                    displayStr = juce::String(hz / 1000.0, 1) + " kHz";
-            }
-            else if (td.eqHzFormat)
-            {
-                // fmtEqHz: 471 * 2^((val-60)/12) — EqMid, EqShelving frequency
-                double hz = 471.0 * std::pow(2.0, (val - 60) / 12.0);
-                if (hz < 1000.0)
-                    displayStr = juce::String(juce::roundToInt(hz)) + " Hz";
-                else if (hz < 10000.0)
-                    displayStr = juce::String(hz / 1000.0, 2) + " kHz";
-                else
-                    displayStr = juce::String(hz / 1000.0, 1) + " kHz";
-            }
-            else if (td.eqGainFormat)
-            {
-                // (val-64) * 0.28125 dB — EqMid, EqShelving gain
-                // Verified: val=43 → -5.9 dB, val=64 → 0.0 dB, val=127 → +17.7 dB
-                double db = (val - 64) * 0.28125;
-                displayStr = juce::String(db, 1) + " dB";
-            }
-            else if (td.eqBwFormat)
-            {
-                // val / 75.0 Oct — EqMid bandwidth
-                // Verified: val=69 → 0.92 Oct
-                double oct = val / 75.0;
-                displayStr = juce::String(oct, 2) + " Oct";
-            }
-            else if (td.vowelFormat)
-            {
-                // VocalFilter vowel names (DATA_VOWELS from nmformat.js)
-                static const char* vowels[] = { "A","E","I","O","U","Y","AA","AE","OE" };
-                int idx = juce::jlimit(0, 8, val);
-                displayStr = vowels[idx];
-            }
-            else
-            {
-                displayStr = juce::String(val);
-            }
+            // Formatter: theme override (e.g. slave-osc partial ratio) wins over
+            // the descriptor's formatter from modules.xml. ValueFormatters is the
+            // C++ port of nmformat.js — single source of truth for value display.
+            const juce::String& fmtName = td.formatterOverride.isNotEmpty()
+                ? td.formatterOverride
+                : param->getDescriptor()->formatter;
+            displayStr = ValueFormatters::format(fmtName, val);
 
             g.setColour(juce::Colours::white);
             g.setFont(juce::FontOptions(8.5f));

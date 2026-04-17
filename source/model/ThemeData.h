@@ -55,24 +55,17 @@ struct ThemeTextDisplay
     juce::String componentId;
     int x = 0, y = 0;
     int width = 40, height = 16;
-    bool noteFormat = false;        // true → display as note name (C4, D#3, etc.)
-    bool partialFormat = false;     // true → display as partial ratio (1:1, 2:1, etc.)
-    bool drumHzFormat = false;      // true → fmtDrumHz: 20*2^(v/24) Hz
-    bool drumPartialFormat = false; // true → fmtDrumPartials: 1:1/2:1/4:1 or x0.00
-    bool oscHzFormat = false;       // true → fmtOscHz: 440*2^((v-69)/12) Hz
-    bool lfoHzFormat = false;       // true → fmtLFOHz: 440*2^((v-177)/12), shows s or Hz
-    bool phaseFormat = false;       // true → fmtPhase: v*2.8125-180 degrees
-    bool bpmFormat = false;         // true → fmtBPM: piecewise linear, shows bpm
-    bool stepFormat = false;        // true → 0=OFF, 1-128=number (PatternGen steps)
-    bool adsrTimeFormat = false;    // true → fmtAdsrTime: lookup 128 entries (ms/s)
-    bool envAttackFormat = false;   // true → fmtEnvelopeAttack: lookup 128 entries
-    bool envReleaseFormat = false;  // true → fmtEnvelopeRelease: lookup 128 entries
-    bool filterHz1Format = false;   // true → 504*2^((v-64)/12) Hz (FilterA, FilterB)
-    bool filterHz2Format = false;   // true → 330*2^((v-60)/12) Hz (FilterC/D/E/F)
-    bool eqHzFormat = false;        // true → 471*2^((v-60)/12) Hz (EqMid, EqShelving)
-    bool eqGainFormat = false;      // true → (v-64)*0.28125 dB (EqMid, EqShelving)
-    bool eqBwFormat = false;        // true → v/75.0 Oct (EqMid bandwidth)
-    bool vowelFormat = false;       // true → vowel name: A/E/I/O/U/Y/AA/AE/OE (VocalFilter)
+
+    // Optional formatter name override (fmtXxx). When empty, the value is
+    // formatted using the descriptor's formatter from modules.xml.
+    // Used to match original Nomad UI for cases where modules.xml formatter
+    // (e.g. "value-64" on slave oscs) doesn't match the UI (partial ratio).
+    juce::String formatterOverride;
+
+    // UI control flag: true when this display has partial-ratio arrow buttons
+    // (mirrors the "fmtPartials" formatter family). Gates hit-testing and
+    // extra arrow rendering beyond text formatting.
+    bool partialFormat = false;
 };
 
 struct ThemeLight

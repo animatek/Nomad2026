@@ -104,6 +104,23 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                     int sizeAttr = child->getIntAttribute("size", 0);
                     si.width  = child->getIntAttribute("width",  sizeAttr > 0 ? sizeAttr : 11);
                     si.height = child->getIntAttribute("height", sizeAttr > 0 ? sizeAttr : 9);
+                    // width="-1" / height="-1" means "use natural PNG size"
+                    if (si.width <= 0 || si.height <= 0)
+                    {
+                        struct NS { const char* name; int w, h; };
+                        static const NS natural[] = {
+                            {"decoration-1",  68, 16}, {"decoration-2",  91, 18},
+                            {"decoration-5",  25, 11}, {"decoration-6",  25, 11},
+                            {"decoration-7",  35, 16}, {"decoration-8",  59, 13},
+                            {"decoration-9",  68, 13}, {"decoration-10", 50, 14},
+                            {"decoration-11", 65, 16}, {"decoration-12", 64, 16},
+                            {"decoration-13", 25, 19}, {"decoration-14", 68, 11},
+                            {"decoration-15", 20, 14}, {"decoration-17", 18, 10},
+                            {"decoration-18", 17, 19}
+                        };
+                        for (auto& n : natural)
+                            if (iconName == n.name) { if (si.width <= 0) si.width = n.w; if (si.height <= 0) si.height = n.h; }
+                    }
                     theme.staticIcons.push_back(si);
                 }
             }
@@ -321,127 +338,35 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
     {
         td.componentId = param->getStringAttribute("component-id");
 
-        // Modules with note-select parameter (MIDI note name display)
-        // m67 (NoteDetect): p1 — m100 (KeybSplit): p1 (lower) and p2 (upper)
-        static const juce::StringArray noteSelectModules { "m67", "m100" };
-        bool isNoteModule = noteSelectModules.contains(theme.componentId);
-        bool isNoteParam  = (td.componentId == "p1") ||
-                            (theme.componentId == "m100" && td.componentId == "p2");
-        if (isNoteModule && isNoteParam)
-            td.noteFormat = true;
+        // Partial-ratio override: these modules use "value-64" / "fmtLFOHz" /
+        // "fmtSemitones" in modules.xml but the original Nomad UI shows them
+        // as partial ratios (1:1, 2:1…) with arrow step buttons.
+        //   m10–m14,m85  slave oscillator detune coarse (p2)
+        //   m27–m30,m80  LFO slaves rate (p2)
+        //   m34,m110     Random generator rate (p2)
+        //   m106         OscSineBank per-osc coarse tune (p1/p4/p7/p10/p13/p16)
+        const auto& mod = theme.componentId;
+        const auto& pid = td.componentId;
 
-        // Oscillator frequency displays — show note name (C-1..G9) instead of raw number
-        // Main oscillators: m7 (OscA), m8 (OscB), m9 (OscC) — p2 = freq coarse
-        static const juce::StringArray oscNoteModules { "m7", "m8", "m9" };
-        if (oscNoteModules.contains(theme.componentId) && td.componentId == "p2")
-            td.noteFormat = true;
-
-        // Advanced oscillators: Hz display (440*2^((v-69)/12))
-        // m95=PercOsc, m96=FormantOsc, m97=MasterOsc, m107=SpectralOsc
-        static const juce::StringArray oscHzModules { "m95", "m96", "m97", "m107" };
-        if (oscHzModules.contains(theme.componentId) && td.componentId == "p2")
-            td.oscHzFormat = true;
-
-        // OscSineBank (m106): tune knobs → partial ratio (1:1, 2:1, etc.)
         static const juce::StringArray oscSineBankFreqParams { "p1","p4","p7","p10","p13","p16" };
-        if (theme.componentId == "m106" && oscSineBankFreqParams.contains(td.componentId))
-            td.partialFormat = true;
-
-        // Slave oscillator detune coarse → partial ratio
-        static const juce::StringArray slaveOscModules { "m10", "m11", "m12", "m13", "m14", "m85" };
-        if (slaveOscModules.contains(theme.componentId) && td.componentId == "p2")
-            td.partialFormat = true;
-
-        // LFO slave rate → partial ratio (m80=LFOSlvA, m27=B, m28=C, m29=D, m30=E)
-        static const juce::StringArray lfoSlvModules { "m80", "m27", "m28", "m29", "m30" };
-        if (lfoSlvModules.contains(theme.componentId) && td.componentId == "p2")
-            td.partialFormat = true;
-
-        // Random generators rate → partial ratio (m34=RndStepGen, m110=RandomGen)
-        static const juce::StringArray rndGenModules { "m34", "m110" };
-        if (rndGenModules.contains(theme.componentId) && td.componentId == "p2")
-            td.partialFormat = true;
-
-        // LFO rate → fmtLFOHz (440*2^((v-177)/12), shows s or Hz)
-        // m24=LFOA, m25=LFOB, m26=LFOC
-        static const juce::StringArray lfoModules { "m24", "m25", "m26" };
-        if (lfoModules.contains(theme.componentId) && td.componentId == "p1")
-            td.lfoHzFormat = true;
-
-        // Phase display → fmtPhase: v*2.8125-180 degrees
-        // m24=LFOA p7, m25=LFOB p3, m80=LFOSlvA p3
-        bool isPhaseParam = (theme.componentId == "m24" && td.componentId == "p7") ||
-                            (theme.componentId == "m25" && td.componentId == "p3") ||
-                            (theme.componentId == "m80" && td.componentId == "p3");
-        if (isPhaseParam)
-            td.phaseFormat = true;
-
-        // BPM display → fmtBPM (ClkGen m68 p1)
-        if (theme.componentId == "m68" && td.componentId == "p1")
-            td.bpmFormat = true;
-
-        // DrumSynth (m58): MTune → fmtDrumHz, STune → fmtDrumPartials
-        if (theme.componentId == "m58")
+        bool partial =
+            (mod == "m106" && oscSineBankFreqParams.contains(pid)) ||
+            (pid == "p2" && (mod == "m10" || mod == "m11" || mod == "m12" ||
+                             mod == "m13" || mod == "m14" || mod == "m85" ||
+                             mod == "m27" || mod == "m28" || mod == "m29" ||
+                             mod == "m30" || mod == "m80" ||
+                             mod == "m34" || mod == "m110"));
+        if (partial)
         {
-            if (td.componentId == "p1") td.drumHzFormat = true;
-            if (td.componentId == "p2") td.drumPartialFormat = true;
+            td.partialFormat     = true;
+            td.formatterOverride = "fmtPartials";
         }
 
-        // PatternGen (m99): step p4 → 0=OFF, 1-128=number
-        if (theme.componentId == "m99" && td.componentId == "p4")
-            td.stepFormat = true;
-
-        // fmtAdsrTime: m20(ADSR), m23(Mod-Env), m46(AHD), m52(Multi-Env), m84(AD-Env)
-        {
-            static const std::map<juce::String, juce::StringArray> adsrTimeMap {
-                { "m20", { "p2", "p3", "p5" } },
-                { "m23", { "p1", "p2", "p4" } },
-                { "m46", { "p1", "p2", "p3" } },
-                { "m52", { "p5", "p6", "p7", "p8", "p9" } },
-                { "m84", { "p1", "p2" } }
-            };
-            auto it = adsrTimeMap.find(theme.componentId);
-            if (it != adsrTimeMap.end() && it->second.contains(td.componentId))
-                td.adsrTimeFormat = true;
-        }
-
-        // fmtEnvelopeAttack / fmtEnvelopeRelease: m71 (EnvFollower)
-        if (theme.componentId == "m71")
-        {
-            if (td.componentId == "p1") td.envAttackFormat  = true;
-            if (td.componentId == "p2") td.envReleaseFormat = true;
-        }
-
-        // fmtFilterHz1: 504*2^((v-64)/12) — FilterA (m86/p1), FilterB (m87/p1)
-        static const juce::StringArray filterHz1Modules { "m86", "m87" };
-        if (filterHz1Modules.contains(theme.componentId) && td.componentId == "p1")
-            td.filterHz1Format = true;
-
-        // fmtFilterHz2: 330*2^((v-60)/12) — FilterC(m50/p2), FilterD(m49/p2),
-        //                                     FilterE(m51/p5), FilterF(m92/p2)
-        if ((theme.componentId == "m50" && td.componentId == "p2") ||
-            (theme.componentId == "m49" && td.componentId == "p2") ||
-            (theme.componentId == "m51" && td.componentId == "p5") ||
-            (theme.componentId == "m92" && td.componentId == "p2"))
-            td.filterHz2Format = true;
-
-        // fmtEqHz: 471*2^((v-60)/12) — EqMid (m103/p1), EqShelving (m104/p1)
-        static const juce::StringArray eqModules { "m103", "m104" };
-        if (eqModules.contains(theme.componentId) && td.componentId == "p1")
-            td.eqHzFormat = true;
-
-        // EqGain: (v-64)*0.28125 dB — EqMid (m103/p2), EqShelving (m104/p2)
-        if (eqModules.contains(theme.componentId) && td.componentId == "p2")
-            td.eqGainFormat = true;
-
-        // EqBandwidth: v/75.0 Oct — EqMid only (m103/p3)
-        if (theme.componentId == "m103" && td.componentId == "p3")
-            td.eqBwFormat = true;
-
-        // Vowels: VocalFilter (m45) p1=left, p2=middle, p3=right
-        static const juce::StringArray vowelParams { "p1", "p2", "p3" };
-        if (theme.componentId == "m45" && vowelParams.contains(td.componentId))
-            td.vowelFormat = true;
+        // Amplifier (m81) p1 gain: shows "x1.00" factor, fmtAmpGain is orphan
+        // in nmformat.js (not referenced from modules.xml) but the Java editor
+        // applies it here.
+        if (mod == "m81" && pid == "p1")
+            td.formatterOverride = "fmtAmpGain";
     }
 
     theme.textDisplays.push_back(td);

@@ -105,11 +105,11 @@ For each module, check:
 | 18 | X-Fade | [ ] | [ ] | [ ] | [ ] | |
 | 19 | Mixer (3) | [ ] | [ ] | [ ] | [ ] | |
 | 40 | Mixer (8) | [ ] | [ ] | [ ] | [ ] | |
-| 44 | GainControl | [ ] | [ ] | [ ] | [ ] | LED trigger indicator |
+| 44 | GainControl | [ ] | [ ] | n/a | [ ] | No LED (ref checked). Shift button cyclic. |
 | 47 | Pan | [ ] | [ ] | [ ] | [ ] | |
-| 76 | OnOff | [ ] | [ ] | [ ] | [ ] | LED on/off state |
+| 76 | OnOff | [ ] | [ ] | n/a | [ ] | No LED (ref checked). On/On cyclic button. |
 | 79 | 4-1Switch | [ ] | [ ] | [ ] | [ ] | |
-| 81 | Amplifier | [ ] | [ ] | [ ] | [ ] | LED trigger indicator |
+| 81 | Amplifier | [ ] | [ ] | n/a | [ ] | No LED. textDisplay uses fmtAmpGain override ("x1.00"). |
 | 88 | 1-4Switch | [ ] | [ ] | [ ] | [ ] | |
 | 111 | LevMult | [ ] | [ ] | [ ] | [ ] | |
 | 112 | LevAdd | [ ] | [ ] | [ ] | [ ] | |
