@@ -313,6 +313,17 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
         tb.callValue  = call->getIntAttribute("value", 0);
     }
 
+    // Multi-Env (m52) p10 sustain: original Nomad UI renders this as a small
+    // display with up/down arrows rather than a cyclic button. Values are
+    // "--", "L1", "L2", "L3", "L4". Convert to increment layout + custom labels.
+    if (theme.componentId == "m52" && tb.componentId == "p10")
+    {
+        tb.isIncrement = true;
+        tb.cyclic      = false;
+        tb.landscape   = false;
+        tb.labels = { "--", "L1", "L2", "L3", "L4" };
+    }
+
     theme.buttons.push_back(tb);
 }
 
@@ -367,6 +378,11 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
         // applies it here.
         if (mod == "m81" && pid == "p1")
             td.formatterOverride = "fmtAmpGain";
+
+        // LevMult (m111) p1 multiplier: bipolar -127..+127, centre 0 at v=64.
+        // LevAdd  (m112) p1 offset:     bipolar  -64..+64,  centre 0 at v=64.
+        if (mod == "m111" && pid == "p1") td.formatterOverride = "fmtLevMult";
+        if (mod == "m112" && pid == "p1") td.formatterOverride = "fmtLevAdd";
     }
 
     theme.textDisplays.push_back(td);

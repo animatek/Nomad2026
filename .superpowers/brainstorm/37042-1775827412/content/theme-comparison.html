@@ -1,0 +1,40 @@
+<h2>Sistema de Temas — Nomad2026</h2>
+<p class="subtitle">Primera pregunta: ¿cuántos temas necesitas al lanzar esta feature?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>2 temas: Classic + Dark</h3>
+      <p>Solo los dos que describes. Classic = el look actual (verde menta, gris azulado). Dark = el tema carbón que defines arriba. Intercambiables en runtime.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Scope mínimo, entregable rápido</li><li>Toda la arquitectura queda lista para temas futuros</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Sin temas adicionales por ahora</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>2 temas + estructura para temas personalizados</h3>
+      <p>Classic + Dark como base, más un sistema para cargar temas desde archivo JSON/XML externo. Un usuario podría crear su propio tema.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Extensible por la comunidad</li><li>Posible exportar/importar temas</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Más complejidad en el parser</li><li>Requiere validación de archivos externos</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Solo Dark (eliminar el tema Classic)</h3>
+      <p>El proyecto ya no se parece al editor Java. Hacer dark el único modo, más simple y coherente.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Sin complejidad de theming</li><li>Identidad visual única</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Pierde referencia visual con el original</li><li>No reversible fácilmente</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

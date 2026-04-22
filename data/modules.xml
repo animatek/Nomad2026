@@ -819,7 +819,7 @@
     <connector component-id="c1" index="0" name="in" type="input" signal="control" />
     <connector component-id="c2" index="0" name="out" type="output" signal="control" />
     <!-- parameter(s) -->
-    <parameter component-id="p1" index="0" name="range" class="parameter" formatter="value-64" extension="m1" />
+    <parameter component-id="p1" index="0" name="partials" class="parameter" formatter="fmtPartialGen" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:range" class="morph" role="morph" minValue="-127" maxValue="127" />
     <!-- custom attributes -->
     <attribute name="cycles" type="double" value="0.59375" />
@@ -2053,8 +2053,8 @@
     <connector component-id="c1" index="0" name="in" type="input" signal="control" />
     <connector component-id="c2" index="0" name="out" type="output" signal="control" />
     <!-- parameter(s) -->
-    <parameter component-id="p1" index="0" name="range" class="parameter" formatter="value-64" extension="m1" />
-    <parameter component-id="p2" index="1" name="notes" class="parameter" extension="m2" />
+    <parameter component-id="p1" index="0" name="range" class="parameter" formatter="fmtBipolar64" extension="m1" />
+    <parameter component-id="p2" index="1" name="notes" class="parameter" formatter="fmtNoteQuantNotes" extension="m2" />
     <parameter component-id="m1" index="0" name="morph:range" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:notes" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
@@ -2696,7 +2696,7 @@
     <connector component-id="c1" index="0" name="in" type="input" signal="control" />
     <connector component-id="c2" index="0" name="out" type="output" signal="control" />
     <!-- parameter(s) -->
-    <parameter component-id="p1" index="0" name="range" class="parameter" formatter="value-64" />
+    <parameter component-id="p1" index="0" name="range" class="parameter" />
     <parameter component-id="p2" index="1" name="cont" class="parameter" maxValue="1" formatter="fmtOffOn" />
     <parameter component-id="p3" index="2" name="E" class="parameter" maxValue="1" formatter="fmtOffOn" />
     <parameter component-id="p4" index="3" name="F" class="parameter" maxValue="1" formatter="fmtOffOn" />

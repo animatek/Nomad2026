@@ -1,8 +1,59 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
 #include "../format/ValueFormatters.h"
+#include "BinaryData.h"
 #include <cmath>
 #include <set>
+#include <unordered_map>
+
+// Decoration bitmap cache: iconName ("decoration-N") → loaded juce::Image.
+// PNGs are embedded via juce_add_binary_data in CMakeLists.txt.
+static juce::Image loadDecorationImage(const juce::String& iconName)
+{
+    static std::unordered_map<juce::String, juce::Image> cache;
+    auto it = cache.find(iconName);
+    if (it != cache.end())
+        return it->second;
+
+    juce::Image img;
+    // JUCE BinaryData strips non-alphanumeric: "decoration-7.png" → "decoration7_png"
+    auto resourceName = iconName.replaceCharacter('-', ' ').removeCharacters(" ") + "_png";
+    int dataSize = 0;
+    if (const char* data = BinaryData::getNamedResource(resourceName.toRawUTF8(), dataSize))
+        img = juce::ImageFileFormat::loadFrom(data, static_cast<size_t>(dataSize));
+    cache[iconName] = img;
+    return img;
+}
+
+// Returns a grayscale-recoloured copy of the decoration PNG using luminance as
+// alpha so dark pixels become opaque strokes in the target tint. Cached by
+// (iconName, tint) so the tinting loop only runs once per (icon, colour-scheme).
+static juce::Image getTintedDecoration(const juce::String& iconName, juce::Colour tint)
+{
+    struct Key { juce::String n; juce::uint32 c; bool operator==(const Key& o) const { return n == o.n && c == o.c; } };
+    struct KH { size_t operator()(const Key& k) const { return std::hash<std::string>{}(k.n.toStdString()) ^ k.c; } };
+    static std::unordered_map<Key, juce::Image, KH> cache;
+
+    Key key { iconName, tint.getARGB() };
+    auto it = cache.find(key);
+    if (it != cache.end()) return it->second;
+
+    auto src = loadDecorationImage(iconName);
+    if (! src.isValid()) { cache[key] = juce::Image(); return {}; }
+
+    juce::Image tinted(juce::Image::ARGB, src.getWidth(), src.getHeight(), true);
+    for (int py = 0; py < src.getHeight(); ++py)
+        for (int px = 0; px < src.getWidth(); ++px)
+        {
+            auto c = src.getPixelAt(px, py);
+            float lum = c.getBrightness();
+            float a   = (1.0f - lum) * (c.getAlpha() / 255.0f);
+            if (a > 0.01f)
+                tinted.setPixelAt(px, py, tint.withAlpha(a));
+        }
+    cache[key] = tinted;
+    return tinted;
+}
 
 
 // --- PatchCanvas (inner scrollable surface) ---
@@ -500,13 +551,16 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintLabels(g, m, bounds, theme);
     paintTextDisplays(g, m, bounds, theme);
     paintSliders(g, m, bounds, theme);
+    // Decorations (signal-flow lines/symbols) sit beneath knobs and buttons so
+    // overlapping controls (e.g. GainControl's shift button crossing dec-2) stay
+    // visible on top.
+    paintStaticIcons(g, bounds, theme);
     paintKnobs(g, m, bounds, theme);
     auto bgForButtons = activeScheme_.moduleBg.isOpaque()
         ? activeScheme_.moduleBg
         : m.getDescriptor()->background;
     paintButtons(g, m, bounds, theme, bgForButtons);
     paintResetButtons(g, m, bounds, theme);
-    paintStaticIcons(g, bounds, theme);
     paintConnectors(g, m, bounds, theme, container);
     paintLights(g, m, section, bounds, theme);
     if (m.getDescriptor()->index == 58)
@@ -1063,6 +1117,57 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         g.strokePath(stick, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         g.fillEllipse(sx0 - 1.5f, sy0 - 1.5f, 3.0f, 3.0f);
     }
+    else if (iconName == "lev_shift_up" || iconName == "lev_shift_down"
+          || iconName == "lev_shift_noshift")
+    {
+        // Tiny "~" mark with an underscore beneath — GainControl shift button.
+        // "up": tilde above the line, "down": tilde below, "noshift": flat line.
+        float lineY = iy + ih * 0.72f;
+        g.drawLine(ix + iw * 0.20f, lineY, ix + iw * 0.80f, lineY, 1.0f);
+        if (iconName != "lev_shift_noshift")
+        {
+            juce::Path tilde;
+            float baseY = iy + ih * (iconName == "lev_shift_up" ? 0.38f : 0.50f);
+            float amp   = ih * (iconName == "lev_shift_up" ? 0.20f : -0.20f);
+            tilde.startNewSubPath(ix + iw * 0.20f, baseY);
+            tilde.quadraticTo(ix + iw * 0.35f, baseY - amp,
+                              ix + iw * 0.50f, baseY);
+            tilde.quadraticTo(ix + iw * 0.65f, baseY + amp,
+                              ix + iw * 0.80f, baseY);
+            g.strokePath(tilde, juce::PathStrokeType(1.0f));
+        }
+    }
+    else if (iconName == "env_log")
+    {
+        // ADSR attack shape — logarithmic: fast rise then flatten (concave up)
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 24; ++i)
+        {
+            float t = static_cast<float>(i) / 24.0f;
+            float e = 1.0f - std::pow(1.0f - t, 2.5f);   // log-like (fast start, slow end)
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "env_lin")
+    {
+        // ADSR attack shape — linear: straight diagonal ramp
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x1, y0);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "env_exp")
+    {
+        // ADSR attack shape — exponential: slow start then fast rise (concave down)
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 24; ++i)
+        {
+            float t = static_cast<float>(i) / 24.0f;
+            float e = std::pow(t, 2.5f);   // exp-like (slow start, fast end)
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
     else if (iconName == "decoration-15")
     {
         // VCA triangle symbol (▷): audio in → amplifier triangle → audio out
@@ -1365,12 +1470,19 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                 g.fillPath(upArr);
                 juce::ignoreUnused(topMid, valH);
 
-                // Current value (middle band)
+                // Current value (middle band). Prefer labels[val] if provided
+                // (e.g. Multi-Env sustain: "--", "L1"..."L4"); else fall back to numeric.
                 if (param != nullptr)
                 {
+                    juce::String valStr;
+                    if (val >= 0 && val < static_cast<int>(tb.labels.size())
+                        && tb.labels[static_cast<size_t>(val)].isNotEmpty())
+                        valStr = tb.labels[static_cast<size_t>(val)];
+                    else
+                        valStr = juce::String(val);
+
                     g.setColour(activeScheme_.moduleText);
                     g.setFont(juce::Font(juce::FontOptions().withHeight(7.5f)));
-                    juce::String valStr = juce::String(val);
                     g.drawText(valStr,
                                static_cast<int>(bx), static_cast<int>(by + arrowH),
                                static_cast<int>(bw), static_cast<int>(valH),
@@ -1692,6 +1804,20 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
             float iy = static_cast<float>(bounds.getY() + si.y);
             float iw = static_cast<float>(si.width);
             float ih = static_cast<float>(si.height);
+
+            // Prefer the embedded PNG for pixel-perfect fidelity; fall back to
+            // the procedural drawer for icons we don't have a bitmap for.
+            if (si.iconName.startsWith("decoration-"))
+            {
+                auto img = getTintedDecoration(si.iconName, activeScheme_.moduleText);
+                if (img.isValid())
+                {
+                    g.drawImage(img, juce::Rectangle<float>(ix, iy, iw, ih),
+                                juce::RectanglePlacement::stretchToFit);
+                    continue;
+                }
+            }
+
             g.setColour(activeScheme_.moduleText);
             drawButtonIcon(g, si.iconName, ix, iy, iw, ih, activeScheme_.moduleText);
             continue;
@@ -2191,6 +2317,27 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                 }
             }
 
+            // LFOB / LFOC square waveform: width param p8 drives pulse duty cycle
+            float pulseWidth = 0.5f;
+            if (waveform == 4)
+            {
+                for (auto& par : m.getParameters())
+                {
+                    auto desc = par.getDescriptor();
+                    if (desc == nullptr) continue;
+                    auto nameLc = desc->name.toLowerCase();
+                    if (nameLc == "pw" || nameLc.contains("pulse") || nameLc.contains("width"))
+                    {
+                        int range = desc->maxValue - desc->minValue;
+                        if (range > 0)
+                            pulseWidth = juce::jlimit(0.05f, 0.95f,
+                                0.05f + 0.90f * static_cast<float>(par.getValue() - desc->minValue)
+                                              / static_cast<float>(range));
+                        break;
+                    }
+                }
+            }
+
             // Rate cycles: scale how many cycles are shown (LFOSlvA rate knob)
             float cycles = 1.0f;
             if (cd.rateComponentId.isNotEmpty())
@@ -2244,9 +2391,9 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                     case 3: // Inv Sawtooth (ramp down: +1 to -1)
                         wval = 1.0f - 2.0f * tp;
                         break;
-                    case 4: // Square
+                    case 4: // Square / Pulse (duty driven by pulseWidth)
                     default:
-                        wval = (tp < 0.5f) ? 1.0f : -1.0f;
+                        wval = (tp < pulseWidth) ? 1.0f : -1.0f;
                         break;
                 }
 
@@ -2665,6 +2812,58 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             }
 
             g.setColour(activeScheme_.displayCurveRed);
+            g.strokePath(curve, juce::PathStrokeType(1.2f));
+            continue;
+        }
+
+        // --- NoteVelScale graph ---
+        if (type == "note-vel-scale-display")
+        {
+            float lGain = 0.5f, bp = 0.5f, rGain = 0.5f;
+            for (auto& p : m.getParameters())
+            {
+                auto name = p.getDescriptor()->name.toLowerCase();
+                auto* pd = p.getDescriptor();
+                int range = pd->maxValue - pd->minValue;
+                float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
+
+                if (name.contains("left gain"))        lGain = norm;
+                else if (name.contains("breakpoint"))  bp = norm;
+                else if (name.contains("right gain"))  rGain = norm;
+            }
+
+            // Background & Border
+            g.setColour(activeScheme_.displayBg);
+            g.fillRect(dx, dy, dw, dh);
+            g.setColour(activeScheme_.displayBorder);
+            g.drawRect(dx, dy, dw, dh, 1.0f);
+
+            float margin = 2.0f;
+            float plotW = dw - margin * 2;
+            float plotH = dh - margin * 2;
+            float midY  = dy + margin + plotH * 0.5f; // 0dB
+
+            // Draw horizontal guide (0dB)
+            g.setColour(activeScheme_.displayGrid);
+            g.drawLine(dx + margin, midY, dx + dw - margin, midY, 0.5f);
+
+            // Draw vertical guide (breakpoint)
+            float bpx = dx + margin + bp * plotW;
+            g.drawLine(bpx, dy + margin, bpx, dy + dh - margin, 0.5f);
+
+            // Draw curve
+            juce::Path curve;
+            // Gains are +/- 24dB, mapped to 0.0 .. 1.0 norm. 
+            // We want y = midY - (gain_db / max_db) * (plotH/2)
+            float y0 = midY - (lGain - 0.5f) * plotH;
+            float y1 = midY; // breakpoint is 0dB reference
+            float y2 = midY - (rGain - 0.5f) * plotH;
+
+            curve.startNewSubPath(dx + margin, y0);
+            curve.lineTo(bpx, y1);
+            curve.lineTo(dx + dw - margin, y2);
+
+            g.setColour(activeScheme_.displayCurveYellow);
             g.strokePath(curve, juce::PathStrokeType(1.2f));
             continue;
         }

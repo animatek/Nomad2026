@@ -57,7 +57,7 @@ For each module, check:
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
 | 24 | LFOA | [x] | [x] | [x] | [x] | LFO display animado (fase+rate); waveform icons sine/tri/saw/saw_inv/square/noise; lfoHzFormat; phaseFormat |
-| 25 | LFOB | [x] | [x] | [x] | [x] | LFO display; waveform icons incluyendo wf_saw_inv |
+| 25 | LFOB | [x] | [x] | [x] | [x] | LFO display; waveform icons; PW knob afecta duty cycle en display |
 | 26 | LFOC | [x] | [x] | [x] | [x] | LFO display; waveform icons |
 | 27 | LFOSlvB | [x] | [x] | [x] | [x] | Partial display, badge wf_sine, wf_saw_inv corregido |
 | 28 | LFOSlvC | [x] | [x] | [x] | [x] | Partial display; wf_saw_inv icon |
@@ -75,7 +75,7 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 20 | ADSR | [x] | [x] | [ ] | [x] | ADSR display con Bezier curves e INV flag |
+| 20 | ADSR | [x] | [x] | [ ] | [x] | ADSR display; attack-shape buttons env_log/lin/exp |
 | 23 | Mod-Env | [x] | [x] | [ ] | [x] | Modulated envelope display |
 | 46 | AHD | [x] | [x] | [ ] | [x] | AHD display implementado |
 | 52 | Multi-Env | [x] | [x] | [ ] | [x] | Multi-env display; iconos bipolar/uni-exp/uni-lin |
@@ -102,19 +102,19 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 18 | X-Fade | [ ] | [ ] | [ ] | [ ] | |
-| 19 | Mixer (3) | [ ] | [ ] | [ ] | [ ] | |
-| 40 | Mixer (8) | [ ] | [ ] | [ ] | [ ] | |
-| 44 | GainControl | [ ] | [ ] | n/a | [ ] | No LED (ref checked). Shift button cyclic. |
-| 47 | Pan | [ ] | [ ] | [ ] | [ ] | |
-| 76 | OnOff | [ ] | [ ] | n/a | [ ] | No LED (ref checked). On/On cyclic button. |
-| 79 | 4-1Switch | [ ] | [ ] | [ ] | [ ] | |
-| 81 | Amplifier | [ ] | [ ] | n/a | [ ] | No LED. textDisplay uses fmtAmpGain override ("x1.00"). |
-| 88 | 1-4Switch | [ ] | [ ] | [ ] | [ ] | |
-| 111 | LevMult | [ ] | [ ] | [ ] | [ ] | |
-| 112 | LevAdd | [ ] | [ ] | [ ] | [ ] | |
-| 113 | 1to2Fade | [ ] | [ ] | [ ] | [ ] | |
-| 114 | 2to1Fade | [ ] | [ ] | [ ] | [ ] | |
+| 18 | X-Fade | [x] | [x] | [ ] | [x] | dec-13 bitmap; buttons OK |
+| 19 | Mixer (3) | [x] | [x] | [ ] | [x] | layout OK |
+| 40 | Mixer (8) | [x] | [x] | [ ] | [x] | layout OK |
+| 44 | GainControl | [x] | [x] | n/a | [x] | dec-2 bitmap; shift button cyclic |
+| 47 | Pan | [x] | [x] | [ ] | [x] | dec-18 bitmap |
+| 76 | OnOff | [x] | [x] | n/a | [x] | dec-14 bitmap; On/Off cyclic button |
+| 79 | 4-1Switch | [x] | [x] | [ ] | [x] | layout OK |
+| 81 | Amplifier | [x] | [x] | n/a | [x] | dec-12 bitmap; fmtAmpGain ("x1.00") |
+| 88 | 1-4Switch | [x] | [x] | [ ] | [x] | layout OK |
+| 111 | LevMult | [x] | [x] | [ ] | [x] | dec-12 bitmap |
+| 112 | LevAdd | [x] | [x] | [ ] | [x] | dec-11 bitmap |
+| 113 | 1to2Fade | [x] | [x] | [ ] | [x] | dec-7+dec-8 bitmaps |
+| 114 | 2to1Fade | [x] | [x] | [ ] | [x] | dec-7+dec-9 bitmaps |
 
 ## Audio (15)
 

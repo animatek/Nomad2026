@@ -117,6 +117,23 @@ juce_add_binary_data(NomadData SOURCES
     data/modules.xml
     data/transformations.xml
     data/classic-theme.xml
+    data/images/single/decoration-1.png
+    data/images/single/decoration-2.png
+    data/images/single/decoration-3.png
+    data/images/single/decoration-4.png
+    data/images/single/decoration-5.png
+    data/images/single/decoration-6.png
+    data/images/single/decoration-7.png
+    data/images/single/decoration-8.png
+    data/images/single/decoration-9.png
+    data/images/single/decoration-10.png
+    data/images/single/decoration-11.png
+    data/images/single/decoration-12.png
+    data/images/single/decoration-13.png
+    data/images/single/decoration-14.png
+    data/images/single/decoration-15.png
+    data/images/single/decoration-17.png
+    data/images/single/decoration-18.png
 )
 
 # --- Shared settings ---

@@ -2770,9 +2770,9 @@ label{fill:#000;}
 		<knob x="125" y="7" size="19">
 			<parameter component-id="p1" alt="range" />
 		</knob>
-		<knob x="163" y="7" size="19">
+		<textDisplay x="155" y="10" width="40" height="16" partialFormat="true">
 			<parameter component-id="p2" alt="notes" />
-		</knob>
+		</textDisplay>
 		<textDisplay x="91" y="10" width="30" height="16">
 			<parameter component-id="p1" alt="range" />
 		</textDisplay>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.0"
+   width="91"
+   height="18"
+   id="svg5823">
+  <defs
+     id="defs5825" />
+  <g
+     id="layer1">
+    <g
+       transform="translate(0,-170.99719)"
+       id="g5818">
+      <path
+         d="M 72.505617,176.5 L 72.501671,188.49719 L 85.5,182.56948 L 72.505617,176.5 z "
+         style="fill:#ffffff;fill-opacity:0.27329191;fill-rule:evenodd;stroke:#646464;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+         id="path4727" />
+      <path
+         d="M 0.5,182.49591 L 46.501066,182.49529 L 46.504684,171.50592 L 78.500561,171.50302 L 78.499344,179.20858"
+         style="fill:none;fill-opacity:0.75;fill-rule:evenodd;stroke:#646464;stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1"
+         id="path4721" />
+      <path
+         d="M 84.896422,182.50516 L 90.517582,182.50614 M 67.501693,182.50223 L 72.494542,182.50321"
+         style="fill:none;fill-opacity:0.75;fill-rule:evenodd;stroke:#646464;stroke-width:1px;stroke-linecap:square;stroke-linejoin:miter;stroke-opacity:1"
+         id="path4725" />
+    </g>
+  </g>
+</svg>

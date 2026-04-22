@@ -12,22 +12,23 @@ namespace ValueFormatters
 
 // Mimics the JavaScript `""+n` default stringification: rounds to the requested
 // number of decimals then drops trailing zeros (so 1.20 → "1.2", 100.00 → "100").
-static juce::String fmtNum (double v, int decimals)
+static juce::String fmtNum (double v, int decimals, bool stripTrailingZeros = true)
 {
     if (decimals <= 0)
         return juce::String (static_cast<int> (std::round (v)));
 
     auto s = juce::String (v, decimals);
-    while (s.endsWithChar ('0')) s = s.dropLastCharacters (1);
-    if (s.endsWithChar ('.'))    s = s.dropLastCharacters (1);
+    if (stripTrailingZeros)
+    {
+        while (s.endsWithChar ('0')) s = s.dropLastCharacters (1);
+        if (s.endsWithChar ('.'))    s = s.dropLastCharacters (1);
+    }
     return s;
 }
 
-// JS: roundTo(d, to). to==0 → int; to<0 → |to| decimals. We only need the
-// "already-stringified" form, so just call fmtNum with decimals = -to.
-static juce::String roundToStr (double d, int to)
+static juce::String roundToStr (double d, int to, bool stripTrailingZeros = true)
 {
-    return fmtNum (d, -to);
+    return fmtNum (d, -to, stripTrailingZeros);
 }
 
 template <size_t N>
@@ -44,9 +45,39 @@ static juce::String mapIndex (const char* const (&table)[N], int value)
 
 static juce::String fmtAmpGain (int value)
 {
+    // Range x0.25 (v=0) .. x1.00 (v=64) .. x4.00 (v=127). Skip value 63 to keep
+    // the centre exactly at v=64. The JS source had a stray "/32" divisor that
+    // was obviously wrong — the user-facing range is 0.25..4.0.
     if (value == 63) value++;
     double f = 0.25 * std::pow (2.0, value / 32.0);
-    return "x" + roundToStr (f / 32.0, -2);
+    return "x" + roundToStr (f, -2);
+}
+
+static juce::String fmtBipolar64 (int value)
+{
+    int v = value - 64;
+    if (v == 0) return "0";
+    return (v > 0 ? "+" : "") + juce::String (v);
+}
+
+// LevMult p1 (multiplier): param 0..127, shown signed with centre 0 at v=64.
+// Range displayed: -127 (v=0) .. 0 (v=64) .. +127 (v=127).
+static juce::String fmtLevMult (int value)
+{
+    int signed_ = 2 * (value - 64);
+    if (signed_ >  127) signed_ =  127;
+    if (signed_ < -127) signed_ = -127;
+    return juce::String (signed_);
+}
+
+// LevAdd p1 (offset): param 0..127, shown signed with centre 0 at v=64.
+// Range displayed: -64 (v=0) .. 0 (v=64) .. +63 (v=127) — trimmed to ±64.
+static juce::String fmtLevAdd (int value)
+{
+    int signed_ = value - 64;
+    if (signed_ >  64) signed_ =  64;
+    if (signed_ < -64) signed_ = -64;
+    return juce::String (signed_);
 }
 
 static juce::String fmtBPM (int value)
@@ -113,6 +144,21 @@ static juce::String fmtEqHz (int value)
 static juce::String fmtNoteVelScaleGain (int value)
 {
     return juce::String (value - 24) + "dB";
+}
+
+static juce::String fmtNoteQuantNotes (int value)
+{
+    if (value == 0) return "OFF";
+    // For now, return "----" for any non-zero value as per user description, 
+    // or we could implement a proper bitmask to note name conversion.
+    // The user specifically mentioned "desde OFF a ----".
+    if (value >= 127) return "----"; // Assuming 127 is "all" or similar
+    return juce::String (value); 
+}
+
+static juce::String fmtPartialGen (int value)
+{
+    return juce::String (value + 1);
 }
 
 static juce::String fmtExpanderGate (int value)
@@ -182,17 +228,18 @@ static juce::String fmtNote (int value)
 static juce::String fmtNoteScale (int value)
 {
     if (value == 0)   return "0 (Oct)";
-    if (value == 127) return "?64";
+    if (value == 127) return "\u00b164";
 
     const char* suffix = "";
     int key = (value / 2) % 12 + value % 2;
     switch (key)
     {
-        case 0:  suffix = "(Oct)"; break;
-        case 7:  suffix = "(5th)"; break;
-        case 10: suffix = "(7th)"; break;
+        case 0:  suffix = " (Oct)"; break;
+        case 7:  suffix = " (5th)"; break;
+        case 10: suffix = " (7th)"; break;
     }
-    return "?" + roundToStr (value / 2.0, -1) + suffix;
+    // Nord Modular usually shows one decimal place even for .0
+    return "\u00b1" + roundToStr (value / 2.0, -1, false) + suffix;
 }
 
 static juce::String fmtOffset64_2 (int value)
@@ -212,9 +259,9 @@ static juce::String fmtOscHz (int value)
 static juce::String fmtPartialRange (int value)
 {
     if (value == 0)   return "0";
-    if (value == 127) return "?64 *";
+    if (value == 127) return "\u00b164 *";
     const char* suffix = (value > 64) ? " *" : "";
-    return "?" + roundToStr (value / 2.0, -1) + suffix;
+    return "\u00b1" + roundToStr (value / 2.0, -1, false) + suffix;
 }
 
 static const char* const PARTIALS_FRACTIONS[] = {
@@ -466,6 +513,9 @@ static const std::unordered_map<juce::String, Fn>& registry()
 {
     static const std::unordered_map<juce::String, Fn> map = {
         { "fmtAmpGain",               fmtAmpGain },
+        { "fmtBipolar64",             fmtBipolar64 },
+        { "fmtLevMult",               fmtLevMult },
+        { "fmtLevAdd",                fmtLevAdd },
         { "fmtBPM",                   fmtBPM },
         { "fmtEnvRefLevel",           fmtEnvRefLevel },
         { "fmtCompressorLimiter",     fmtCompressorLimiter },
@@ -476,6 +526,8 @@ static const std::unordered_map<juce::String, Fn>& registry()
         { "fmtEnvelopeLevelDivider",  fmtEnvelopeLevelDivider },
         { "fmtEqHz",                  fmtEqHz },
         { "fmtNoteVelScaleGain",      fmtNoteVelScaleGain },
+        { "fmtNoteQuantNotes",        fmtNoteQuantNotes },
+        { "fmtPartialGen",            fmtPartialGen },
         { "fmtExpanderGate",          fmtExpanderGate },
         { "fmtExpanderHold",          fmtExpanderHold },
         { "fmtExpanderThreshold",     fmtExpanderThreshold },
