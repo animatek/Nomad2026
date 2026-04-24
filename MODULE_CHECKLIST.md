@@ -120,21 +120,21 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 21 | Compressor | [ ] | [ ] | [ ] | [ ] | Compressor display implemented |
-| 53 | Sample&Hold | [ ] | [ ] | [ ] | [ ] | |
-| 54 | Quantizer | [ ] | [ ] | [ ] | [ ] | |
-| 57 | InvLevShift | [ ] | [ ] | [ ] | [ ] | |
-| 61 | Clip | [ ] | [ ] | [ ] | [ ] | Clip display implemented |
-| 62 | Overdrive | [ ] | [ ] | [ ] | [ ] | Overdrive display implemented |
-| 74 | WaveWrap | [ ] | [ ] | [ ] | [ ] | WaveWrap display implemented |
-| 78 | Delay | [ ] | [ ] | [ ] | [ ] | |
-| 82 | Diode | [ ] | [ ] | [ ] | [ ] | |
-| 83 | Shaper | [ ] | [ ] | [ ] | [ ] | |
-| 94 | StereoChorus | [ ] | [ ] | [ ] | [ ] | |
-| 102 | Phaser | [ ] | [ ] | [ ] | [ ] | Phaser display implemented |
-| 105 | Expander | [ ] | [ ] | [ ] | [ ] | Expander display implemented |
-| 117 | RingMod | [ ] | [ ] | [ ] | [ ] | |
-| 118 | Digitizer | [ ] | [ ] | [ ] | [ ] | |
+| 21 | Compressor | [x] | [x] | [ ] | [x] | compressor-display; gain-reduction meter + limiter LED (visual pend.) |
+| 53 | Sample&Hold | [x] | [x] | n/a | n/a | Solo connectors + decoration-1 (sample-hold circuit icon) |
+| 54 | Quantizer | [x] | [x] | n/a | [x] | knob + textDisplay (value+1) + decoration-6 |
+| 57 | InvLevShift | [x] | [x] | n/a | [x] | mode radio (lev_shift icons) + inv toggle + decoration-6 |
+| 61 | Clip | [x] | [x] | n/a | [x] | clip-display (clip+sym); sym toggle button |
+| 62 | Overdrive | [x] | [x] | n/a | n/a | overdrive-display + decoration-6 |
+| 74 | WaveWrap | [x] | [x] | n/a | n/a | wavewrap-display + decoration-6 |
+| 78 | Delay | [x] | [x] | n/a | n/a | textDisplay fmtDelayTime + decoration-5 |
+| 82 | Diode | [x] | [x] | n/a | [x] | mode radio (wf_sine/diode_half/diode_full) + decoration-6 |
+| 83 | Shaper | [x] | [x] | n/a | [x] | mode radio (5 shaper transfer curves) + decoration-6 |
+| 94 | StereoChorus | [x] | [x] | n/a | [x] | 2 knobs + bypass button |
+| 102 | Phaser | [x] | [x] | [ ] | [x] | phaser-display; 2 groupboxes; audio-out LED (visual pend.) |
+| 105 | Expander | [x] | [x] | [ ] | [x] | expander-display; gain-reduction meter + gate LED (visual pend.) |
+| 117 | RingMod | [x] | [x] | n/a | [x] | 2 knobs + resetButton + decoration-3 (ring mod symbol) |
+| 118 | Digitizer | [x] | [x] | n/a | [x] | increment btn + 2 knobs + 2 off/on btns + 2 textDisplays + groupboxes |
 
 ## Control (10)
 

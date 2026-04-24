@@ -117,6 +117,7 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                             {"decoration-13", 25, 19}, {"decoration-14", 68, 11},
                             {"decoration-15", 20, 14}, {"decoration-17", 18, 10},
                             {"decoration-18", 17, 19},
+                            {"decoration-3",  25, 22},
                             {"ds-2-1", 16, 16}, {"ds-2-2", 16, 16},
                             {"ds-2-3", 16, 16}, {"ds-2-4", 16, 16},
                             {"ds-2-5", 16, 16}, {"ds-2-6", 16, 16},

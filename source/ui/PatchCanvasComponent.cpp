@@ -1435,6 +1435,156 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         p.lineTo(x1, y0);
         g.strokePath(p, juce::PathStrokeType(1.2f));
     }
+    else if (iconName == "diode_half")
+    {
+        // Half-wave rectifier: positive half of sine, negative half at zero
+        // Flat line at bottom, then single positive arch
+        float base = y1 - ph * 0.1f;
+        g.drawLine(x0, base, x0 + pw * 0.2f, base, 1.0f);
+        juce::Path arch;
+        arch.startNewSubPath(x0 + pw * 0.2f, base);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float s = std::sin(t * juce::MathConstants<float>::pi);
+            arch.lineTo(x0 + pw * (0.2f + t * 0.6f), base - ph * 0.75f * s);
+        }
+        arch.lineTo(x1, base);
+        g.strokePath(arch, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "diode_full")
+    {
+        // Full-wave rectifier: both halves of sine folded positive (two arches)
+        float base = y1 - ph * 0.1f;
+        juce::Path arches;
+        arches.startNewSubPath(x0, base);
+        for (int i = 1; i <= 30; ++i)
+        {
+            float t = static_cast<float>(i) / 30.0f;
+            float s = std::abs(std::sin(t * 2.0f * juce::MathConstants<float>::pi));
+            arches.lineTo(x0 + pw * t, base - ph * 0.75f * s);
+        }
+        g.strokePath(arches, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "shaper_lin")
+    {
+        // Linear transfer: straight diagonal from bottom-left to top-right
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x1, y0);
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "shaper_log1")
+    {
+        // Logarithmic shaper (gentle): starts steep, then flattens
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float e = std::sqrt(t);
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "shaper_log2")
+    {
+        // Logarithmic shaper (steep): more aggressive log curve
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float e = std::pow(t, 0.35f);
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "shaper_exp1")
+    {
+        // Exponential shaper (gentle): starts flat, then rises quickly
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float e = t * t;
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "shaper_exp2")
+    {
+        // Exponential shaper (steep): even more aggressive exponential curve
+        p.startNewSubPath(x0, y1);
+        for (int i = 1; i <= 20; ++i)
+        {
+            float t = static_cast<float>(i) / 20.0f;
+            float e = std::pow(t, 3.0f);
+            p.lineTo(x0 + pw * t, y1 - ph * e);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.0f));
+    }
+    else if (iconName == "decoration-1")
+    {
+        // Sample-and-hold circuit symbol (68×16):
+        // Step signal (waveform going up then flat) + capacitor/hold box
+        float midY = iy + ih * 0.55f;
+        float stepY = iy + ih * 0.15f;
+        float boxX = ix + iw * 0.72f;
+        float boxW = iw * 0.22f;
+        float boxH = ih * 0.65f;
+        // Waveform: flat → step up → flat
+        g.drawLine(ix,                 midY, ix + iw * 0.28f, midY,  1.0f);
+        g.drawLine(ix + iw * 0.28f,    midY, ix + iw * 0.28f, stepY, 1.0f);
+        g.drawLine(ix + iw * 0.28f,    stepY, ix + iw * 0.56f, stepY, 1.0f);
+        // Arrow to box
+        g.drawLine(ix + iw * 0.56f, stepY, boxX - 1.0f, stepY, 1.0f);
+        // Hold box (capacitor symbol)
+        g.drawRect(boxX, iy + (ih - boxH) * 0.5f, boxW, boxH, 1.0f);
+    }
+    else if (iconName == "decoration-3")
+    {
+        // Ring modulator symbol (25×22):
+        // Circle with × inside, arrow from top, line to right
+        float cx = ix + iw * 0.50f;
+        float cy = iy + ih * 0.75f;
+        float r  = ih * 0.22f;
+        // Circle
+        g.drawEllipse(cx - r, cy - r, r * 2.0f, r * 2.0f, 1.0f);
+        // × inside circle
+        float d = r * 0.55f;
+        g.drawLine(cx - d, cy - d, cx + d, cy + d, 1.0f);
+        g.drawLine(cx - d, cy + d, cx + d, cy - d, 1.0f);
+        // Arrow from top (modulation input): vertical line + arrowhead pointing down
+        float arrowTop = iy;
+        float arrowBot = cy - r;
+        g.drawLine(cx, arrowTop + 2.0f, cx, arrowBot, 1.0f);
+        juce::Path ah;
+        ah.startNewSubPath(cx - 2.5f, cy - r - 3.5f);
+        ah.lineTo(cx, cy - r);
+        ah.lineTo(cx + 2.5f, cy - r - 3.5f);
+        g.strokePath(ah, juce::PathStrokeType(1.0f));
+        // Arrow from left (audio input): arrow pointing right
+        float arrowL = ix;
+        float arrowR = cx - r;
+        juce::Path la;
+        la.startNewSubPath(arrowL, cy);
+        la.lineTo(arrowR, cy);
+        la.lineTo(arrowR - 3.0f, cy - 2.5f);
+        la.startNewSubPath(arrowR, cy);
+        la.lineTo(arrowR - 3.0f, cy + 2.5f);
+        g.strokePath(la, juce::PathStrokeType(1.0f));
+        // Output line to right
+        g.drawLine(cx + r, cy, ix + iw, cy, 1.0f);
+    }
+    else if (iconName == "decoration-5")
+    {
+        // Delay buffer symbol (25×11): small square box with line in/out
+        float midY = iy + ih * 0.5f;
+        float bx = ix + iw * 0.25f;
+        float bw = iw * 0.50f;
+        float bh = ih * 0.70f;
+        g.drawLine(ix, midY, bx, midY, 1.0f);
+        g.drawRect(bx, iy + (ih - bh) * 0.5f, bw, bh, 1.0f);
+        g.drawLine(bx + bw, midY, ix + iw, midY, 1.0f);
+    }
     else if (iconName == "ds-2-8")
     {
         // 6dB low-pass filter curve: flat passband, then rolls off
