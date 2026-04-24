@@ -1367,6 +1367,74 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         p.lineTo(x1, y0);
         g.strokePath(p, juce::PathStrokeType(1.0f));
     }
+    else if (iconName == "ds-2-1")
+    {
+        // Positive Edge Delay (low -> high with up arrow)
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x0 + pw * 0.5f, y1);
+        p.lineTo(x0 + pw * 0.5f, y0);
+        p.lineTo(x1, y0);
+        p.startNewSubPath(x0 + pw * 0.5f - 2.5f, my + 1.5f);
+        p.lineTo(x0 + pw * 0.5f, my - 2.5f);
+        p.lineTo(x0 + pw * 0.5f + 2.5f, my + 1.5f);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "ds-2-3")
+    {
+        // Negative Edge Delay (high -> low with down arrow)
+        p.startNewSubPath(x0, y0);
+        p.lineTo(x0 + pw * 0.5f, y0);
+        p.lineTo(x0 + pw * 0.5f, y1);
+        p.lineTo(x1, y1);
+        p.startNewSubPath(x0 + pw * 0.5f - 2.5f, my - 1.5f);
+        p.lineTo(x0 + pw * 0.5f, my + 2.5f);
+        p.lineTo(x0 + pw * 0.5f + 2.5f, my - 1.5f);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "ds-2-2")
+    {
+        // Logic Delay (wide positive pulse)
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x0 + pw * 0.2f, y1);
+        p.lineTo(x0 + pw * 0.2f, y0);
+        p.lineTo(x0 + pw * 0.8f, y0);
+        p.lineTo(x0 + pw * 0.8f, y1);
+        p.lineTo(x1, y1);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "ds-2-4")
+    {
+        // Pulse (narrow positive pulse)
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x0 + pw * 0.35f, y1);
+        p.lineTo(x0 + pw * 0.35f, y0);
+        p.lineTo(x0 + pw * 0.65f, y0);
+        p.lineTo(x0 + pw * 0.65f, y1);
+        p.lineTo(x1, y1);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "ds-2-6")
+    {
+        // LogicInv input (positive pulse)
+        p.startNewSubPath(x0, y1);
+        p.lineTo(x0 + pw * 0.25f, y1);
+        p.lineTo(x0 + pw * 0.25f, y0);
+        p.lineTo(x0 + pw * 0.75f, y0);
+        p.lineTo(x0 + pw * 0.75f, y1);
+        p.lineTo(x1, y1);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
+    else if (iconName == "ds-2-5")
+    {
+        // LogicInv output (negative pulse)
+        p.startNewSubPath(x0, y0);
+        p.lineTo(x0 + pw * 0.25f, y0);
+        p.lineTo(x0 + pw * 0.25f, y1);
+        p.lineTo(x0 + pw * 0.75f, y1);
+        p.lineTo(x0 + pw * 0.75f, y0);
+        p.lineTo(x1, y0);
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+    }
     else if (iconName == "ds-2-8")
     {
         // 6dB low-pass filter curve: flat passband, then rolls off
@@ -1798,7 +1866,7 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
     {
         // Decoration and filter-curve icons: drawn at exact XML position/size, no box, no scale
         if (si.iconName.startsWith("decoration-")
-            || si.iconName == "ds-2-7" || si.iconName == "ds-2-8")
+            || si.iconName.startsWith("ds-2-"))
         {
             float ix = static_cast<float>(bounds.getX() + si.x);
             float iy = static_cast<float>(bounds.getY() + si.y);
@@ -2817,19 +2885,29 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         }
 
         // --- NoteVelScale graph ---
-        if (type == "note-vel-scale-display")
+        if (type == "NoteVelScaleDisplay")
         {
             float lGain = 0.5f, bp = 0.5f, rGain = 0.5f;
-            for (auto& p : m.getParameters())
-            {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                auto* pd = p.getDescriptor();
-                int range = pd->maxValue - pd->minValue;
-                float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
 
-                if (name.contains("left gain"))        lGain = norm;
-                else if (name.contains("breakpoint"))  bp = norm;
-                else if (name.contains("right gain"))  rGain = norm;
+            auto* pL = findParameter(m, "p2");
+            if (pL)
+            {
+                int range = pL->getDescriptor()->maxValue - pL->getDescriptor()->minValue;
+                if (range > 0) lGain = static_cast<float>(pL->getValue() - pL->getDescriptor()->minValue) / static_cast<float>(range);
+            }
+
+            auto* pB = findParameter(m, "p3");
+            if (pB)
+            {
+                int range = pB->getDescriptor()->maxValue - pB->getDescriptor()->minValue;
+                if (range > 0) bp = static_cast<float>(pB->getValue() - pB->getDescriptor()->minValue) / static_cast<float>(range);
+            }
+
+            auto* pR = findParameter(m, "p4");
+            if (pR)
+            {
+                int range = pR->getDescriptor()->maxValue - pR->getDescriptor()->minValue;
+                if (range > 0) rGain = static_cast<float>(pR->getValue() - pR->getDescriptor()->minValue) / static_cast<float>(range);
             }
 
             // Background & Border
@@ -2839,29 +2917,44 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             g.drawRect(dx, dy, dw, dh, 1.0f);
 
             float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
-            float midY  = dy + margin + plotH * 0.5f; // 0dB
+            float plotW = dw - margin * 2.0f;
+            float plotH = dh - margin * 2.0f;
+            float midY  = dy + margin + plotH * 0.5f;
 
             // Draw horizontal guide (0dB)
             g.setColour(activeScheme_.displayGrid);
             g.drawLine(dx + margin, midY, dx + dw - margin, midY, 0.5f);
 
             // Draw vertical guide (breakpoint)
-            float bpx = dx + margin + bp * plotW;
-            g.drawLine(bpx, dy + margin, bpx, dy + dh - margin, 0.5f);
+            float ox = dx + margin + bp * plotW;
+            g.drawLine(ox, dy + margin, ox, dy + dh - margin, 0.5f);
 
-            // Draw curve
+            // Origin is (ox, midY)
+            // Java original slopes:
+            // flg = ((1 - vlGain) * 2 - 1) * 24 / 25
+            // frg = (vrGain * 2 - 1) * 24 / 25
+            // Line 1: (ox, cy) to (ox+len, cy + flg*len) -> Right side (Java used vlGain for Right!)
+            // Line 2: (ox, cy) to (ox-len, cy - frg*len) -> Left side  (Java used vrGain for Left!)
+            
+            float flg = ((1.0f - lGain) * 2.0f - 1.0f) * 24.0f / 25.0f;
+            float frg = (rGain * 2.0f - 1.0f) * 24.0f / 25.0f;
+            
+            float len = std::sqrt(plotW * plotW + plotH * plotH);
+
             juce::Path curve;
-            // Gains are +/- 24dB, mapped to 0.0 .. 1.0 norm. 
-            // We want y = midY - (gain_db / max_db) * (plotH/2)
-            float y0 = midY - (lGain - 0.5f) * plotH;
-            float y1 = midY; // breakpoint is 0dB reference
-            float y2 = midY - (rGain - 0.5f) * plotH;
+            // Left segment (Java line 2)
+            curve.startNewSubPath(ox, midY);
+            curve.lineTo(ox - len, midY - frg * len);
+            
+            // Right segment (Java line 1)
+            curve.startNewSubPath(ox, midY);
+            curve.lineTo(ox + len, midY + flg * len);
 
-            curve.startNewSubPath(dx + margin, y0);
-            curve.lineTo(bpx, y1);
-            curve.lineTo(dx + dw - margin, y2);
+            juce::Graphics::ScopedSaveState ss(g);
+            g.reduceClipRegion(static_cast<int>(dx + margin),
+                               static_cast<int>(dy + margin),
+                               static_cast<int>(plotW),
+                               static_cast<int>(plotH));
 
             g.setColour(activeScheme_.displayCurveYellow);
             g.strokePath(curve, juce::PathStrokeType(1.2f));

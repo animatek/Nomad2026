@@ -94,7 +94,7 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                                             .upToLastOccurrenceOf(".", false, false);
                 bool canDraw = iconName.startsWith("wf_")
                             || (iconName.startsWith("decoration-") && !iconName.contains("."))
-                            || iconName == "ds-2-7" || iconName == "ds-2-8";
+                            || iconName.startsWith("ds-2-");
                 if (canDraw)
                 {
                     ThemeStaticIcon si;
@@ -116,7 +116,11 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                             {"decoration-11", 65, 16}, {"decoration-12", 64, 16},
                             {"decoration-13", 25, 19}, {"decoration-14", 68, 11},
                             {"decoration-15", 20, 14}, {"decoration-17", 18, 10},
-                            {"decoration-18", 17, 19}
+                            {"decoration-18", 17, 19},
+                            {"ds-2-1", 16, 16}, {"ds-2-2", 16, 16},
+                            {"ds-2-3", 16, 16}, {"ds-2-4", 16, 16},
+                            {"ds-2-5", 16, 16}, {"ds-2-6", 16, 16},
+                            {"ds-2-7", 16, 16}, {"ds-2-8", 16, 16}
                         };
                         for (auto& n : natural)
                             if (iconName == n.name) { if (si.width <= 0) si.width = n.w; if (si.height <= 0) si.height = n.h; }

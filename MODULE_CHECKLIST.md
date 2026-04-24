@@ -140,16 +140,16 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 16 | PortamentoB | [ ] | [ ] | [ ] | [ ] | |
-| 22 | PartialGen | [ ] | [ ] | [ ] | [ ] | |
-| 39 | Smooth | [ ] | [ ] | [ ] | [ ] | |
-| 43 | Constant | [ ] | [ ] | [ ] | [ ] | |
-| 48 | PortamentoA | [ ] | [ ] | [ ] | [ ] | |
-| 66 | ControlMixer | [ ] | [ ] | [ ] | [ ] | |
-| 72 | NoteScaler | [ ] | [ ] | [ ] | [ ] | |
-| 75 | NoteQuant | [ ] | [ ] | [ ] | [ ] | |
-| 98 | KeyQuant | [ ] | [ ] | [ ] | [ ] | |
-| 115 | NoteVelScal | [ ] | [ ] | [ ] | [ ] | |
+| 16 | PortamentoB | [x] | [x] | n/a | [x] | Flecha incorrecta removida |
+| 22 | PartialGen | [x] | [x] | n/a | [x] | Rango corregido a 1-128 |
+| 39 | Smooth | [x] | [x] | [x] | [x] | OK |
+| 43 | Constant | [x] | [x] | [x] | [x] | OK |
+| 48 | PortamentoA | [x] | [x] | [x] | [x] | OK |
+| 66 | ControlMixer | [x] | [x] | [x] | [x] | OK |
+| 72 | NoteScaler | [x] | [x] | n/a | [x] | Formato bipolar ASCII +/- con 1 decimal |
+| 75 | NoteQuant | [x] | [x] | n/a | [x] | Formato bipolar ASCII +/- |
+| 98 | KeyQuant | [x] | [x] | n/a | [x] | Valor inicial ajustado a 0 |
+| 115 | NoteVelScal | [x] | [x] | n/a | [x] | Gráfico completo (slopes con clipping) |
 
 ## Logic (10)
 

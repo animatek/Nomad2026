@@ -228,7 +228,7 @@ static juce::String fmtNote (int value)
 static juce::String fmtNoteScale (int value)
 {
     if (value == 0)   return "0 (Oct)";
-    if (value == 127) return "\u00b164";
+    if (value == 127) return "+/-64";
 
     const char* suffix = "";
     int key = (value / 2) % 12 + value % 2;
@@ -239,7 +239,7 @@ static juce::String fmtNoteScale (int value)
         case 10: suffix = " (7th)"; break;
     }
     // Nord Modular usually shows one decimal place even for .0
-    return "\u00b1" + roundToStr (value / 2.0, -1, false) + suffix;
+    return juce::String("+/-") + roundToStr (value / 2.0, -1, false) + suffix;
 }
 
 static juce::String fmtOffset64_2 (int value)
@@ -259,9 +259,9 @@ static juce::String fmtOscHz (int value)
 static juce::String fmtPartialRange (int value)
 {
     if (value == 0)   return "0";
-    if (value == 127) return "\u00b164 *";
+    if (value == 127) return "+/-64 *";
     const char* suffix = (value > 64) ? " *" : "";
-    return "\u00b1" + roundToStr (value / 2.0, -1, false) + suffix;
+    return juce::String("+/-") + roundToStr (value / 2.0, -1, false) + suffix;
 }
 
 static const char* const PARTIALS_FRACTIONS[] = {
