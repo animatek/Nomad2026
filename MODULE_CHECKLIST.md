@@ -120,19 +120,19 @@ For each module, check:
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 21 | Compressor | [x] | [x] | [ ] | [x] | compressor-display; gain-reduction meter + limiter LED (visual pend.) |
+| 21 | Compressor | [x] | [x] | [ ] | [x] | compressor-display: piecewise-linear ported from Java (threshold/ratio/refLevel/limiter); VU pend. |
 | 53 | Sample&Hold | [x] | [x] | n/a | n/a | Solo connectors + decoration-1 (sample-hold circuit icon) |
 | 54 | Quantizer | [x] | [x] | n/a | [x] | knob + textDisplay (value+1) + decoration-6 |
 | 57 | InvLevShift | [x] | [x] | n/a | [x] | mode radio (lev_shift icons) + inv toggle + decoration-6 |
-| 61 | Clip | [x] | [x] | n/a | [x] | clip-display (clip+sym); sym toggle button |
-| 62 | Overdrive | [x] | [x] | n/a | n/a | overdrive-display + decoration-6 |
-| 74 | WaveWrap | [x] | [x] | n/a | n/a | wavewrap-display + decoration-6 |
+| 61 | Clip | [x] | [x] | n/a | [x] | clip-display: ported from Java (center-based lines, vclip, sym); uses component-ids from XML |
+| 62 | Overdrive | [x] | [x] | n/a | n/a | overdrive-display: angle-based bezier ported from Java (FilterIterator setBezier) |
+| 74 | WaveWrap | [x] | [x] | n/a | n/a | wavewrap-display: zigzag ported from Java (9 peaks, div=16*vwrap+1) |
 | 78 | Delay | [x] | [x] | n/a | n/a | textDisplay fmtDelayTime + decoration-5 |
-| 82 | Diode | [x] | [x] | n/a | [x] | mode radio (wf_sine/diode_half/diode_full) + decoration-6 |
-| 83 | Shaper | [x] | [x] | n/a | [x] | mode radio (5 shaper transfer curves) + decoration-6 |
+| 82 | Diode | [x] | [x] | n/a | [x] | mode radio (wf_sine/diode_half/diode_full) programmatic icons |
+| 83 | Shaper | [x] | [x] | n/a | [x] | mode radio (5 shaper transfer curves) programmatic icons |
 | 94 | StereoChorus | [x] | [x] | n/a | [x] | 2 knobs + bypass button |
-| 102 | Phaser | [x] | [x] | [ ] | [x] | phaser-display; 2 groupboxes; audio-out LED (visual pend.) |
-| 105 | Expander | [x] | [x] | [ ] | [x] | expander-display; gain-reduction meter + gate LED (visual pend.) |
+| 102 | Phaser | [x] | [x] | [ ] | [x] | phaser-display: EXP/LOG cubics ported from Java (peaks/spread/feedback); audio-out LED pend. |
+| 105 | Expander | [x] | [x] | [ ] | [x] | expander-display: piecewise-linear ported from Java (threshold/ratio/gate); VU pend. |
 | 117 | RingMod | [x] | [x] | n/a | [x] | 2 knobs + resetButton + decoration-3 (ring mod symbol) |
 | 118 | Digitizer | [x] | [x] | n/a | [x] | increment btn + 2 knobs + 2 off/on btns + 2 textDisplays + groupboxes |
 

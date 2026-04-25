@@ -192,6 +192,30 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                     cd.slopeComponentId = sub->getStringAttribute("component-id");
                 else if (subTag == "gain-control")
                     cd.gainControlComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "overdrive")
+                    cd.overdriveComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "clip")
+                    cd.clipComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "symmetry")
+                    cd.symmetryComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "wavewrap")
+                    cd.wavewrapComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "threshold")
+                    cd.thresholdComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "ratio")
+                    cd.ratioComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "ref-level")
+                    cd.refLevelComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "limiter")
+                    cd.limiterComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "gate")
+                    cd.gateComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "feedback")
+                    cd.feedbackComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "peaks")
+                    cd.peaksComponentId = sub->getStringAttribute("component-id");
+                else if (subTag == "spread")
+                    cd.spreadComponentId = sub->getStringAttribute("component-id");
                 else if (subTag == "in-pos")
                 {
                     cd.mmInX = sub->getIntAttribute("x");

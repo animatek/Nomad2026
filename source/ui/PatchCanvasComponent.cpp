@@ -2637,54 +2637,111 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         // --- Overdrive / Clip / WaveWrap displays ---
         if (type == "overdrive-display" || type == "clip-display" || type == "wavewrap-display")
         {
-            float amount = 0.5f;
-            for (auto& p : m.getParameters())
+            auto normP = [](const Parameter* p, float def) -> float {
+                if (!p) return def;
+                auto* pd = p->getDescriptor();
+                int range = pd->maxValue - pd->minValue;
+                return range > 0 ? (float)(p->getValue() - pd->minValue) / (float)range : def;
+            };
+
+            g.saveState();
+            g.reduceClipRegion(juce::Rectangle<int>(dx, dy, dw, dh));
+
+            if (type == "overdrive-display")
             {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                if (name.contains("overdrive") || name.contains("clip") || name.contains("wrap"))
+                // Port of Overdrive.java (angle-based bezier) + JTOverdriveDisplay.java
+                float od = normP(findParameter(m, cd.overdriveComponentId), 0.5f);
+
+                auto mpx = [&](float n) { return (float)dx + n * (float)dw; };
+                auto mpy = [&](float n) { return (float)dy + n * (float)dh; };
+
+                g.setColour(activeScheme_.displayGrid);
+                g.drawLine(mpx(0.0f), mpy(1.0f), mpx(1.0f), mpy(0.0f), 0.5f);
+
+                // Angle-based bezier control points from Overdrive.java setBezier()
+                float srcX = 0.45f * od, srcY = 1.0f;
+                float dstX = 1.0f - 0.45f * od, dstY = 0.0f;
+                float a1 = -45.0f * (1.0f - od) * juce::MathConstants<float>::pi / 180.0f;
+                float a2 = (180.0f - 45.0f * (1.0f - od)) * juce::MathConstants<float>::pi / 180.0f;
+                float c1x = srcX + 0.25f * std::cos(a1);
+                float c1y = srcY + 0.25f * std::sin(a1);
+                float c2x = dstX + 0.25f * std::cos(a2);
+                float c2y = dstY + 0.25f * std::sin(a2);
+
+                juce::Path curve;
+                curve.startNewSubPath(mpx(-0.1f), mpy(1.0f));
+                curve.lineTo(mpx(srcX), mpy(srcY));
+                curve.cubicTo(mpx(c1x), mpy(c1y), mpx(c2x), mpy(c2y), mpx(dstX), mpy(dstY));
+                curve.lineTo(mpx(1.1f), mpy(0.0f));
+
+                g.setColour(activeScheme_.displayCurveWarm);
+                g.strokePath(curve, juce::PathStrokeType(1.2f));
+            }
+            else if (type == "clip-display")
+            {
+                // Port of ClipDisp.java
+                // vclip = 1 - norm: vclip=1 → full pass-through, vclip=0 → max clipping
+                float vclip = 1.0f - normP(findParameter(m, cd.clipComponentId), 0.0f);
+                auto* pSym  = findParameter(m, cd.symmetryComponentId);
+                bool  sym   = pSym ? (pSym->getValue() == pSym->getDescriptor()->maxValue) : true;
+
+                float cxf  = (float)dx + dw * 0.5f;
+                float cyf  = (float)dy + dh * 0.5f;
+                float len  = (float)(std::min(dw, dh) - 1);
+                float half = len * 0.5f;
+                float delta = std::ceil(len * (1.0f - vclip) / 2.0f);
+
+                g.setColour(activeScheme_.displayGrid);
+                g.drawLine(cxf, cyf - half, cxf, cyf + half, 0.5f);
+                g.drawLine(cxf - half, cyf, cxf + half, cyf, 0.5f);
+
+                g.setColour(activeScheme_.displayCurveWarm);
+                g.drawLine(cxf,         cyf,         cxf + delta, cyf - delta, 1.2f);
+                g.drawLine(cxf + delta, cyf - delta, cxf + half,  cyf - delta, 1.2f);
+                if (sym)
                 {
-                    auto* pd = p.getDescriptor();
-                    int range = pd->maxValue - pd->minValue;
-                    if (range > 0)
-                        amount = static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range);
-                    break;
+                    g.drawLine(cxf,         cyf,         cxf - delta, cyf + delta, 1.2f);
+                    g.drawLine(cxf - delta, cyf + delta, cxf - half,  cyf + delta, 1.2f);
+                }
+                else
+                {
+                    g.drawLine(cxf, cyf, cxf - half, cyf + half, 1.2f);
                 }
             }
-
-            float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
-
-            // Reference diagonal
-            g.setColour(activeScheme_.displayGrid);
-            g.drawLine(dx + margin, dy + dh - margin, dx + dw - margin, dy + margin, 0.5f);
-
-            // Transfer curve
-            juce::Path curve;
-            int steps = static_cast<int>(plotW);
-            float drive = 1.0f + amount * 8.0f;
-
-            for (int i = 0; i <= steps; i++)
+            else // wavewrap-display
             {
-                float t = static_cast<float>(i) / static_cast<float>(steps);
-                float val;
+                // Port of WaveWrapDisp.java
+                // Zigzag wave: div=16*vwrap+1, 9 peaks, n=-9..8
+                // x(n) = (n+0.5)*len/div + cx, y(n) = fww(n)*(len/2)+cy
+                // fww(n) = sin((n*2-1)*π/2) = +1 for odd n, -1 for even n
+                float vwrap = normP(findParameter(m, cd.wavewrapComponentId), 0.0f);
 
-                if (type == "wavewrap-display")
-                    val = std::sin(t * juce::MathConstants<float>::pi * (1.0f + amount * 4.0f)) * 0.5f + 0.5f;
-                else
-                    val = std::tanh(t * drive) / std::tanh(drive); // soft clipping
+                float cxf  = (float)dx + dw * 0.5f;
+                float cyf  = (float)dy + dh * 0.5f;
+                float len  = (float)(std::min(dw, dh) - 1);
+                float half = len * 0.5f;
+                float div  = 16.0f * vwrap + 1.0f;
 
-                float px = dx + margin + t * plotW;
-                float py = dy + dh - margin - val * plotH;
+                g.setColour(activeScheme_.displayGrid);
+                g.drawLine(cxf, cyf - half, cxf, cyf + half, 0.5f);
+                g.drawLine(cxf - half, cyf, cxf + half, cyf, 0.5f);
 
-                if (i == 0)
-                    curve.startNewSubPath(px, py);
-                else
-                    curve.lineTo(px, py);
+                const int nPeaks = 9;
+                juce::Path wave;
+                for (int n = -nPeaks; n < nPeaks; ++n)
+                {
+                    float px = (n + 0.5f) * len / div + cxf;
+                    float fy = ((n & 1) == 0) ? -1.0f : 1.0f;
+                    float py = fy * half + cyf;
+                    if (n == -nPeaks) wave.startNewSubPath(px, py);
+                    else              wave.lineTo(px, py);
+                }
+
+                g.setColour(activeScheme_.displayCurveWarm);
+                g.strokePath(wave, juce::PathStrokeType(1.0f));
             }
 
-            g.setColour(activeScheme_.displayCurveWarm);
-            g.strokePath(curve, juce::PathStrokeType(1.2f));
+            g.restoreState();
             continue;
         }
 
@@ -2974,63 +3031,124 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         // --- Compressor / Expander displays ---
         if (type == "compressor-display" || type == "expander-display")
         {
-            float threshold = 0.5f, ratio = 0.5f;
-            for (auto& p : m.getParameters())
-            {
-                auto name = p.getDescriptor()->name.toLowerCase();
-                auto* pd = p.getDescriptor();
+            // Ratio lookup table shared by Compressor.java and Expander.java
+            static const float kRatioTable[] = {
+                1.0f,1.1f,1.2f,1.3f,1.4f,1.5f,1.6f,1.7f,1.8f,1.9f,2.0f,2.2f,2.4f,2.6f,2.8f,
+                3.0f,3.2f,3.4f,3.6f,3.8f,4.0f,4.2f,4.4f,4.6f,4.8f,5.0f,5.5f,6.0f,6.5f,7.0f,
+                7.5f,8.0f,8.5f,9.0f,9.5f,10.0f,11.0f,12.0f,13.0f,14.0f,15.0f,16.0f,17.0f,
+                18.0f,19.0f,20.0f,22.0f,24.0f,26.0f,28.0f,30.0f,32.0f,34.0f,36.0f,38.0f,
+                40.0f,42.0f,44.0f,46.0f,48.0f,50.0f,55.0f,60.0f,65.0f,70.0f,75.0f,80.0f
+            };
+            constexpr int kRatioTableSize = (int)(sizeof(kRatioTable) / sizeof(kRatioTable[0]));
+
+            auto normP = [](const Parameter* p, float def) -> float {
+                if (!p) return def;
+                auto* pd = p->getDescriptor();
                 int range = pd->maxValue - pd->minValue;
-                float norm = (range > 0) ? static_cast<float>(p.getValue() - pd->minValue) / static_cast<float>(range) : 0.5f;
+                return range > 0 ? (float)(p->getValue() - pd->minValue) / (float)range : def;
+            };
 
-                if (name.contains("threshold") || name.contains("thresh")) threshold = norm;
-                else if (name.contains("ratio"))                            ratio = norm;
-            }
+            g.saveState();
+            g.reduceClipRegion(juce::Rectangle<int>(dx, dy, dw, dh));
 
-            float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
+            auto mpx = [&](float n) { return (float)dx + n * (float)dw; };
+            auto mpy = [&](float n) { return (float)dy + n * (float)dh; };
 
-            // Unity diagonal reference
+            // Unity diagonal
             g.setColour(activeScheme_.displayGrid);
-            g.drawLine(dx + margin, dy + dh - margin, dx + dw - margin, dy + margin, 0.5f);
+            g.drawLine(mpx(0.0f), mpy(1.0f), mpx(1.0f), mpy(0.0f), 0.5f);
 
-            juce::Path curve;
-            int steps = static_cast<int>(plotW);
-            float ratioVal = 1.0f + ratio * 8.0f;
-
-            for (int i = 0; i <= steps; i++)
+            if (type == "compressor-display")
             {
-                float t = static_cast<float>(i) / static_cast<float>(steps);
-                float output;
+                // Port of Compressor.java / JTCompressorDisplay.java
+                // threshold → normalized, ratio → raw int, refLevel → normalized, limiter → raw int
+                float threshold = normP(findParameter(m, cd.thresholdComponentId), 0.5f);
+                float refLevel  = normP(findParameter(m, cd.refLevelComponentId),  0.5f);
+                auto* pRatio    = findParameter(m, cd.ratioComponentId);
+                auto* pLimiter  = findParameter(m, cd.limiterComponentId);
+                int   ratioIdx  = pRatio   ? pRatio->getValue()   : 0;
+                int   limiterInt= pLimiter ? pLimiter->getValue() : 12;
 
-                if (type == "compressor-display")
+                float ratio   = 1.0f / kRatioTable[juce::jlimit(0, kRatioTableSize - 1, ratioIdx)];
+                float limiter = (24.0f - (float)limiterInt) / 42.0f;
+
+                // RefLevel guide lines
+                g.drawLine(mpx(-0.1f), mpy(1.0f - refLevel), mpx(1.1f), mpy(1.0f - refLevel), 0.5f);
+                g.drawLine(mpx(refLevel), mpy(-0.1f), mpx(refLevel), mpy(1.1f), 0.5f);
+
+                juce::Path curve;
+                if (threshold <= refLevel)
                 {
-                    if (t < threshold)
-                        output = t;
+                    float b        = (1.0f - refLevel) + ratio * refLevel;
+                    float xLimiter = (limiter - b) / (-ratio);
+                    float yThresh  = -ratio * threshold + b;
+
+                    if (yThresh >= limiter)
+                    {
+                        curve.startNewSubPath(mpx(-1.0f), mpy(1.0f + yThresh + threshold));
+                        curve.lineTo(mpx(threshold), mpy(yThresh));
+                        curve.lineTo(mpx(xLimiter),  mpy(limiter));
+                    }
+                    else if (threshold <= 1.0f - limiter)
+                    {
+                        curve.startNewSubPath(mpx(-1.0f), mpy(1.0f + limiter + threshold));
+                        curve.lineTo(mpx(threshold), mpy(limiter));
+                        curve.lineTo(mpx(threshold), mpy(limiter));
+                    }
                     else
-                        output = threshold + (t - threshold) / ratioVal;
+                    {
+                        curve.startNewSubPath(mpx(0.0f), mpy(1.0f));
+                        curve.lineTo(mpx(1.0f - limiter), mpy(limiter));
+                        curve.lineTo(mpx(1.0f - limiter), mpy(limiter));
+                    }
+                    curve.lineTo(mpx(2.0f), mpy(limiter));
                 }
                 else
                 {
-                    // Expander
-                    if (t > threshold)
-                        output = t;
-                    else
-                        output = threshold - (threshold - t) * ratioVal;
-                    output = juce::jmax(0.0f, output);
+                    float tempThresh = std::min(threshold, 1.0f - limiter);
+                    float b          = (1.0f - tempThresh) + ratio * tempThresh;
+                    float xLimiter   = (limiter - b) / (-ratio);
+
+                    curve.startNewSubPath(mpx(0.0f), mpy(1.0f));
+                    curve.lineTo(mpx(tempThresh), mpy(1.0f - tempThresh));
+                    curve.lineTo(mpx(xLimiter),   mpy(limiter));
+                    curve.lineTo(mpx(2.0f),        mpy(limiter));
                 }
 
-                float px = dx + margin + t * plotW;
-                float py = dy + dh - margin - output * plotH;
+                g.setColour(activeScheme_.displayCurveRed);
+                g.strokePath(curve, juce::PathStrokeType(1.2f));
+            }
+            else // expander-display
+            {
+                // Port of Expander.java / JTExpanderDisplay.java
+                // threshold → normalized, ratio → raw int (NOT inverted), gate → normalized
+                float threshold = normP(findParameter(m, cd.thresholdComponentId), 0.5f);
+                float gate      = normP(findParameter(m, cd.gateComponentId),      0.0f);
+                auto* pRatio    = findParameter(m, cd.ratioComponentId);
+                int   ratioIdx  = pRatio ? pRatio->getValue() : 0;
+                float ratio     = kRatioTable[juce::jlimit(0, kRatioTableSize - 1, ratioIdx)];
 
-                if (i == 0)
-                    curve.startNewSubPath(px, py);
+                juce::Path curve;
+                if (gate <= threshold)
+                {
+                    float intersectGate = ratio * (-gate + threshold) - threshold + 1.0f;
+                    curve.startNewSubPath(mpx(gate), mpy(1.2f));
+                    curve.lineTo(mpx(gate),      mpy(intersectGate));
+                    curve.lineTo(mpx(threshold), mpy(1.0f - threshold));
+                }
                 else
-                    curve.lineTo(px, py);
+                {
+                    curve.startNewSubPath(mpx(gate), mpy(1.1f));
+                    curve.lineTo(mpx(gate), mpy(1.0f - gate));
+                    curve.lineTo(mpx(gate), mpy(1.0f - gate));
+                }
+                curve.lineTo(mpx(1.1f), mpy(-0.1f));
+
+                g.setColour(activeScheme_.displayCurveRed);
+                g.strokePath(curve, juce::PathStrokeType(1.2f));
             }
 
-            g.setColour(activeScheme_.displayCurveRed);
-            g.strokePath(curve, juce::PathStrokeType(1.2f));
+            g.restoreState();
             continue;
         }
 
@@ -3147,41 +3265,111 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
         // --- Phaser display ---
         if (type == "phaser-display")
         {
-            float margin = 2.0f;
-            float plotW = dw - margin * 2;
-            float plotH = dh - margin * 2;
-            float midY = dy + dh * 0.5f;
+            // Port of Phaser.java / JTPhaserDisplay.java
+            // feedback→raw int(norm*127), peaks→1+int(norm*5), spread→raw int(norm*127)
+            // Curve: alternating EXP/LOG cubics using CurvePathIterator formulas
+            auto normP = [](const Parameter* p, float def) -> float {
+                if (!p) return def;
+                auto* pd = p->getDescriptor();
+                int range = pd->maxValue - pd->minValue;
+                return range > 0 ? (float)(p->getValue() - pd->minValue) / (float)range : def;
+            };
 
+            float normFb     = normP(findParameter(m, cd.feedbackComponentId), 0.496f);
+            float normPeaks  = normP(findParameter(m, cd.peaksComponentId),    0.4f);
+            float normSpread = normP(findParameter(m, cd.spreadComponentId),   0.496f);
+
+            int feedBack  = (int)(normFb     * 127.0f);
+            int nbPeaks   = juce::jlimit(1, 6, 1 + (int)(normPeaks * 5.0f));
+            int spreadAbs = (int)(normSpread * 127.0f);
+
+            float feedbackOdd, feedbackEven;
+            if (feedBack < 77)
+            {
+                feedbackOdd  = (float)feedBack / 77.0f;
+                feedbackEven = 0.5f;
+            }
+            else
+            {
+                feedbackOdd  = 1.0f;
+                feedbackEven = 0.5f - 0.3f * (float)(feedBack - 77) / 50.0f;
+            }
+
+            float spreadMax = 0.25f + 0.75f * (float)(nbPeaks - 1) / 5.0f;
+            float spread    = spreadMax * (float)spreadAbs / 127.0f;
+            float L         = (1.0f - spread) / 2.0f;
+            float R         = L + spread;
+
+            g.saveState();
+            g.reduceClipRegion(juce::Rectangle<int>(dx, dy, dw, dh));
+
+            auto mpx = [&](float n) { return (float)dx + n * (float)dw; };
+            auto mpy = [&](float n) { return (float)dy + n * (float)dh; };
+
+            // Midline guide
             g.setColour(activeScheme_.displayGrid);
-            g.drawHorizontalLine(static_cast<int>(midY), dx + margin, dx + dw - margin);
+            g.drawLine(mpx(-0.1f), mpy(0.5f), mpx(1.1f), mpy(0.5f), 0.5f);
 
-            int nPeaks = 3;
-            for (auto& p : m.getParameters())
+            // CurvePathIterator EXP/LOG bezier formulas (src→dst):
+            // EXP: ctrl1=((dx-sx)/2+sx, sy),  ctrl2=(dx, (dy-sy)/2+sy)
+            // LOG: ctrl1=(sx, (sy-dy)/2+dy),  ctrl2=((dx-sx)/2+sx, dy)
+            auto cubicEXP = [&](juce::Path& path, float sx, float sy, float ex, float ey) {
+                path.cubicTo(mpx((ex-sx)*0.5f+sx), mpy(sy),
+                             mpx(ex),               mpy((ey-sy)*0.5f+sy),
+                             mpx(ex),               mpy(ey));
+            };
+            auto cubicLOG = [&](juce::Path& path, float sx, float sy, float ex, float ey) {
+                path.cubicTo(mpx(sx),               mpy((sy-ey)*0.5f+ey),
+                             mpx((ex-sx)*0.5f+sx),  mpy(ey),
+                             mpx(ex),               mpy(ey));
+            };
+
+            // Build point sequence from Phaser.java update_peaks()
+            // pairs [xe=Even,LOG→first=EXP], [xo=Odd,EXP] per peak, then [R,Even,LOG], [1.1,0.5,LOG]
+            struct PhPt { float x, y; bool isEXP; };
+            PhPt pts[16];
+            int  nPts = 0;
+            for (int i = 0; i < nbPeaks; ++i)
             {
-                if (p.getDescriptor()->name.toLowerCase().contains("peak"))
-                {
-                    nPeaks = juce::jlimit(1, 6, p.getValue());
-                    break;
-                }
+                float xe = L + spread * (float)(i * 2)     / (float)(nbPeaks * 2);
+                float xo = L + spread * (float)(i * 2 + 1) / (float)(nbPeaks * 2);
+                pts[nPts++] = { xe, feedbackEven, (i == 0) }; // first overridden to EXP
+                pts[nPts++] = { xo, feedbackOdd,  true };
             }
+            pts[nPts++] = { R,    feedbackEven, false };
+            pts[nPts++] = { 1.1f, 0.5f,         false };
 
-            juce::Path wave;
-            int steps = static_cast<int>(plotW);
-            for (int i = 0; i <= steps; i++)
+            // Draw fill (matching Java g.fill(phaser))
+            juce::Path fill;
+            fill.startNewSubPath(mpx(-0.1f), mpy(1.1f));
+            fill.lineTo(mpx(-0.1f), mpy(0.5f));
+            float prevX = -0.1f, prevY = 0.5f;
+            for (int i = 0; i < nPts; ++i)
             {
-                float t = static_cast<float>(i) / static_cast<float>(steps);
-                float val = std::sin(t * juce::MathConstants<float>::pi * static_cast<float>(nPeaks)) * 0.4f + 0.5f;
-                float px = dx + margin + t * plotW;
-                float py = dy + dh - margin - val * plotH;
-
-                if (i == 0)
-                    wave.startNewSubPath(px, py);
-                else
-                    wave.lineTo(px, py);
+                if (pts[i].isEXP) cubicEXP(fill, prevX, prevY, pts[i].x, pts[i].y);
+                else              cubicLOG(fill, prevX, prevY, pts[i].x, pts[i].y);
+                prevX = pts[i].x; prevY = pts[i].y;
             }
+            fill.lineTo(mpx(1.1f), mpy(1.1f));
+            fill.closeSubPath();
 
+            g.setColour(activeScheme_.displayCurvePurple.withAlpha(0.25f));
+            g.fillPath(fill);
+
+            // Draw curve outline
+            juce::Path curvePh;
+            curvePh.startNewSubPath(mpx(-0.1f), mpy(0.5f));
+            prevX = -0.1f; prevY = 0.5f;
+            for (int i = 0; i < nPts; ++i)
+            {
+                if (pts[i].isEXP) cubicEXP(curvePh, prevX, prevY, pts[i].x, pts[i].y);
+                else              cubicLOG(curvePh, prevX, prevY, pts[i].x, pts[i].y);
+                prevX = pts[i].x; prevY = pts[i].y;
+            }
             g.setColour(activeScheme_.displayCurvePurple);
-            g.strokePath(wave, juce::PathStrokeType(1.0f));
+            g.strokePath(curvePh, juce::PathStrokeType(1.0f));
+
+            g.restoreState();
             continue;
         }
 

@@ -122,6 +122,19 @@ struct ThemeCustomDisplay
     juce::String typeComponentId;         // <type component-id="pN">
     juce::String slopeComponentId;        // <slope component-id="pN">
     juce::String gainControlComponentId;  // <gain-control component-id="pN">
+    // Distortion/dynamics display sub-element component IDs
+    juce::String overdriveComponentId;   // <overdrive  component-id="pN">
+    juce::String clipComponentId;        // <clip        component-id="pN">
+    juce::String symmetryComponentId;    // <symmetry   component-id="pN">
+    juce::String wavewrapComponentId;    // <wavewrap   component-id="pN">
+    juce::String thresholdComponentId;   // <threshold  component-id="pN"> (compressor/expander)
+    juce::String ratioComponentId;       // <ratio       component-id="pN">
+    juce::String refLevelComponentId;    // <ref-level  component-id="pN"> (compressor)
+    juce::String limiterComponentId;     // <limiter     component-id="pN"> (compressor)
+    juce::String gateComponentId;        // <gate        component-id="pN"> (expander)
+    juce::String feedbackComponentId;    // <feedback    component-id="pN"> (phaser)
+    juce::String peaksComponentId;       // <peaks       component-id="pN"> (phaser)
+    juce::String spreadComponentId;      // <spread      component-id="pN"> (phaser)
     // Multimode-routing bracket (FilterC / FilterD)
     int mmInX = 0, mmInY = 0;            // audio input connector centre
     int mmOutX = 0;                       // output connector centre x (HP/BP/LP share same x)
