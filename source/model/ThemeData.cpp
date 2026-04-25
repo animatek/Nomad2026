@@ -418,6 +418,22 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
         // LevAdd  (m112) p1 offset:     bipolar  -64..+64,  centre 0 at v=64.
         if (mod == "m111" && pid == "p1") td.formatterOverride = "fmtLevMult";
         if (mod == "m112" && pid == "p1") td.formatterOverride = "fmtLevAdd";
+
+        // Pitch displays show frequency (Hz/kHz) instead of raw int / note name.
+        // Originals had a "freq display units" toggle (custom p1) that we don't
+        // expose yet; SpectralOsc already uses fmtOscHz directly in modules.xml.
+        //   m97 MasterOsc p2:  raw int   → fmtOscHz
+        //   m96 FormantOsc p2: raw int   → fmtOscHz
+        //   m7  OscA p2:       fmtNote   → fmtOscHz
+        //   m8  OscB p2:       fmtNote   → fmtOscHz
+        if ((mod == "m97" || mod == "m96" || mod == "m7" || mod == "m8") && pid == "p2")
+            td.formatterOverride = "fmtOscHz";
+
+        // FilterA (m86) / FilterB (m87) p1 frequency: raw int → Hz/kHz.
+        // FilterC already uses fmtFilterHz2 in modules.xml; A/B are 6dB filters
+        // with the same coefficient layout as fmtFilterHz1 (504Hz centre).
+        if ((mod == "m86" || mod == "m87") && pid == "p1")
+            td.formatterOverride = "fmtFilterHz1";
     }
 
     theme.textDisplays.push_back(td);

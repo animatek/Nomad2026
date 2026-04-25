@@ -230,6 +230,14 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - All 86 color literals in `PatchCanvasComponent.cpp` wired to scheme fields
   - Selection border: inset 1.5px rounded rect, 1px stroke, theme color (blue/yellow)
   - Always starts Dark; no persistence
+- [x] **Module refinement pass — v0.5.2**:
+  - **Frequency displays** — MasterOsc, OscA/B, FormantOsc, FilterA/B now show Hz/kHz instead of raw integers or note names (matching SpectralOsc/FilterC)
+  - **LfoB square waveform** — vertical edges now drawn between high/low segments
+  - **Phaser** — center-frequency knob now drives both the textDisplay (frequency in Hz/kHz) and the horizontal position of the peak cluster on the response display
+  - **Sample&Hold** — trig connector recoloured yellow (logic) to match its actual signal type
+  - **Multi-option buttons** — radio-style click: jumps directly to the segment under the cursor instead of cycling through all values
+  - **Sequencer Random** — new `Rnd` button on EventSeq and NoteSeqA (left of `Clr`); randomises only the per-step controls (toggles in EventSeq, sliders in NoteSeqA), leaving transport/loop/length/UI params untouched
+  - **KeyQuantizer scale presets** — right-click → Scales (root C): Chromatic, Major (Ionian), Natural/Harmonic/Melodic Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Major/Minor, Blues Major/Minor, Whole Tone, Diminished W-H (mirrors the VCV Fundamental Quantizer set)
 
 ### Next Up
 - [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)

@@ -1250,7 +1250,7 @@ label{fill:#000;}
 	<module component-id="m53" width="255" height="30">
 		<name>Sample&amp;Hold</name>
 		<image x="167" y="3" width="68" height="16" xlink:href="./images/single/decoration-1.svg" />
-		<connector x="161" y="8" size="13" class="cAUDIO">
+		<connector x="161" y="8" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="trig" />
 		</connector>
 		<connector x="197" y="8" size="13" class="cAUDIO">
@@ -2097,6 +2097,11 @@ label{fill:#000;}
 			<parameter component-id="p21" alt="loop" />
 			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
 			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
+		</button>
+		<button x="78" y="5" width="22" height="14" cyclic="true" landscape="true">
+			<call method="randomize" />
+			<btn index="0">Rnd</btn>
+			<btn index="1">Rnd</btn>
 		</button>
 		<button x="100" y="5" width="22" height="14" cyclic="true" landscape="true">
 			<call method="clear" />
@@ -3062,6 +3067,11 @@ label{fill:#000;}
 			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
 			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
 		</button>
+		<button x="78" y="5" width="22" height="14" cyclic="true" landscape="true">
+			<call method="randomize" />
+			<btn index="0">Rnd</btn>
+			<btn index="1">Rnd</btn>
+		</button>
 		<button x="100" y="5" width="22" height="14" cyclic="true" landscape="true">
 			<call method="clear" />
 			<btn index="0">Clr</btn>
@@ -3307,7 +3317,7 @@ label{fill:#000;}
 			<parameter component-id="p1" alt="rate" />
 		</textDisplay>
 		<textDisplay x="90" y="22" width="40" height="16">
-			<parameter component-id="p3" alt="center freq mod" />
+			<parameter component-id="p4" alt="center freq" />
 		</textDisplay>
 		<label x="14" y="19">Rate</label>
 		<label x="52" y="19">Depth</label>
@@ -3322,6 +3332,7 @@ label{fill:#000;}
 			<feedback component-id="p6" alt="feedback" />
 			<peaks component-id="p7" alt="peaks" />
 			<spread component-id="p8" alt="spread" />
+			<frequency component-id="p4" alt="center freq" />
 	    </phaser-display>
    		<light component-id="ledAudioOut" type="led" x="240" y="80" width="7" height="7" /> 
 	</module>

@@ -2724,8 +2724,12 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             int steps = static_cast<int>(plotW);
             float prevWval = 0.0f;
             bool firstPoint = true;
-            // Discontinuous waveforms (sawtooth, inv-saw, square) need gap detection
-            bool isDiscontinuousWave = (waveform == 2 || waveform == 3 || waveform == 4);
+            // Discontinuous waveforms (sawtooth, inv-saw) need gap detection so
+            // the wrap-around doesn't draw a slanted line back to the start.
+            // Square is intentionally NOT in this set: we want the vertical edge
+            // between high/low to render as a visible steep line connecting the
+            // two horizontal segments.
+            bool isDiscontinuousWave = (waveform == 2 || waveform == 3);
             for (int i = 0; i <= steps; i++)
             {
                 float t = static_cast<float>(i) / static_cast<float>(steps);
@@ -3583,6 +3587,9 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float normFb     = normP(findParameter(m, cd.feedbackComponentId), 0.496f);
             float normPeaks  = normP(findParameter(m, cd.peaksComponentId),    0.4f);
             float normSpread = normP(findParameter(m, cd.spreadComponentId),   0.496f);
+            // Center freq drives the horizontal position of the first peak.
+            // Default 64/127 ≈ 0.5 keeps the existing centred layout.
+            float normFreq   = normP(findParameter(m, cd.freqComponentId),     0.5f);
 
             int feedBack  = (int)(normFb     * 127.0f);
             int nbPeaks   = juce::jlimit(1, 6, 1 + (int)(normPeaks * 5.0f));
@@ -3602,7 +3609,10 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
 
             float spreadMax = 0.25f + 0.75f * (float)(nbPeaks - 1) / 5.0f;
             float spread    = spreadMax * (float)spreadAbs / 127.0f;
-            float L         = (1.0f - spread) / 2.0f;
+            // L: left edge of the peak cluster. centre-freq slides the cluster
+            // across the available range (0..1-spread), so freq=0 anchors left,
+            // freq=1 anchors right; default 0.5 reproduces the prior centred look.
+            float L         = juce::jlimit(0.0f, 1.0f - spread, normFreq * (1.0f - spread));
             float R         = L + spread;
 
             g.saveState();
@@ -4152,6 +4162,11 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         {
                             // Sequencer Rnd: randomize only per-step value controls,
                             // leaving Loop/Step-count/transport/UI custom params untouched.
+                            //   NoteSeqA → vertical sliders
+                            //   NoteSeqB → noteStepIds inside the piano-roll editor
+                            //   EventSeq → step toggles (binary), identified by name
+                            //              pattern "seq N, step M" so transport
+                            //              toggles (active/gate1/gate2) stay put.
                             std::set<juce::String> stepIds;
                             for (auto& ts : theme->sliders)
                                 stepIds.insert(ts.componentId);
@@ -4163,7 +4178,10 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             for (auto& p : m.getParameters())
                             {
                                 auto* pd = p.getDescriptor();
-                                if (stepIds.count(pd->componentId) == 0) continue;
+                                bool isStep = stepIds.count(pd->componentId) != 0
+                                              || (pd->name.startsWithIgnoreCase("seq ")
+                                                  && pd->name.containsIgnoreCase("step "));
+                                if (!isStep) continue;
                                 if (pd->maxValue - pd->minValue <= 0) continue;
                                 int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue - pd->minValue + 1) + pd->minValue;
                                 p.setValue(rndVal);
@@ -4277,9 +4295,34 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         }
                         else
                         {
-                            newValue = param->getValue() + 1;
-                            if (newValue > pd->maxValue)
-                                newValue = pd->minValue;
+                            // Radio-selector: if the button has multiple discrete
+                            // labels (cyclic=false), jump straight to the segment
+                            // the user actually clicked rather than cycling through.
+                            int numOptions = static_cast<int>(tb.labels.size());
+                            if (!tb.cyclic && numOptions > 1)
+                            {
+                                int seg;
+                                if (tb.landscape)
+                                {
+                                    int local = relPos.x - tb.x;
+                                    seg = juce::jlimit(0, numOptions - 1,
+                                                       local * numOptions / juce::jmax(1, tb.width));
+                                }
+                                else
+                                {
+                                    int local = relPos.y - tb.y;
+                                    int renderIdx = juce::jlimit(0, numOptions - 1,
+                                                                 local * numOptions / juce::jmax(1, tb.height));
+                                    seg = tb.reversed ? (numOptions - 1 - renderIdx) : renderIdx;
+                                }
+                                newValue = juce::jlimit(pd->minValue, pd->maxValue, pd->minValue + seg);
+                            }
+                            else
+                            {
+                                newValue = param->getValue() + 1;
+                                if (newValue > pd->maxValue)
+                                    newValue = pd->minValue;
+                            }
                         }
 
                         int oldButtonValue = dragState.parameter->getValue();
@@ -4533,6 +4576,39 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 menu.addSeparator();
                 menu.addItem(5, "Delete Module");
 
+                // KeyQuantizer (m98): scale presets. Module exposes 12 binary
+                // note toggles, but the param order is offset — params p3..p14
+                // map to E,F,F#,G,G#,A,Bb,B,C,C#,D,D#. The lambda below maps
+                // chromatic semitone (C=0..B=11) to the matching component-id.
+                // Result IDs >= 100 are reserved for scale presets.
+                const bool isKeyQuant = (modPtr->getDescriptor()->index == 98);
+                if (isKeyQuant)
+                {
+                    juce::PopupMenu scales;
+                    scales.addItem(100, "Chromatic");
+                    scales.addSeparator();
+                    scales.addItem(101, "Major (Ionian)");
+                    scales.addItem(102, "Natural Minor (Aeolian)");
+                    scales.addItem(103, "Harmonic Minor");
+                    scales.addItem(104, "Melodic Minor");
+                    scales.addSeparator();
+                    scales.addItem(105, "Dorian");
+                    scales.addItem(106, "Phrygian");
+                    scales.addItem(107, "Lydian");
+                    scales.addItem(108, "Mixolydian");
+                    scales.addItem(109, "Locrian");
+                    scales.addSeparator();
+                    scales.addItem(110, "Pentatonic Major");
+                    scales.addItem(111, "Pentatonic Minor");
+                    scales.addItem(112, "Blues Major");
+                    scales.addItem(113, "Blues Minor");
+                    scales.addSeparator();
+                    scales.addItem(114, "Whole Tone");
+                    scales.addItem(115, "Diminished (W-H)");
+                    menu.addSeparator();
+                    menu.addSubMenu("Scales (root C)", scales);
+                }
+
                 menu.showMenuAsync(juce::PopupMenu::Options{},
                     [this, modPtr, sec](int result)
                     {
@@ -4596,6 +4672,58 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         {
                             if (initModuleCallback)
                                 initModuleCallback(sec, modPtr);
+                        }
+                        else if (result >= 100 && result < 200)
+                        {
+                            // KeyQuantizer scale presets. mask is a 12-bit
+                            // chromatic bitmap (bit0=C..bit11=B); each bit set
+                            // means "note enabled in scale".
+                            // Bit n set = semitone n enabled (n=0..11, 0=C, 11=B).
+                            // Masks mirror the VCV Fundamental Quantizer presets
+                            // (https://github.com/VCVRack/Fundamental/tree/v2/presets/Quantizer).
+                            int mask = 0;
+                            switch (result)
+                            {
+                                case 100: mask = 0xFFF; break; // Chromatic
+                                case 101: mask = 0xAB5; break; // Major (0,2,4,5,7,9,11)
+                                case 102: mask = 0x5AD; break; // Natural Minor (0,2,3,5,7,8,10)
+                                case 103: mask = 0x9AD; break; // Harmonic Minor (0,2,3,5,7,8,11)
+                                case 104: mask = 0xAAD; break; // Melodic Minor asc (0,2,3,5,7,9,11)
+                                case 105: mask = 0x6AD; break; // Dorian (0,2,3,5,7,9,10)
+                                case 106: mask = 0x5AB; break; // Phrygian (0,1,3,5,7,8,10)
+                                case 107: mask = 0xAD5; break; // Lydian (0,2,4,6,7,9,11)
+                                case 108: mask = 0x6B5; break; // Mixolydian (0,2,4,5,7,9,10)
+                                case 109: mask = 0x56B; break; // Locrian (0,1,3,5,6,8,10)
+                                case 110: mask = 0x295; break; // Pentatonic Major (0,2,4,7,9)
+                                case 111: mask = 0x4A9; break; // Pentatonic Minor (0,3,5,7,10)
+                                case 112: mask = 0x29D; break; // Blues Major (0,2,3,4,7,9)
+                                case 113: mask = 0x4E9; break; // Blues Minor (0,3,5,6,7,10)
+                                case 114: mask = 0x555; break; // Whole Tone (0,2,4,6,8,10)
+                                case 115: mask = 0xB6D; break; // Diminished W-H (0,2,3,5,6,8,9,11)
+                                default:  return;
+                            }
+                            // Chromatic semitone → KeyQuant component-id
+                            //   C(0)→p11, C#(1)→p12, D(2)→p13, D#(3)→p14,
+                            //   E(4)→p3,  F(5)→p4,   F#(6)→p5, G(7)→p6,
+                            //   G#(8)→p7, A(9)→p8,   Bb(10)→p9, B(11)→p10
+                            static const char* const SEMI_TO_PID[12] = {
+                                "p11","p12","p13","p14","p3","p4","p5","p6","p7","p8","p9","p10"
+                            };
+                            for (int s = 0; s < 12; ++s)
+                            {
+                                auto* p = findParameter(*modPtr, SEMI_TO_PID[s]);
+                                if (p == nullptr) continue;
+                                int newVal = (mask >> s) & 1;
+                                if (p->getValue() == newVal) continue;
+                                int oldVal = p->getValue();
+                                p->setValue(newVal);
+                                auto* pd = p->getDescriptor();
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(sec, modPtr->getContainerIndex(), pd->index, newVal);
+                                if (paramDragCompleteCallback)
+                                    paramDragCompleteCallback(sec, modPtr->getContainerIndex(), pd->index, oldVal, newVal);
+                            }
+                            repaint();
                         }
                     });
                 return;
