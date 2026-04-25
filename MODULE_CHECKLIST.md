@@ -116,7 +116,7 @@ For each module, check:
 | 113 | 1to2Fade | [x] | [x] | [ ] | [x] | dec-7+dec-8 bitmaps |
 | 114 | 2to1Fade | [x] | [x] | [ ] | [x] | dec-7+dec-9 bitmaps |
 
-## Audio (15)
+## Audio (15) ✓ DONE
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
@@ -151,35 +151,29 @@ For each module, check:
 | 98 | KeyQuant | [x] | [x] | n/a | [x] | Valor inicial ajustado a 0 |
 | 115 | NoteVelScal | [x] | [x] | n/a | [x] | Gráfico completo (slopes con clipping) |
 
-## Logic (10)
+## Logic (10) ✓ DONE
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 36 | PosEdgeDelay | [ ] | [ ] | [ ] | [ ] | |
-| 37 | LogicDelay | [ ] | [ ] | [ ] | [ ] | |
-| 38 | Pulse | [ ] | [ ] | [ ] | [ ] | |
-| 59 | CompareLev | [ ] | [ ] | [ ] | [ ] | |
-| 64 | NegEdgeDelay | [ ] | [ ] | [ ] | [ ] | |
-| 69 | ClkDiv | [ ] | [ ] | [ ] | [ ] | |
-| 70 | LogicInv | [ ] | [ ] | [ ] | [ ] | |
-| 73 | LogicProc | [ ] | [ ] | [ ] | [ ] | |
-| 77 | ClkDivFix | [ ] | [ ] | [ ] | [ ] | |
-| 89 | CompareAB | [ ] | [ ] | [ ] | [ ] | |
+| 36 | PosEdgeDelay | [x] | [x] | [x] | [x] | |
+| 37 | LogicDelay | [x] | [x] | [x] | [x] | |
+| 38 | Pulse | [x] | [x] | [x] | [x] | |
+| 59 | CompareLev | [x] | [x] | [x] | [x] | |
+| 64 | NegEdgeDelay | [x] | [x] | [x] | [x] | |
+| 69 | ClkDiv | [x] | [x] | [x] | [x] | |
+| 70 | LogicInv | [x] | [x] | [x] | [x] | |
+| 73 | LogicProc | [x] | [x] | [x] | [x] | |
+| 77 | ClkDivFix | [x] | [x] | [x] | [x] | |
+| 89 | CompareAB | [x] | [x] | [x] | [x] | |
 
-## Sequencer (4)
-
-| # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
-|---|--------|--------|----------|-------------|---------|-------|
-| 15 | NoteSeqA | [ ] | [ ] | [ ] | [ ] | Step display? |
-| 17 | EventSeq | [ ] | [ ] | [ ] | [ ] | |
-| 90 | NoteSeqB | [ ] | [ ] | [ ] | [ ] | Custom params (zoom, slider pos) |
-| 91 | CtrlSeq | [ ] | [ ] | [ ] | [ ] | |
-
-## Morph (1)
+## Sequencer (4) ✓ DONE
 
 | # | Module | Layout | Graphics | LEDs/Meters | Buttons | Notes |
 |---|--------|--------|----------|-------------|---------|-------|
-| 0 | Morph | [ ] | [ ] | [ ] | [ ] | |
+| 15 | NoteSeqA | [x] | [x] | [x] | [x] | 16-step LED array via MeterMessage; sequencer only advances from real clock |
+| 17 | EventSeq | [x] | [x] | [x] | [x] | 16-step LED array via MeterMessage; step toggles/buttons OK |
+| 90 | NoteSeqB | [x] | [x] | [x] | [x] | Piano-roll editor, zoom buttons, scrollbar, loop/rec/stop icons, 16-step LED array |
+| 91 | CtrlSeq | [x] | [x] | [x] | [x] | 16-step LED array via MeterMessage; sequencer only advances from real clock |
 
 ---
 
@@ -188,7 +182,7 @@ For each module, check:
 ### LEDs
 - [x] LEDs driven by globalLightValues (NMInfo 0x39) — clip LEDs by ledOnValue
 - [x] Green/yellow/red color based on signal level (meters)
-- [ ] LED arrays not rendered as arrays
+- [x] LED arrays rendered as arrays (sequencers use MeterMessage active-step values)
 
 ### Meters
 - [x] VU meters animados verde/amarillo/rojo en tiempo real (NMInfo 0x3A)
@@ -210,4 +204,4 @@ For each module, check:
 ### Custom Displays Missing
 - [ ] Spectral Oscillator display
 - [ ] Formant Oscillator display
-- [ ] Step sequencer position indicators
+- [x] Step sequencer position indicators

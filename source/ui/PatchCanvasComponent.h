@@ -165,7 +165,7 @@ private:
     // Dragging state
     struct DragState
     {
-        enum Type { None, Knob, Slider, Button, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange, CanvasPan } type = None;
+        enum Type { None, Knob, Slider, Button, NoteSeqEditor, NoteSeqScrollbar, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange, CanvasPan } type = None;
         Module* module = nullptr;
         Parameter* parameter = nullptr;
         Connector* sourceConnector = nullptr;  // CableCreate: source connector
@@ -175,6 +175,8 @@ private:
         int lastSentValue = -1;  // Track last value sent to avoid duplicates
         juce::int64 lastSendTime = 0;  // Rate limiting for real-time sends
         int dragOffsetX = 0, dragOffsetY = 0;  // ModuleMove: pixel offset from module origin
+        juce::Rectangle<int> customRect;       // Custom display drag rect, module-relative
+        juce::String customIds[16];            // NoteSeqEditor step parameter ids
         juce::Point<int> startGridPos;          // ModuleMove: grid position before drag
     };
     DragState dragState;

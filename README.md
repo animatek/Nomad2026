@@ -209,6 +209,20 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - **FilterC/D**: multimode routing bracket — gray lines connecting audio `in` to HP/BP/LP outputs; transparent overlay (no background box)
   - **FilterE button order**: `reverse="true"` attribute on vertical radio buttons (BR top → LP bottom, matching hardware values)
   - **Bug fix**: morph-parameter pollution in display lookups — switched to component-ID-based `findParameter()` instead of name matching
+- [x] **Sequencer module visual/functional pass** (complete — NoteSeqA, EventSeq, NoteSeqB, CtrlSeq):
+  - 16-step LED arrays rendered as real arrays and driven from synth `MeterMessage` active-step values, matching original NOMAD behavior
+  - Removed local/autonomous sequencer animation: sequencers only advance when clocked by the synth patch
+  - NoteSeqB piano-roll editor renders note lanes, keyboard strip, step grid, active step, disabled steps, zoom state, and scrollbar
+  - NoteSeqB editor supports direct note editing, step selection, draggable scrollbar, zoom in/out buttons, randomize/clear actions, and loop/rec/stop icons
+  - Fixed 1-based `currentstep` display mapping so step 1 is drawn in column 1, not column 2
+  - Sequencer buttons and step toggles verified across NoteSeqA/EventSeq/NoteSeqB/CtrlSeq
+- [x] **Module add menu organization**:
+  - Canvas context menu uses explicit original-style categories: IN/OUT, OSC, LFO, ENV, FILTER, MIXER, AUDIO, CTRL, LOGIC, SEQUENCER
+  - Each category has internal separators matching the original menu grouping
+  - Internal Morph descriptor is hidden from module browser, QuickAdd, and Add Module menus while remaining available for morph protocol/state handling
+- [x] **Module checklist complete for instantiable modules**:
+  - Sequencer, Logic, Audio, Filter, Envelope, Oscillator/LFO, In/Out, Mixer, and Control passes recorded in `MODULE_CHECKLIST.md`
+  - Non-instantiable Morph category removed from the user-facing checklist/menu
 - [x] **Dark Theme System**: `ColorScheme` struct (50 fields), runtime-switchable via View → Theme menu
   - Two themes: **Dark** (default, carbon palette) and **Classic** (original colors, dev reference)
   - `ThemeId` enum for identity tracking; no color-comparison fragility
@@ -329,7 +343,7 @@ This section outlines all planned features to achieve feature parity with the or
     - Bundled offline packs as initial approach; live scraping as stretch goal
 
 ### Quality of Life
-- [ ] **Module Rendering Polish** - Systematic review of all 110+ modules against original editor (see [MODULE_CHECKLIST.md](MODULE_CHECKLIST.md))
+- [x] **Module Rendering Polish** - Systematic review of all instantiable modules against original editor (see [MODULE_CHECKLIST.md](MODULE_CHECKLIST.md))
   - Per-module verification: layout/size, graphics/custom displays, LEDs/meters, buttons/icons, labels, parameter interaction
   - Categories: In/Out, Oscillator, Filter, Amplifier, Envelope, LFO, FX, Delay, Mixer, Switch, Logic, Sequencer, MIDI, Random
 - [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search

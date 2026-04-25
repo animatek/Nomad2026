@@ -131,7 +131,7 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
             }
         }
         else if (tag != "name"
-                 && tag != "scrollbar" && tag != "defs" && tag != "style"
+                 && tag != "defs" && tag != "style"
                  && child->hasAttribute("x") && child->hasAttribute("width"))
         {
             // Custom display element (overdrive-display, LFODisplay, etc.)
@@ -234,10 +234,16 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
                     if (idx >= 0 && idx < 16)
                         cd.bandIds[idx] = sub->getStringAttribute("component-id");
                 }
+                else if (subTag.startsWith("step") && subTag.length() <= 6)
+                {
+                    int idx = subTag.substring(4).getIntValue();
+                    if (idx >= 0 && idx < 16)
+                        cd.noteStepIds[idx] = sub->getStringAttribute("component-id");
+                }
             }
             theme.customDisplays.push_back(cd);
         }
-        // Silently skip: image, scrollbar
+        // Silently skip: image
     }
 
     themes[theme.componentId] = std::move(theme);

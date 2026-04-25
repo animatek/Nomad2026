@@ -97,11 +97,23 @@ int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetS
         auto compId = ref.mod->getDescriptor() ? ref.mod->getDescriptor()->componentId : juce::String();
         if (const ModuleTheme* theme = themeData->getModuleTheme(compId))
         {
+            bool hasMeterOrLedArray = false;
+            int meterSlots = 0;
             for (auto& light : theme->lights)
             {
-                if (forMeters && light.type == "meter") ++baseIndex;
+                if (forMeters && (light.type == "meter" || light.type == "led-array"))
+                {
+                    hasMeterOrLedArray = true;
+                    if (light.type == "meter")
+                        ++meterSlots;
+                }
                 if (!forMeters && light.type == "led")  ++baseIndex;
             }
+
+            // NOMAD registers meters and sequencer led-arrays as MeterMessage
+            // pairs. A single led-array/single meter still consumes two slots.
+            if (forMeters && hasMeterOrLedArray)
+                baseIndex += juce::jmax(2, meterSlots);
         }
     }
     return baseIndex;
@@ -1626,6 +1638,86 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
         }
         g.strokePath(p, juce::PathStrokeType(1.2f));
     }
+    else if (iconName == "loop_off" || iconName == "loop_on")
+    {
+        // Two-arrow recycle/loop: top arc going right, bottom arc going left,
+        // each ending in a small arrowhead.
+        bool on = (iconName == "loop_on");
+        juce::Colour c = on ? juce::Colour(0xff7adf7a) : colour.withMultipliedAlpha(0.7f);
+        g.setColour(c);
+
+        float r  = juce::jmin(pw, ph) * 0.42f;
+        float th = juce::jmax(1.0f, r * 0.25f);
+        float gap = juce::degreesToRadians(35.0f);
+
+        // Top arc: from left-top going clockwise to right-top, leaving a gap on the right.
+        juce::Path topArc;
+        topArc.addCentredArc(mx, my, r, r, 0.0f,
+                             -juce::MathConstants<float>::halfPi - juce::MathConstants<float>::halfPi + gap,
+                             juce::MathConstants<float>::halfPi - gap,
+                             true);
+        g.strokePath(topArc, juce::PathStrokeType(th, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
+
+        // Bottom arc: from right-bottom going clockwise (i.e. leftward) to left-bottom.
+        juce::Path botArc;
+        botArc.addCentredArc(mx, my, r, r, 0.0f,
+                             juce::MathConstants<float>::halfPi + gap,
+                             juce::MathConstants<float>::pi + juce::MathConstants<float>::halfPi - gap,
+                             true);
+        g.strokePath(botArc, juce::PathStrokeType(th, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
+
+        // Top arrowhead: at the gap on the right side, pointing right.
+        float ang = juce::MathConstants<float>::halfPi - gap;
+        float ax = mx + std::sin(ang) * r;
+        float ay = my - std::cos(ang) * r;
+        float headSz = r * 0.55f;
+        juce::Path topHead;
+        topHead.addTriangle(ax + headSz * 0.9f,  ay,
+                            ax - headSz * 0.2f,  ay - headSz * 0.7f,
+                            ax - headSz * 0.2f,  ay + headSz * 0.3f);
+        g.fillPath(topHead);
+
+        // Bottom arrowhead: at the gap on the left side, pointing left.
+        ang = juce::MathConstants<float>::pi + juce::MathConstants<float>::halfPi - gap;
+        float bx2 = mx + std::sin(ang) * r;
+        float by2 = my - std::cos(ang) * r;
+        juce::Path botHead;
+        botHead.addTriangle(bx2 - headSz * 0.9f, by2,
+                            bx2 + headSz * 0.2f, by2 + headSz * 0.7f,
+                            bx2 + headSz * 0.2f, by2 - headSz * 0.3f);
+        g.fillPath(botHead);
+    }
+    else if (iconName == "rec_off" || iconName == "rec_on")
+    {
+        // Record dot
+        bool on = (iconName == "rec_on");
+        juce::Colour c = on ? juce::Colour(0xffd64545) : colour.withMultipliedAlpha(0.6f);
+        g.setColour(c);
+        float r = juce::jmin(pw, ph) * 0.55f;
+        g.fillEllipse(mx - r * 0.5f, my - r * 0.5f, r, r);
+        if (!on)
+        {
+            g.setColour(colour);
+            g.drawEllipse(mx - r * 0.5f, my - r * 0.5f, r, r, 0.8f);
+        }
+    }
+    else if (iconName == "start")
+    {
+        // Play triangle pointing right
+        juce::Path tri;
+        float w = pw * 0.55f;
+        float h = ph * 0.7f;
+        tri.addTriangle(mx - w * 0.4f, my - h * 0.5f,
+                        mx - w * 0.4f, my + h * 0.5f,
+                        mx + w * 0.6f, my);
+        g.fillPath(tri);
+    }
+    else if (iconName == "stop")
+    {
+        // Stop square
+        float s = juce::jmin(pw, ph) * 0.55f;
+        g.fillRect(mx - s * 0.5f, my - s * 0.5f, s, s);
+    }
     else
     {
         g.drawEllipse(ix + iw * 0.1f, iy + ih * 0.1f, iw * 0.8f, ih * 0.8f, 1.0f);
@@ -1819,7 +1911,16 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         // --- Toggle buttons (cyclic=true) or single-option ---
         bool isOn = (val > 0);
 
-        // Determine label text for current state
+        // Pick an icon for the current state if the theme provides one
+        juce::String iconRef;
+        if (!tb.imageRefs.empty())
+        {
+            int idx = juce::jlimit(0, static_cast<int>(tb.imageRefs.size()) - 1, val);
+            iconRef = tb.imageRefs[static_cast<size_t>(idx)];
+        }
+
+        // Determine label text for current state. If neither labels nor icons
+        // are defined, leave blank — flat toggle buttons (e.g. EventSeq steps).
         juce::String labelText;
         if (!tb.labels.empty())
         {
@@ -1828,8 +1929,6 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             else
                 labelText = tb.labels[0];
         }
-        if (labelText.isEmpty() && param != nullptr)
-            labelText = juce::String(val);
 
         // --- Mute / compact toggle: small button (<=20x20) rendered as connector-sized square ---
         if (tb.cyclic && bw <= 20.0f && bh <= 20.0f)
@@ -1840,7 +1939,7 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
 
             juce::Colour muteBase = isOn ? juce::Colour(0xffcc4444) : moduleBg.darker(0.2f);
             juce::Colour muteText = isOn ? juce::Colours::white : activeScheme_.buttonText;
-            drawBevelSegment(sx, sy, sq, sq, isOn, muteBase, labelText, muteText);
+            drawBevelSegment(sx, sy, sq, sq, isOn, muteBase, labelText, muteText, iconRef);
 
             g.setColour(activeScheme_.buttonBorder);
             g.drawRect(sx, sy, sq, sq, 1.0f);
@@ -1849,7 +1948,7 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
 
         juce::Colour base      = isOn ? moduleBg.brighter(0.2f).withSaturation(0.4f) : moduleBg.darker(0.15f);
         juce::Colour labelCol  = isOn ? activeScheme_.buttonTextActive : activeScheme_.buttonText;
-        drawBevelSegment(bx, by, bw, bh, isOn, base, labelText, labelCol);
+        drawBevelSegment(bx, by, bw, bh, isOn, base, labelText, labelCol, iconRef);
 
         // Outer border
         g.setColour(activeScheme_.buttonBorder);
@@ -2095,12 +2194,12 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
         }
     }
 
-    // Track LED index per component-id
+    // Track LED index per component-id (LEDs and led-arrays share the slot space)
     std::map<juce::String, int> ledGlobalIdx;
     int ledCount = 0;
     for (auto& tl : theme.lights)
     {
-        if (tl.type == "led")
+        if (tl.type == "led" || tl.type == "led-array")
         {
             ledGlobalIdx[tl.componentId] = ledBase + ledCount;
             ++ledCount;
@@ -2112,6 +2211,45 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
         float lx = static_cast<float>(bounds.getX() + tl.x) + (tl.type == "led" ? 2.0f : 0.0f);
         float lw = static_cast<float>(tl.width);
         float lh = static_cast<float>(tl.height);
+
+        if (tl.type == "led-array")
+        {
+            // Row of 16 small LEDs distributed across `width`. The active step
+            // is read only from synth meter data, matching NOMAD's LightProcessor.
+            // No local timer is used: sequencers advance only from Clk pulses.
+            const int kSteps = 16;
+            int rawStep = (meterBase < 128) ? globalMeterValues[meterBase] : 16;
+            int activeStep = -1;
+            if (rawStep >= 0 && rawStep < kSteps)
+                activeStep = rawStep;
+
+            float ly = static_cast<float>(bounds.getY() + tl.y);
+            float dotSize = juce::jmin(lh, lw / static_cast<float>(kSteps) - 1.0f);
+            if (dotSize < 3.0f) dotSize = 3.0f;
+            float spacing = lw / static_cast<float>(kSteps);
+
+            for (int i = 0; i < kSteps; ++i)
+            {
+                float dx = lx + spacing * static_cast<float>(i) + (spacing - dotSize) * 0.5f;
+                float dy = ly + (lh - dotSize) * 0.5f;
+                bool on = (i == activeStep);
+                if (on)
+                {
+                    g.setColour(activeScheme_.ledOn);
+                    g.fillEllipse(dx, dy, dotSize, dotSize);
+                    g.setColour(activeScheme_.ledAudioOn);
+                    g.drawEllipse(dx, dy, dotSize, dotSize, 0.5f);
+                }
+                else
+                {
+                    g.setColour(activeScheme_.ledOff);
+                    g.fillEllipse(dx, dy, dotSize, dotSize);
+                    g.setColour(activeScheme_.meterTrack);
+                    g.drawEllipse(dx, dy, dotSize, dotSize, 0.5f);
+                }
+            }
+            continue;
+        }
 
         if (tl.type == "led")
         {
@@ -2631,6 +2769,173 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             g.setColour(activeScheme_.displayCurveBlue);
             g.strokePath(wave, juce::PathStrokeType(1.5f,
                 juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            continue;
+        }
+
+        // --- NoteSeqB piano-roll display ---
+        if (type == "note-seq-editor")
+        {
+            constexpr int kSteps = 16;
+
+            int notes[kSteps];
+            int validNotes = 0;
+            int noteSum = 0;
+            for (int i = 0; i < kSteps; ++i)
+            {
+                notes[i] = 60;
+                if (cd.noteStepIds[i].isNotEmpty())
+                {
+                    if (auto* p = findParameter(m, cd.noteStepIds[i]))
+                    {
+                        notes[i] = juce::jlimit(0, 127, p->getValue());
+                        noteSum += notes[i];
+                        ++validNotes;
+                    }
+                }
+            }
+
+            int currentStep = 0;
+            if (auto* p = findParameter(m, "p20"))
+            {
+                int rawStep = p->getValue();
+                currentStep = juce::jlimit(0, kSteps - 1, rawStep > 0 ? rawStep - 1 : 0);
+            }
+
+            int stepCount = kSteps;
+            if (auto* p = findParameter(m, "p19"))
+                stepCount = juce::jlimit(1, kSteps, p->getValue() + 1);
+
+            int zoom = 3;
+            if (auto* p = findParameter(m, "p1"))
+                zoom = juce::jlimit(1, 6, p->getValue());
+
+            int centerNote = validNotes > 0 ? noteSum / validNotes : 60;
+            if (auto* p = findParameter(m, "p2"))
+            {
+                auto* pd = p->getDescriptor();
+                int v = p->getValue();
+                if (v >= pd->minValue && v <= pd->maxValue)
+                    centerNote = v;
+            }
+
+            int visibleNotes = juce::jlimit(12, 72, 72 - (zoom - 1) * 12);
+            int lowNote = juce::jlimit(0, 127 - visibleNotes, centerNote - visibleNotes / 2);
+            int highNote = lowNote + visibleNotes;
+
+            auto isBlackKey = [](int midiNote)
+            {
+                switch (midiNote % 12)
+                {
+                    case 1: case 3: case 6: case 8: case 10: return true;
+                    default: return false;
+                }
+            };
+
+            g.saveState();
+            g.reduceClipRegion(juce::Rectangle<int>(static_cast<int>(dx), static_cast<int>(dy),
+                                                    static_cast<int>(dw), static_cast<int>(dh)));
+
+            const float keyW = 16.0f;
+            const float rollX = dx + keyW;
+            const float rollW = juce::jmax(1.0f, dw - keyW);
+            const float stepW = rollW / static_cast<float>(kSteps);
+            const float rowH = dh / static_cast<float>(visibleNotes + 1);
+
+            // Piano-key strip and pitch lanes.
+            g.setColour(activeScheme_.displayBg.darker(0.25f));
+            g.fillRect(dx, dy, keyW, dh);
+            for (int note = lowNote; note <= highNote; ++note)
+            {
+                float y = dy + (static_cast<float>(highNote - note) / static_cast<float>(visibleNotes)) * dh;
+                bool black = isBlackKey(note);
+                if (black)
+                {
+                    g.setColour(juce::Colours::black.withAlpha(0.28f));
+                    g.fillRect(rollX, y - rowH * 0.5f, rollW, juce::jmax(1.0f, rowH));
+                    g.fillRect(dx + 2.0f, y - rowH * 0.45f, keyW - 4.0f, juce::jmax(1.0f, rowH * 0.9f));
+                }
+
+                g.setColour((note % 12 == 0) ? activeScheme_.displayGrid.withAlpha(0.75f)
+                                              : activeScheme_.displayGrid.withAlpha(0.25f));
+                g.drawHorizontalLine(static_cast<int>(std::round(y)), rollX, dx + dw);
+            }
+
+            // Step grid, with current and disabled/out-of-range steps visible.
+            for (int i = 0; i <= kSteps; ++i)
+            {
+                float x = rollX + static_cast<float>(i) * stepW;
+                g.setColour((i % 4 == 0) ? activeScheme_.displayGrid.withAlpha(0.85f)
+                                         : activeScheme_.displayGrid.withAlpha(0.35f));
+                g.drawVerticalLine(static_cast<int>(std::round(x)), dy, dy + dh);
+            }
+
+            if (currentStep < stepCount)
+            {
+                g.setColour(activeScheme_.ledOn.withAlpha(0.16f));
+                g.fillRect(rollX + stepW * static_cast<float>(currentStep), dy, stepW, dh);
+            }
+
+            if (stepCount < kSteps)
+            {
+                g.setColour(activeScheme_.displayBg.withAlpha(0.45f));
+                g.fillRect(rollX + stepW * static_cast<float>(stepCount), dy,
+                           stepW * static_cast<float>(kSteps - stepCount), dh);
+            }
+
+            // Note blocks.
+            for (int i = 0; i < kSteps; ++i)
+            {
+                int note = notes[i];
+                bool clipped = (note < lowNote || note > highNote);
+                int visibleNote = juce::jlimit(lowNote, highNote, note);
+                float nx = rollX + stepW * static_cast<float>(i) + 1.5f;
+                float ny = dy + (static_cast<float>(highNote - visibleNote) / static_cast<float>(visibleNotes)) * dh;
+                float nh = juce::jmax(3.0f, rowH * 0.72f);
+                float nw = juce::jmax(4.0f, stepW - 3.0f);
+                bool active = (i == currentStep && i < stepCount);
+
+                auto noteColour = active ? activeScheme_.displayCurveYellow : activeScheme_.displayCurveGreen;
+                if (i >= stepCount)
+                    noteColour = noteColour.withMultipliedAlpha(0.35f);
+                if (clipped)
+                    noteColour = activeScheme_.displayCurveRed.withAlpha(0.75f);
+
+                g.setColour(noteColour.withAlpha(0.80f));
+                g.fillRoundedRectangle(nx, ny - nh * 0.5f, nw, nh, 1.5f);
+                g.setColour(noteColour.brighter(0.35f));
+                g.drawRoundedRectangle(nx, ny - nh * 0.5f, nw, nh, 1.5f, 0.7f);
+            }
+
+            g.restoreState();
+            continue;
+        }
+
+        // --- Scrollbar used by note-seq-editor ---
+        if (type == "scrollbar")
+        {
+            int zoom = 3;
+            if (auto* p = findParameter(m, "p1"))
+                zoom = juce::jlimit(1, 6, p->getValue());
+
+            int sliderPos = 60;
+            if (auto* p = findParameter(m, "p2"))
+            {
+                auto* pd = p->getDescriptor();
+                int v = p->getValue();
+                sliderPos = (v >= pd->minValue && v <= pd->maxValue) ? v : sliderPos;
+            }
+
+            float visibleFrac = juce::jlimit(0.15f, 0.85f, 1.0f - static_cast<float>(zoom - 1) * 0.12f);
+            float thumbH = juce::jmax(10.0f, dh * visibleFrac);
+            float norm = juce::jlimit(0.0f, 1.0f, (117.0f - static_cast<float>(sliderPos)) / (117.0f - 6.0f));
+            float thumbY = dy + 2.0f + norm * (dh - thumbH - 4.0f);
+
+            g.setColour(activeScheme_.displayBgCustom.darker(0.35f));
+            g.fillRoundedRectangle(dx + 2.0f, dy + 2.0f, dw - 4.0f, dh - 4.0f, 2.0f);
+            g.setColour(activeScheme_.displayGrid.withAlpha(0.7f));
+            g.drawRoundedRectangle(dx + 2.0f, dy + 2.0f, dw - 4.0f, dh - 4.0f, 2.0f, 0.7f);
+            g.setColour(activeScheme_.displayCurveBlue.withAlpha(0.85f));
+            g.fillRoundedRectangle(dx + 3.0f, thumbY, dw - 6.0f, thumbH, 2.0f);
             continue;
         }
 
@@ -3827,6 +4132,62 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             }
                             repaint();
                         }
+                        else if (tb.callMethod == "clear")
+                        {
+                            // Reset all parameters to their minimum, including binary
+                            // step toggles (EventSeq, etc). Loop/play/rec also reset
+                            // to 0 — equivalent to a fresh sequencer.
+                            for (auto& p : m.getParameters())
+                            {
+                                auto* pd = p.getDescriptor();
+                                int newVal = pd->minValue;
+                                if (p.getValue() == newVal) continue;
+                                p.setValue(newVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);
+                            }
+                            repaint();
+                        }
+                        else if (tb.callMethod == "randomize")
+                        {
+                            // Sequencer Rnd: randomize only per-step value controls,
+                            // leaving Loop/Step-count/transport/UI custom params untouched.
+                            std::set<juce::String> stepIds;
+                            for (auto& ts : theme->sliders)
+                                stepIds.insert(ts.componentId);
+                            for (auto& cd : theme->customDisplays)
+                                if (cd.type == "note-seq-editor")
+                                    for (auto& id : cd.noteStepIds)
+                                        if (id.isNotEmpty())
+                                            stepIds.insert(id);
+                            for (auto& p : m.getParameters())
+                            {
+                                auto* pd = p.getDescriptor();
+                                if (stepIds.count(pd->componentId) == 0) continue;
+                                if (pd->maxValue - pd->minValue <= 0) continue;
+                                int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue - pd->minValue + 1) + pd->minValue;
+                                p.setValue(rndVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, rndVal);
+                            }
+                            repaint();
+                        }
+                        else if (tb.callMethod == "zoomIn" || tb.callMethod == "zoomOut")
+                        {
+                            if (auto* zoomParam = findParameter(m, "p1"))
+                            {
+                                auto* pd = zoomParam->getDescriptor();
+                                int oldVal = zoomParam->getValue();
+                                int delta = (tb.callMethod == "zoomIn") ? 1 : -1;
+                                int newVal = juce::jlimit(pd->minValue, pd->maxValue, oldVal + delta);
+                                zoomParam->setValue(newVal);
+                                if (parameterChangeCallback)
+                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);
+                                if (paramDragCompleteCallback && newVal != oldVal)
+                                    paramDragCompleteCallback(area.section, m.getContainerIndex(), pd->index, oldVal, newVal);
+                                repaint();
+                            }
+                        }
                         else if (tb.callMethod == "min" || tb.callMethod == "max")
                         {
                             bool doMax = (tb.callMethod == "max");
@@ -3933,6 +4294,117 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         repaint();
                         return;
                     }
+                }
+            }
+
+            // Test NoteSeqB piano-roll editor and its scrollbar.
+            for (auto& cd : theme->customDisplays)
+            {
+                if (cd.type != "note-seq-editor" && cd.type != "scrollbar")
+                    continue;
+
+                juce::Rectangle<int> displayRect(cd.x, cd.y, cd.width, cd.height);
+                if (!displayRect.contains(relPos))
+                    continue;
+
+                if (cd.type == "note-seq-editor")
+                {
+                    constexpr int kSteps = 16;
+                    constexpr int kKeyWidth = 16;
+                    int rollX = cd.x + kKeyWidth;
+                    int rollW = juce::jmax(1, cd.width - kKeyWidth);
+                    int localX = juce::jlimit(0, rollW - 1, relPos.x - rollX);
+                    int step = juce::jlimit(0, kSteps - 1, localX * kSteps / rollW);
+                    if (relPos.x < rollX)
+                        step = 0;
+
+                    if (cd.noteStepIds[step].isEmpty())
+                        return;
+
+                    auto* noteParam = findParameter(m, cd.noteStepIds[step]);
+                    if (noteParam == nullptr)
+                        return;
+
+                    auto noteFromY = [&](int y)
+                    {
+                        int zoom = 3;
+                        if (auto* p = findParameter(m, "p1"))
+                            zoom = juce::jlimit(1, 6, p->getValue());
+
+                        int centerNote = 60;
+                        if (auto* p = findParameter(m, "p2"))
+                        {
+                            auto* pd = p->getDescriptor();
+                            int v = p->getValue();
+                            if (v >= pd->minValue && v <= pd->maxValue)
+                                centerNote = v;
+                        }
+                        else if (auto* p = findParameter(m, cd.noteStepIds[step]))
+                            centerNote = p->getValue();
+
+                        int visibleNotes = juce::jlimit(12, 72, 72 - (zoom - 1) * 12);
+                        int lowNote = juce::jlimit(0, 127 - visibleNotes, centerNote - visibleNotes / 2);
+                        int highNote = lowNote + visibleNotes;
+                        float normY = juce::jlimit(0.0f, 1.0f, static_cast<float>(y - cd.y) / static_cast<float>(cd.height));
+                        return juce::jlimit(0, 127, static_cast<int>(std::round(static_cast<float>(highNote) - normY * static_cast<float>(visibleNotes))));
+                    };
+
+                    int oldValue = noteParam->getValue();
+                    int newValue = noteFromY(relPos.y);
+                    noteParam->setValue(newValue);
+                    if (parameterChangeCallback)
+                        parameterChangeCallback(area.section, m.getContainerIndex(), noteParam->getDescriptor()->index, newValue);
+
+                    if (auto* stepParam = findParameter(m, "p20"))
+                    {
+                        int stepValue = step + 1;
+                        if (stepParam->getValue() != stepValue)
+                        {
+                            stepParam->setValue(stepValue);
+                            if (parameterChangeCallback)
+                                parameterChangeCallback(area.section, m.getContainerIndex(), stepParam->getDescriptor()->index, stepValue);
+                        }
+                    }
+
+                    dragState.type = DragState::NoteSeqEditor;
+                    dragState.module = &m;
+                    dragState.parameter = noteParam;
+                    dragState.section = area.section;
+                    dragState.startPos = pos;
+                    dragState.startValue = oldValue;
+                    dragState.customRect = displayRect;
+                    for (int i = 0; i < kSteps; ++i)
+                        dragState.customIds[i] = cd.noteStepIds[i];
+                    repaint();
+                    return;
+                }
+
+                if (cd.type == "scrollbar")
+                {
+                    auto* scrollParam = findParameter(m, "p2");
+                    if (scrollParam == nullptr)
+                        return;
+
+                    auto* pd = scrollParam->getDescriptor();
+                    float normY = juce::jlimit(0.0f, 1.0f, static_cast<float>(relPos.y - cd.y) / static_cast<float>(cd.height));
+                    int newValue = juce::jlimit(pd->minValue, pd->maxValue,
+                        static_cast<int>(std::round(static_cast<float>(pd->maxValue)
+                            - normY * static_cast<float>(pd->maxValue - pd->minValue))));
+
+                    int oldValue = scrollParam->getValue();
+                    scrollParam->setValue(newValue);
+                    if (parameterChangeCallback)
+                        parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newValue);
+
+                    dragState.type = DragState::NoteSeqScrollbar;
+                    dragState.module = &m;
+                    dragState.parameter = scrollParam;
+                    dragState.section = area.section;
+                    dragState.startPos = pos;
+                    dragState.startValue = oldValue;
+                    dragState.customRect = displayRect;
+                    repaint();
+                    return;
                 }
             }
 
@@ -4184,17 +4656,207 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 
         juce::PopupMenu menu;
 
-        // "Add Module" submenu organised by category
+        // "Add Module" submenu organised like the original NM menu, with
+        // explicit separators. Morph is internal and never appears here.
         // IDs: 1000 + moduleIndex  (leaves plenty of room for other items)
         juce::PopupMenu addMenu;
-        auto categories = moduleDescs->getCategories();
-        for (auto& cat : categories)
+
+        auto addModuleItem = [this](juce::PopupMenu& target, const char* moduleName, const char* label)
         {
-            juce::PopupMenu catMenu;
-            for (auto* desc : moduleDescs->getModulesInCategory(cat))
-                catMenu.addItem(1000 + desc->index, desc->fullname);
-            addMenu.addSubMenu(cat, catMenu);
+            if (moduleDescs == nullptr)
+                return;
+
+            if (auto* desc = moduleDescs->getModuleByName(moduleName))
+                if (desc->instantiable)
+                    target.addItem(1000 + desc->index, label != nullptr ? juce::String(label) : desc->fullname);
+        };
+
+        auto addSubMenuIfNotEmpty = [&addMenu](const juce::String& title, juce::PopupMenu& subMenu)
+        {
+            if (subMenu.getNumItems() > 0)
+                addMenu.addSubMenu(title, subMenu);
+        };
+
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "Keyboard", "Keyboard - voice");
+            addModuleItem(sub, "KeyboardPatch", "Keyboard - Patch");
+            addModuleItem(sub, "MIDIGlobal", "MIDI - global");
+            sub.addSeparator();
+            addModuleItem(sub, "AudioIn", "Audio In");
+            addModuleItem(sub, "PolyAreaIn", "Poly Area In");
+            sub.addSeparator();
+            addModuleItem(sub, "1Output", "1 output");
+            addModuleItem(sub, "2Output", "2 outputs");
+            addModuleItem(sub, "4Output", "4 outputs");
+            sub.addSeparator();
+            addModuleItem(sub, "NoteDetect", "Note detector");
+            addModuleItem(sub, "KeybSplit", "Keyboard Split");
+            addSubMenuIfNotEmpty("IN/OUT", sub);
         }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "MasterOsc", "Master Oscillator");
+            addModuleItem(sub, "OscA", "OSC A");
+            addModuleItem(sub, "OscB", "OSC B");
+            addModuleItem(sub, "OscC", "OSC C");
+            addModuleItem(sub, "SpectralOsc", "Spectral Osc");
+            addModuleItem(sub, "FormantOsc", "Formant Osc");
+            sub.addSeparator();
+            addModuleItem(sub, "OscSlvA", "OSC Slave A");
+            addModuleItem(sub, "OscSlvB", "OSC Slave B");
+            addModuleItem(sub, "OscSlvC", "OSC Slave C");
+            addModuleItem(sub, "OscSlvD", "OSC Slave D");
+            addModuleItem(sub, "OscSlvE", "OSC Slave E");
+            addModuleItem(sub, "OscSineBank", "Osc Sine Bank");
+            addModuleItem(sub, "OscSlvFM", "Osc Slave FM");
+            sub.addSeparator();
+            addModuleItem(sub, "Noise", "Noise generator");
+            sub.addSeparator();
+            addModuleItem(sub, "PercOsc", "Percussion OSC");
+            addModuleItem(sub, "DrumSynth", "Drumsound synthesizer");
+            addSubMenuIfNotEmpty("OSC", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "LFOA", "LFO A");
+            addModuleItem(sub, "LFOB", "LFO B");
+            addModuleItem(sub, "LFOC", "LFO C");
+            sub.addSeparator();
+            addModuleItem(sub, "LFOSlvA", "LFO Slave A");
+            addModuleItem(sub, "LFOSlvB", "LFO Slave B");
+            addModuleItem(sub, "LFOSlvC", "LFO Slave C");
+            addModuleItem(sub, "LFOSlvD", "LFO Slave D");
+            addModuleItem(sub, "LFOSlvE", "LFO Slave E");
+            sub.addSeparator();
+            addModuleItem(sub, "ClkGen", "Clock generator");
+            sub.addSeparator();
+            addModuleItem(sub, "ClkRndGen", "Clocked random step generator");
+            addModuleItem(sub, "RndStepGen", "Random step generator");
+            addModuleItem(sub, "RandomGen", "Random generator");
+            addModuleItem(sub, "RndPulsGen", "Random puls generator");
+            addModuleItem(sub, "PatternGen", "Clocked pattern generator");
+            addSubMenuIfNotEmpty("LFO", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "ADSR", "ADSR envelope");
+            addModuleItem(sub, "AD-Env", "Attack decay envelope");
+            addModuleItem(sub, "Mod-Env", "ADSR env. with modulation");
+            addModuleItem(sub, "AHD", "AHD env. with modulation");
+            addModuleItem(sub, "Multi-Env", "Multistage Envelope");
+            sub.addSeparator();
+            addModuleItem(sub, "EnvFollower", "Envelope Follower");
+            addSubMenuIfNotEmpty("ENV", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "FilterA", "Filter A (6dB LP)");
+            addModuleItem(sub, "FilterB", "Filter B (6dB HP)");
+            addModuleItem(sub, "FilterC", "Filter C (12dB Multimode)");
+            sub.addSeparator();
+            addModuleItem(sub, "FilterD", "Filter D (12dB Multimode)");
+            addModuleItem(sub, "FilterE", "Filter E (24dB)");
+            addModuleItem(sub, "FilterF", "Filter F (24dB classic LP)");
+            sub.addSeparator();
+            addModuleItem(sub, "VocalFilter", "Vocal filter");
+            addModuleItem(sub, "Vocoder", "Vocoder");
+            addModuleItem(sub, "FilterBank", "FilterBank");
+            sub.addSeparator();
+            addModuleItem(sub, "EqMid", "Parametric Eq");
+            addModuleItem(sub, "EqShelving", "Hi and lo shelving eq");
+            addSubMenuIfNotEmpty("FILTER", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "Mixer (3)", "3 inputs mixer");
+            addModuleItem(sub, "Mixer (8)", "8 inputs mixer");
+            sub.addSeparator();
+            addModuleItem(sub, "GainControl", "Gain controller (multiply)");
+            sub.addSeparator();
+            addModuleItem(sub, "X-Fade", "X-fade with modulator");
+            addModuleItem(sub, "Pan", "Pan");
+            sub.addSeparator();
+            addModuleItem(sub, "1to2Fade", "1 in to 2 out fader");
+            addModuleItem(sub, "2to1Fade", "2 in to 1 out fader");
+            addModuleItem(sub, "LevMult", "Adjustable gain control");
+            addModuleItem(sub, "LevAdd", "Adjustable offset");
+            sub.addSeparator();
+            addModuleItem(sub, "OnOff", "On/off switch");
+            sub.addSeparator();
+            addModuleItem(sub, "4-1Switch", "4-1 Switch");
+            addModuleItem(sub, "1-4Switch", "1-4 Switch");
+            sub.addSeparator();
+            addModuleItem(sub, "Amplifier", "Amplifier");
+            addSubMenuIfNotEmpty("MIXER", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "Clip", "Clip");
+            addModuleItem(sub, "Overdrive", "Overdrive");
+            addModuleItem(sub, "WaveWrap", "Wave Wrapper");
+            sub.addSeparator();
+            addModuleItem(sub, "Quantizer", "Quantizer");
+            addModuleItem(sub, "Delay", "Delay line");
+            addModuleItem(sub, "Sample&Hold", "Sample and hold");
+            addModuleItem(sub, "Diode", "Diode processing");
+            addModuleItem(sub, "StereoChorus", "Stereo chorus");
+            addModuleItem(sub, "Phaser", "Phaser");
+            sub.addSeparator();
+            addModuleItem(sub, "InvLevShift", "Level shifter / Inverter");
+            sub.addSeparator();
+            addModuleItem(sub, "Shaper", "Signal shaper");
+            sub.addSeparator();
+            addModuleItem(sub, "Compressor", "Compressor");
+            addModuleItem(sub, "Expander", "Expander");
+            addModuleItem(sub, "RingMod", "Ring and amplitude modulator");
+            addModuleItem(sub, "Digitizer", "Digitizer");
+            addSubMenuIfNotEmpty("AUDIO", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "Constant", "Constant");
+            sub.addSeparator();
+            addModuleItem(sub, "Smooth", "Smooth");
+            addModuleItem(sub, "PortamentoA", "PortamentoA");
+            addModuleItem(sub, "PortamentoB", "PortamentoB");
+            sub.addSeparator();
+            addModuleItem(sub, "NoteScaler", "Note scaler");
+            addModuleItem(sub, "NoteQuant", "Note quantizer");
+            addModuleItem(sub, "KeyQuant", "Key quantizer");
+            addModuleItem(sub, "PartialGen", "Partial generator");
+            sub.addSeparator();
+            addModuleItem(sub, "ControlMixer", "Control signal mixer");
+            addModuleItem(sub, "NoteVelScal", "Note and Vel Scaler");
+            addSubMenuIfNotEmpty("CTRL", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "PosEdgeDelay", "Positive edge delay");
+            addModuleItem(sub, "NegEdgeDelay", "Negative edge delay");
+            addModuleItem(sub, "Pulse", "Pulse");
+            addModuleItem(sub, "LogicDelay", "Logic delay");
+            sub.addSeparator();
+            addModuleItem(sub, "LogicInv", "Logic inverter");
+            sub.addSeparator();
+            addModuleItem(sub, "LogicProc", "Logic processor");
+            sub.addSeparator();
+            addModuleItem(sub, "CompareLev", "Compare to level");
+            addModuleItem(sub, "CompareAB", "Compare");
+            sub.addSeparator();
+            addModuleItem(sub, "ClkDiv", "Clock divider");
+            addModuleItem(sub, "ClkDivFix", "Clock divider, fixed");
+            addSubMenuIfNotEmpty("LOGIC", sub);
+        }
+        {
+            juce::PopupMenu sub;
+            addModuleItem(sub, "NoteSeqA", "Note Sequencer A");
+            addModuleItem(sub, "EventSeq", "Event Sequencer");
+            addModuleItem(sub, "NoteSeqB", "Note Sequencer B");
+            addModuleItem(sub, "CtrlSeq", "Control Sequencer");
+            addSubMenuIfNotEmpty("SEQUENCER", sub);
+        }
+
         menu.addSubMenu("Add Module", addMenu);
 
         if (!clipboard.empty())
@@ -4333,6 +4995,95 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
     {
         cablePreviewEnd = currentPos;
         repaint();
+        return;
+    }
+
+    if (dragState.type == DragState::NoteSeqEditor)
+    {
+        if (dragState.module == nullptr || dragState.parameter == nullptr)
+            return;
+
+        auto moduleRect = getModuleBounds(*dragState.module, 0);
+        auto relPos = currentPos - moduleRect.getPosition();
+        auto cd = dragState.customRect;
+
+        int zoom = 3;
+        if (auto* p = findParameter(*dragState.module, "p1"))
+            zoom = juce::jlimit(1, 6, p->getValue());
+
+        int centerNote = 60;
+        if (auto* p = findParameter(*dragState.module, "p2"))
+        {
+            auto* spd = p->getDescriptor();
+            int v = p->getValue();
+            if (v >= spd->minValue && v <= spd->maxValue)
+                centerNote = v;
+        }
+        else
+        {
+            centerNote = dragState.parameter->getValue();
+        }
+
+        int visibleNotes = juce::jlimit(12, 72, 72 - (zoom - 1) * 12);
+        int lowNote = juce::jlimit(0, 127 - visibleNotes, centerNote - visibleNotes / 2);
+        int highNote = lowNote + visibleNotes;
+        float normY = juce::jlimit(0.0f, 1.0f,
+            static_cast<float>(relPos.y - cd.getY()) / static_cast<float>(cd.getHeight()));
+        int newValue = juce::jlimit(0, 127,
+            static_cast<int>(std::round(static_cast<float>(highNote) - normY * static_cast<float>(visibleNotes))));
+
+        if (newValue != dragState.parameter->getValue())
+        {
+            auto* pd = dragState.parameter->getDescriptor();
+            dragState.parameter->setValue(newValue);
+            repaint();
+
+            if (parameterChangeCallback && newValue != dragState.lastSentValue)
+            {
+                auto now = juce::Time::getMillisecondCounter();
+                if (now - dragState.lastSendTime >= paramSendIntervalMs)
+                {
+                    parameterChangeCallback(dragState.section, dragState.module->getContainerIndex(), pd->index, newValue);
+                    dragState.lastSentValue = newValue;
+                    dragState.lastSendTime = now;
+                }
+            }
+        }
+        return;
+    }
+
+    if (dragState.type == DragState::NoteSeqScrollbar)
+    {
+        if (dragState.module == nullptr || dragState.parameter == nullptr)
+            return;
+
+        auto moduleRect = getModuleBounds(*dragState.module, 0);
+        auto relPos = currentPos - moduleRect.getPosition();
+        auto cd = dragState.customRect;
+        auto* pd = dragState.parameter->getDescriptor();
+
+        float normY = juce::jlimit(0.0f, 1.0f,
+            static_cast<float>(relPos.y - cd.getY()) / static_cast<float>(cd.getHeight()));
+        int newValue = juce::jlimit(pd->minValue, pd->maxValue,
+            static_cast<int>(std::round(static_cast<float>(pd->maxValue)
+                - normY * static_cast<float>(pd->maxValue - pd->minValue))));
+
+        if (newValue != dragState.parameter->getValue())
+        {
+            dragState.parameter->setValue(newValue);
+            repaint();
+
+            if (parameterChangeCallback && newValue != dragState.lastSentValue)
+            {
+                auto now = juce::Time::getMillisecondCounter();
+                if (now - dragState.lastSendTime >= paramSendIntervalMs)
+                {
+                    parameterChangeCallback(dragState.section, dragState.module->getContainerIndex(), pd->index, newValue);
+                    dragState.lastSentValue = newValue;
+                    dragState.lastSendTime = now;
+                }
+            }
+        }
         return;
     }
 

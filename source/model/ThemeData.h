@@ -113,6 +113,7 @@ struct ThemeCustomDisplay
     juce::String curveComponentId;   // <curve component-id="pN"> (curve type)
     juce::String bwComponentId;      // <bandwidth component-id="pN"> (EqMid)
     juce::String bandIds[16];        // <band0..band15 component-id="pN"> (Vocoder)
+    juce::String noteStepIds[16];    // <step0..step15 component-id="pN"> (NoteSeqB)
     // EQ display sub-element component IDs (eq-mid-display, eq-shelving-display)
     juce::String freqComponentId;    // <frequency component-id="pN">
     juce::String gainComponentId;    // <gain component-id="pN">
