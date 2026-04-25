@@ -16,8 +16,10 @@ build-win/
 build-win-release/
 cmake-build-*/
 Builds/
+dist/
 JuceLibraryCode/
 CMakeUserPresets.json
+build.sh
 
 # IDE files
 .vscode/
@@ -50,6 +52,9 @@ run_with_logs.sh
 BUGFIX_SYNC_CRASHES.md
 SYNC_IMPLEMENTATION.md
 TESTING_INSTRUCTIONS.md
+error.log
+.directory
+.codex
 
 # Beta app builds
 Apps/
@@ -59,6 +64,8 @@ Implementaciones/
 
 # Claude Code local data
 .claude/
+.superpowers/
+docs/superpowers/
 
 # LSP cache
 .cache/

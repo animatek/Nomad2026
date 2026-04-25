@@ -2055,7 +2055,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m15" width="255" height="105">
 		<name>NoteSeqA</name>
-		<connector x="6" y="33" size="13" class="cCONTROL">
+		<connector x="6" y="33" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="sync" />
 		</connector>
 		<connector x="6" y="60" size="13" class="cLOGIC">
@@ -2094,10 +2094,15 @@ label{fill:#000;}
 			<btn index="1"> <image xlink:href="./images/slice/stop.png" /></btn>
 		</button> 
 		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
-			<parameter component-id="p21" alt="loop" />			
+			<parameter component-id="p21" alt="loop" />
 			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
 			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
-		</button> 
+		</button>
+		<button x="100" y="5" width="22" height="14" cyclic="true" landscape="true">
+			<call method="clear" />
+			<btn index="0">Clr</btn>
+			<btn index="1">Clr</btn>
+		</button>
 		<label x="152" y="5">Step</label>
 		<textDisplay x="174" y="5" width="20" height="14">
 			<parameter component-id="p17" alt="step count" />
@@ -2126,9 +2131,9 @@ label{fill:#000;}
 		<label x="205" y="19">16</label>
 		
 		
-		<light component-id="ledStep1-16" type="led-array" x="27" y="30" width="190" height="7" /> 
-		
-		
+		<light component-id="ledStep1-16" type="led-array" x="24" y="30" width="192" height="7" />
+
+
 		<slider x="24" y="39" width="11" height="50" orientation="vertical">
 			<parameter component-id="p1" alt="xy" />
 		</slider>
@@ -3053,10 +3058,15 @@ label{fill:#000;}
 	            <btn index="1"><image xlink:href="url(#btn-right-arrow)" /></btn>
         	</button>
 		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
-			<parameter component-id="p2" alt="loop/active" />			
+			<parameter component-id="p2" alt="loop/active" />
 			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
 			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
-		</button> 
+		</button>
+		<button x="100" y="5" width="22" height="14" cyclic="true" landscape="true">
+			<call method="clear" />
+			<btn index="0">Clr</btn>
+			<btn index="1">Clr</btn>
+		</button>
 		<button x="217" y="35" width="14" height="16" cyclic="true" landscape="false">
 			<parameter component-id="p3" alt="gate1" />
 			<btn index="0">G</btn>
@@ -3170,7 +3180,7 @@ label{fill:#000;}
 		<label x="234" y="23">Out</label>
 		<label x="217" y="4">Link</label>
 		
-		<light component-id="ledStep1-16" type="led-array" x="27" y="28" width="190" height="7" /> 
+		<light component-id="ledStep1-16" type="led-array" x="23" y="28" width="192" height="7" />
 		<label x="152" y="5">Step</label>
 		<textDisplay x="174" y="5" width="20" height="14">
 			<parameter component-id="p1" alt="stepcount" />
@@ -4083,9 +4093,9 @@ label{fill:#000;}
 	</module>
 	<module component-id="m90" width="255" height="135">
 		<name>NoteSeqB</name>
-		
+
 		<label x="3" y="13">Clk</label>
-		<connector x="3" y="25" size="13" class="cCONTROL">
+		<connector x="3" y="25" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="clock" />
 		</connector>
 		
@@ -4422,7 +4432,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m91" width="255" height="105">
 		<name>CtrlSeq</name>
-		<connector x="6" y="33" size="13" class="cCONTROL">
+		<connector x="6" y="33" size="13" class="cLOGIC">
 			<connector component-id="c1" alt="clock" />
 		</connector>
 		<connector x="6" y="60" size="13" class="cLOGIC">
@@ -4448,10 +4458,20 @@ label{fill:#000;}
 			<btn index="1">Uni</btn>
 		</button>
 		<button x="125" y="5" width="20" height="14" cyclic="true" landscape="false">
-			<parameter component-id="p19" alt="loop" />			
+			<parameter component-id="p19" alt="loop" />
 			<btn index="0"> <image xlink:href="./images/slice/loop_off.png" /> </btn>
 			<btn index="1"> <image xlink:href="./images/slice/loop_on.png" /> </btn>
-		</button> 
+		</button>
+		<button x="76" y="5" width="22" height="14" cyclic="true" landscape="true">
+			<call method="clear" />
+			<btn index="0">Clr</btn>
+			<btn index="1">Clr</btn>
+		</button>
+		<button x="100" y="5" width="22" height="14" cyclic="true" landscape="true">
+			<call method="randomize" />
+			<btn index="0">Rnd</btn>
+			<btn index="1">Rnd</btn>
+		</button>
 		<label x="152" y="5">Step</label>
 		<textDisplay x="174" y="5" width="20" height="14">
 			<parameter component-id="p17" alt="step" />
@@ -4478,8 +4498,8 @@ label{fill:#000;}
 		<label x="192" y="19">15</label>
 		<label x="204" y="19">16</label>
 		
-		<light component-id="ledStep1-16" type="led-array" x="28" y="30" width="190" height="7" /> 
-		
+		<light component-id="ledStep1-16" type="led-array" x="24" y="25" width="192" height="7" />
+
 		<slider x="24" y="37" width="11" height="47" orientation="vertical">
 			<parameter component-id="p1" alt="xy" />
 		</slider>
