@@ -242,10 +242,43 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - **Sequencer Random** — new `Rnd` button on EventSeq and NoteSeqA (left of `Clr`); randomises only the per-step controls (toggles in EventSeq, sliders in NoteSeqA), leaving transport/loop/length/UI params untouched
   - **KeyQuantizer scale presets** — right-click → Scales (root C): Chromatic, Major (Ionian), Natural/Harmonic/Melodic Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Major/Minor, Blues Major/Minor, Whole Tone, Diminished W-H (mirrors the VCV Fundamental Quantizer set)
 
-### Next Up
+### Recently Completed
+- [x] **Patch Settings Dialog** (Ctrl+P) — expanded dialog, working and synced with the synth
+- [x] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.; sends/receives SysEx and persists synth name changes
+- [x] **Slot switching sync** — changing slots from the editor selects and activates the correct hardware slot across A/B/C/D
+- [x] **Preset browser click feedback** — single-click selects/highlights a preset before double-click loading
+- [x] **Help System** — Module Help (F1), Help Contents, and About dialog are implemented
 - [x] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar
-- [x] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.
+
+## TODO
+
+### Next Steps
 - [ ] **Morph overlay display** — F7 shows morph group assignments on modules, F5 shows morph ranges (start/end values)
+
+### Synth Communication
+- [ ] **Upload Active Slot** (Ctrl+U) - Upload current synth patch to editor
+- [ ] **Send Controller Snapshot** - Send current controller state to synth
+- [ ] **Bank Upload from Synth** - Upload entire bank (99 patches) from synth to disk
+- [ ] **Bank Download to Synth** - Download entire bank from disk to synth
+
+### Editor Preferences
+- [ ] **Editor Options Dialog** - Configure editor behavior
+
+### Floating Windows
+- [ ] **Keyboard Floater** (Ctrl+F) - Virtual MIDI keyboard
+- [ ] **Knob Floater** (Ctrl+K) - Hardware knob mapper
+- [ ] **Notes Floater** - Patch notes/comments window
+- [ ] **Browser** (Ctrl+B) - Standalone preset/snippet browser
+
+### Patch Tools
+- [ ] **Snippet System** - Save and reuse module groups
+- [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
+
+### Quality of Life
+- [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search
+- [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
+- [ ] **Keyboard Shortcuts** - Complete keyboard shortcut system matching original editor
+- [ ] **Window Management** - Remember window positions and sizes across sessions
 
 ## Roadmap
 
@@ -326,8 +359,8 @@ This section outlines all planned features to achieve feature parity with the or
 
 ### Help System
 - [x] **Module Help** (F1) - Context-sensitive module help from original v3.03 help file
-- [ ] **Help Contents** - Integrated help documentation
-- [ ] **About Dialog** - Version info, credits, license
+- [x] **Help Contents** - Integrated help documentation
+- [x] **About Dialog** - Version info, credits, license
 
 ### Patch Tools
 - [x] **Randomize Parameters** (Ctrl+R) - Randomize parameter values on entire patch
