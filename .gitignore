@@ -58,6 +58,8 @@ error.log
 
 # Beta app builds
 Apps/
+# Distribution executables
+\#Ejecutables/
 
 # Implementation notes (local reference)
 Implementaciones/

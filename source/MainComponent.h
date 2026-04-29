@@ -6,10 +6,13 @@
 #include "model/ThemeData.h"
 #include "model/Patch.h"
 #include "model/PchFileIO.h"
+#include "model/SynthSettings.h"
 #include "midi/ConnectionManager.h"
 #include "sync/PatchSynchronizer.h"
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
+
+class SynthSettingsDialog;
 
 class MainComponent : public juce::Component,
                       public juce::MenuBarModel
@@ -39,6 +42,8 @@ private:
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
+    void showSynthSettingsDialog();
+    void openSynthSettingsDialog();
     void showBetaWarning(bool forceShow = false);
     void randomizeParameters(bool gaussian);
     void initializeModule(int section, Module* module);
@@ -71,6 +76,11 @@ private:
 
     int activeSlot = 0;  // Which slot is currently displayed in the UI
 
+    // Last-known global synth settings.
+    SynthSettings cachedSynthSettings;
+    bool pendingSynthSettingsDialogOpen = false;
+    juce::Component::SafePointer<SynthSettingsDialog> synthSettingsDialog;
+
     // Convenience accessors for current slot
     std::unique_ptr<Patch>& currentPatch() { return slotPatches[activeSlot]; }
     juce::File& currentPatchFile() { return slotPatchFiles[activeSlot]; }
@@ -78,7 +88,7 @@ private:
     juce::UndoManager& undoManager() { return slotUndoManagers[activeSlot]; }
     std::unique_ptr<UndoContext>& undoContext() { return slotUndoContexts[activeSlot]; }
 
-    void switchToSlot(int slot);
+    void switchToSlot(int slot, bool notifySynth = true);
     void updateDspLoadDisplay();
     void rebuildUndoContext(int slot);  // call after patch change
     void clearSnapshots(int slot);     // call when patch changes

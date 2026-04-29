@@ -140,17 +140,26 @@ void ConnectionManager::selectSlot(int slot)
     if (!isConnected() || slot < 0 || slot > 3)
         return;
 
-    // PDL2: ActivateSlot := 0:1 slot:7
-    // cc=0x17, pp=0x41, sc=0x09
-    std::vector<uint8_t> payload;
-    payload.push_back(0x41);  // pp = PatchManagerCommand
-    payload.push_back(0x09);  // sc = ActivateSlot
-    payload.push_back(static_cast<uint8_t>(slot & 0x7F));  // 0:1 slot:7
+    // libnmProtocol sends slot-management commands with SysEx header slot 0.
+    // The target slot lives in the payload.
+    std::vector<uint8_t> selectedPayload;
+    selectedPayload.push_back(0x41);  // pid = PatchManagerCommand
+    selectedPayload.push_back(0x07);  // sc = SlotsSelected
+    // PDL: SlotsSelected := 0:4 slot0:1 slot1:1 slot2:1 slot3:1
+    selectedPayload.push_back(static_cast<uint8_t>(1 << (3 - slot)));
+    protocol.sendMessage(NmCmd::PatchHandling, 0, selectedPayload,
+                         /*expectsReply=*/true, /*addChecksum=*/true);
 
-    protocol.sendMessage(NmCmd::PatchHandling, slot, payload, false, true);
+    std::vector<uint8_t> activePayload;
+    activePayload.push_back(0x41);  // pid = PatchManagerCommand
+    activePayload.push_back(0x09);  // sc = SlotActivated
+    activePayload.push_back(static_cast<uint8_t>(slot & 0x7F));
+    protocol.sendMessage(NmCmd::PatchHandling, 0, activePayload,
+                         /*expectsReply=*/true, /*addChecksum=*/true);
+
     currentSlot = slot;
 
-    std::cout << "[SLOT] Sent ActivateSlot: " << slot << std::endl;
+    std::cout << "[SLOT] Sent SlotsSelected + SlotActivated: " << slot << std::endl;
 }
 
 void ConnectionManager::loadPatchFromBank(int section, int position, int targetSlot)
@@ -276,6 +285,54 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
     // Send sections one at a time, waiting for ACK between each (like Java protocol)
     waitingForUploadAck = true;
     sendNextUploadSection();
+}
+
+void ConnectionManager::requestSynthSettings()
+{
+    if (!isConnected())
+        return;
+
+    RequestSynthSettingsMessage msg;
+    auto payload = msg.encode();
+    protocol.sendMessage(NmCmd::PatchHandling, 0, payload, /*expectsReply=*/true, /*addChecksum=*/true);
+
+    std::cout << "[SYNTH] Requesting synth settings" << std::endl;
+}
+
+void ConnectionManager::sendSynthSettings(const SynthSettings& settings)
+{
+    if (!isConnected())
+    {
+        DBG("sendSynthSettings: NOT CONNECTED");
+        return;
+    }
+
+    SynthSettingsMessage msg;
+    msg.settings = settings;
+    auto payload = msg.encode(currentPatchId);
+
+    const auto slot = juce::jlimit(0, 3, currentSlot);
+    auto sysex = SysEx::encode(0x1f, slot, payload, /*addChecksum=*/true);
+    sendRawSysEx(sysex);
+
+    std::cout << "[SYNTH] Sent synth settings: name=\"" << settings.name << "\""
+              << " slot=" << slot
+              << " pid=" << currentPatchId
+              << " midiChannels="
+              << (settings.midiChannelSlot[0] + 1) << ","
+              << (settings.midiChannelSlot[1] + 1) << ","
+              << (settings.midiChannelSlot[2] + 1) << ","
+              << (settings.midiChannelSlot[3] + 1)
+              << std::endl;
+    std::cout << "[SYNTH] Sent synth settings sysex:";
+    for (auto b : sysex)
+        std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int) b;
+    std::cout << std::dec << std::endl;
+
+    juce::Timer::callAfterDelay(250, [this]() {
+        if (isConnected())
+            requestSynthSettings();
+    });
 }
 
 void ConnectionManager::sendParameter(int section, int moduleId, int parameterId, int value)
@@ -731,6 +788,19 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 {
+    if (!collectingSections && !waitingForPatchAck)
+    {
+        std::cout << "[MIDI] PatchPacket outside patch fetch: first=" << msg.isFirst
+                  << " last=" << msg.isLast
+                  << " command=" << msg.command
+                  << " pid=" << msg.pid
+                  << " dataSize=" << msg.patchData.size()
+                  << " data:";
+        for (size_t i = 0; i < msg.patchData.size(); ++i)
+            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int) msg.patchData[i];
+        std::cout << std::dec << std::endl;
+    }
+
     // In Java protocol, PatchMessage.isreply = true — patch packets unblock the send queue.
     // The synth may respond to some edit commands (NewModule) with a patch confirmation packet.
     if (ackedQueueWaiting)
@@ -739,6 +809,18 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
         std::cout << "[QUEUE] PatchPacket received — unblocking queue ("
                   << ackedQueue.size() << " pending)" << std::endl;
         drainAckedQueue();
+    }
+
+    SynthSettings settings;
+    if (SynthSettingsMessage::decode(msg.patchData, settings))
+    {
+        std::cout << "[SYNTH] Received synth settings: name=\"" << settings.name << "\"" << std::endl;
+        if (synthSettingsCallback)
+        {
+            auto cb = synthSettingsCallback;
+            juce::MessageManager::callAsync([cb, settings]() { cb(settings); });
+        }
+        return;
     }
 
     if (!collectingSections && !waitingForPatchAck)

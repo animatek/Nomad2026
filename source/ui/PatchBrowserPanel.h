@@ -70,6 +70,12 @@ private:
     int loadedSection = -1;
     int loadedPosition = -1;
 
+    // Last patch selected with a single click (-1 = none)
+    int selectedSection = -1;
+    int selectedPosition = -1;
+
+    void setSelectedPatch(int section, int position);
+
     void rebuildTree(const std::vector<std::string>& names);
     void applyFilters();
     void onSearchTextChanged();

@@ -1,4 +1,5 @@
 #include "NmMessages.h"
+#include "../model/BitStream.h"
 #include "../model/BitStreamWriter.h"
 
 // --- IAmMessage ---
@@ -524,4 +525,226 @@ std::vector<uint8_t> NewModuleMessage::encode() const
     result.insert(result.end(), patchData.begin(), patchData.end());
 
     return result;
+}
+
+// --- RequestSynthSettingsMessage ---
+// PDL2: PatchHandling(cc=0x17) -> pp=0x44 (RequestSynthSettings, no payload)
+// Sent with cc=0x17, has checksum, slot=0, expects reply.
+std::vector<uint8_t> RequestSynthSettingsMessage::encode() const
+{
+    return { 0x44, 0x02, 0x06, 0x08, 0x04 };
+}
+
+// --- SynthSettingsMessage ---
+// Carried inside a PatchPacket (cc=0x1c-0x1f). The patch packet payload is:
+//     command:1 pid:6 [embedded_stream] checksum
+// where the synth-settings stream decodes to:
+//     section.type:8 = 0x03
+//     SynthSettings$data:
+//       midiClockSource:1 midiVelScaleMin:7
+//       ledsActive:1      midiVelScaleMax:7
+//       midiClockBpm:8
+//       localOn:1 keyboardMode:1 pedalPolarity:1 globalSync:5
+//       masterTune:8
+//       programChangeReceive:1 programChangeSend:1 knobMode:1 0:5
+//       String$name (16*chars:8/0)
+//       MidiChannelSlots4 | MidiChannelSlots1
+//       ?ExtendedSynthSettings$extended
+
+namespace
+{
+    void writeMidiChannelSlots(BitStreamWriter& w, const SynthSettings& s)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            w.writeBits(0, 3);                            // 0:3
+            w.writeBits(s.midiChannelSlot[i] & 0x1F, 5);  // midiChannelSlot:5
+            w.writeBits(27, 8);                           // legacy Micro Modular marker
+        }
+    }
+
+    bool readMidiChannelSlots(BitStream& bs, SynthSettings& s)
+    {
+        if (bs.remaining() < 8) return false;
+        int slotcount = bs.readBits(8);
+        if (slotcount != 1 && slotcount != 4) return false;
+        s.slotcount = slotcount;
+
+        for (int i = 0; i < 4; ++i)
+        {
+            if (bs.remaining() < 16) return false;
+            bs.readBits(3);                                   // 0:3
+            s.midiChannelSlot[i] = bs.readBits(5);
+            bs.readBits(8);                                   // 27:8 / 0:8
+        }
+        return true;
+    }
+
+    bool readLegacyMidiChannelSlots(BitStream& bs, SynthSettings& s)
+    {
+        const auto start = bs.getPosition();
+
+        for (int i = 0; i < 4; ++i)
+        {
+            if (bs.remaining() < 16)
+            {
+                bs.setPosition(start);
+                return false;
+            }
+
+            const auto zero = bs.readBits(3);
+            const auto channel = bs.readBits(5);
+            const auto marker = bs.readBits(8);
+
+            if (zero != 0 || marker != 27)
+            {
+                bs.setPosition(start);
+                return false;
+            }
+
+            s.midiChannelSlot[i] = static_cast<int>(channel);
+        }
+
+        s.slotcount = 4;
+        return true;
+    }
+
+    bool findAndReadMidiChannelSlots(BitStream& bs, SynthSettings& s)
+    {
+        const auto start = bs.getPosition();
+
+        for (size_t pos = start; pos + 64 <= bs.getTotalBits() && pos <= start + 16 * 8; pos += 8)
+        {
+            bs.setPosition(pos);
+            if (readLegacyMidiChannelSlots(bs, s))
+                return true;
+        }
+
+        for (size_t pos = start; pos + 72 <= bs.getTotalBits() && pos <= start + 16 * 8; pos += 8)
+        {
+            bs.setPosition(pos);
+            if (readMidiChannelSlots(bs, s))
+                return true;
+        }
+
+        bs.setPosition(start);
+        return false;
+    }
+}
+
+std::vector<uint8_t> SynthSettingsMessage::encode(int pid) const
+{
+    BitStreamWriter bs;
+    bs.writeBits(0x03, 8);                                    // section type = SynthSettings
+
+    bs.writeBits(settings.midiClockSource & 0x01, 1);
+    bs.writeBits(settings.midiVelScaleMin & 0x7F, 7);
+    bs.writeBits(settings.ledsActive      & 0x01, 1);
+    bs.writeBits(settings.midiVelScaleMax & 0x7F, 7);
+    bs.writeBits(settings.midiClockBpm    & 0xFF, 8);
+    bs.writeBits(settings.localOn         & 0x01, 1);
+    bs.writeBits(settings.keyboardMode    & 0x01, 1);
+    bs.writeBits(settings.pedalPolarity   & 0x01, 1);
+    bs.writeBits(settings.globalSync      & 0x1F, 5);
+    bs.writeBits(settings.masterTune      & 0xFF, 8);
+    bs.writeBits(settings.programChangeReceive & 0x01, 1);
+    bs.writeBits(settings.programChangeSend    & 0x01, 1);
+    bs.writeBits(settings.knobMode        & 0x01, 1);
+    bs.writeBits(0, 5);                                       // 0:5 padding
+    bs.writeString16(settings.name);
+    writeMidiChannelSlots(bs, settings);
+    // Extended block intentionally omitted on send.
+
+    auto sectionBytes = bs.toMidiBytes();
+
+    // PatchPacket payload: 0:1 command:1 pid:6 [body]. Synth-settings replies
+    // from the hardware have the same shape, with no extra sectionsEnded byte.
+    std::vector<uint8_t> out;
+    out.reserve(sectionBytes.size() + 1);
+    out.push_back(static_cast<uint8_t>(pid & 0x3F));
+    out.insert(out.end(), sectionBytes.begin(), sectionBytes.end());
+    return out;
+}
+
+bool SynthSettingsMessage::decode(const std::vector<uint8_t>& patchData, SynthSettings& out)
+{
+    // Locate section bitstream. PatchPacketMessage::decode strips the
+    // command/pid byte, so hardware replies usually start directly with the
+    // packed SynthSettings section bytes.
+    if (patchData.size() < 3) return false;
+
+    // Some local callers/tests may still include legacy prefix bytes; auto-detect
+    // by checking the first decoded byte for section type=0x03.
+    auto trySectionAt = [&](size_t prefixBytes) -> bool
+    {
+        std::vector<uint8_t> body(patchData.begin() + (long) prefixBytes, patchData.end());
+        BitStream bs(body);
+        if (bs.remaining() < 8) return false;
+
+        int type = bs.readBits(8);
+        if (type != 0x03) return false;
+
+        out.midiClockSource      = bs.readBits(1);
+        out.midiVelScaleMin      = bs.readBits(7);
+        out.ledsActive           = bs.readBits(1);
+        out.midiVelScaleMax      = bs.readBits(7);
+        out.midiClockBpm         = bs.readBits(8);
+        out.localOn              = bs.readBits(1);
+        out.keyboardMode         = bs.readBits(1);
+        out.pedalPolarity        = bs.readBits(1);
+        out.globalSync           = bs.readBits(5);
+        out.masterTune           = bs.readBits(8);
+        out.programChangeReceive = bs.readBits(1);
+        out.programChangeSend    = bs.readBits(1);
+        out.knobMode             = bs.readBits(1);
+        bs.readBits(5);                                       // 0:5 padding
+        out.name = bs.readString16();
+        if (! findAndReadMidiChannelSlots(bs, out))
+        {
+            std::cout << "[SYNTH] Synth settings decoded without MIDI channels"
+                      << " name=\"" << out.name << "\""
+                      << " bitPos=" << bs.getPosition()
+                      << " remaining=" << bs.remaining() << std::endl;
+            return true;
+        }
+
+        std::cout << "[SYNTH] Synth settings MIDI channels:"
+                  << " A=" << (out.midiChannelSlot[0] + 1)
+                  << " B=" << (out.midiChannelSlot[1] + 1)
+                  << " C=" << (out.midiChannelSlot[2] + 1)
+                  << " D=" << (out.midiChannelSlot[3] + 1)
+                  << std::endl;
+
+        // Optional extended block
+        out.hasExtended = false;
+        if (bs.remaining() >= 8)
+        {
+            int marker = bs.readBits(8);
+            if (marker == 0x07 && bs.remaining() >= 8)
+            {
+                bs.readBits(4);
+                out.slotSelected[0] = bs.readBits(1);
+                out.slotSelected[1] = bs.readBits(1);
+                out.slotSelected[2] = bs.readBits(1);
+                out.slotSelected[3] = bs.readBits(1);
+                if (bs.remaining() >= 16 && bs.readBits(8) == 0x09)
+                {
+                    bs.readBits(6);
+                    out.activeSlot = bs.readBits(2);
+                    if (bs.remaining() >= 8 && bs.readBits(8) == 0x05 && bs.remaining() >= 32)
+                    {
+                        for (int i = 0; i < 4; ++i)
+                            out.slotVoiceCount[i] = bs.readBits(8);
+                        out.hasExtended = true;
+                    }
+                }
+            }
+        }
+        return true;
+    };
+
+    if (trySectionAt(1)) return true;
+    if (trySectionAt(2)) return true;
+    if (trySectionAt(0)) return true;
+    return false;
 }

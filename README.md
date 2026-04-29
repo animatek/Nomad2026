@@ -127,6 +127,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Multi-module grouped undo (e.g. delete selection) handled correctly — single upload after all actions settle
 
 - [x] **Visual indicator for loaded patch in browser**: Currently loaded bank patch highlighted with ▶ icon and amber color
+- [x] **Preset browser click feedback**: Single-click selects/highlights a preset in blue before double-click loading
 - [x] **Module Help System** (F1):
   - Press F1 with a module selected or hovered to open a floating help popup
   - Displays module description and per-parameter documentation from the original Nord Modular Editor v3.03 help file (157 modules)
@@ -135,7 +136,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Multi-slot support (A/B/C/D)**:
   - 4 independent slots with separate patches, undo managers, synchronizers
   - Slot bar in left column (below inspector) with synth icons and patch names
-  - Switching slots sends ActivateSlot to synth and requests patch if empty
+  - Switching slots selects and activates the matching hardware slot (A/B/C/D) on the synth, then requests patch data if empty
   - New Patch uploads empty patch to synth to reset the slot
 - [x] **Beta warning popup**: Styled floating popup at startup (matches F1 help style), "Don't show again" option, re-show from Help menu
 - [x] **Bug reporting**: "Report a bug" button in header bar linking to GitHub Issues
@@ -144,7 +145,9 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Poly/Common default split**: 90/10 default divider position (poly dominant)
 - [x] **Synth name indicator**: Connected synth name displayed in header bar
 - [x] **File command shortcuts**: Ctrl+N/O/S/P wired from canvas, menu items show shortcut hints
-- [x] **Patch Settings Dialog** (Ctrl+P): Voices, velocity/keyboard range, pedal mode, bend range, portamento, octave shift, voice retrigger
+- [x] **Patch Settings Dialog** (Ctrl+P): Voices, velocity/keyboard range, pedal mode, bend range, portamento, octave shift, voice retrigger; working and synced with the synth
+- [x] **Synth Settings Dialog** (Ctrl+G): Synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, keyboard mode, local/LED/program-change options; working and synced with the synth
+  - Fixed Synth Settings SysEx upload: uses the active patch PID and sends the correct PatchPacket payload, so synth name changes persist instead of reverting after refresh
 - [x] **Morph knob context menu**: Right-click morph knobs for Knob, MIDI Controller, and Keyboard (Velocity/Note) assignments
 - [x] **MorphKeyboardAssignmentMessage**: SysEx sc=0x67 — assign morph knobs to keyboard velocity or note
 - [x] **macOS menu bar**: File/Edit/Device/Help/About now appear in the system menu bar; Device menu items enable correctly on synth connect
@@ -240,8 +243,8 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - **KeyQuantizer scale presets** — right-click → Scales (root C): Chromatic, Major (Ionian), Natural/Harmonic/Melodic Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Major/Minor, Blues Major/Minor, Whole Tone, Diminished W-H (mirrors the VCV Fundamental Quantizer set)
 
 ### Next Up
-- [ ] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar (requires research into how original editor calculates total DSP capacity)
-- [ ] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.
+- [x] **Synth DSP load indicator** — DSP bar in header + Voice/DSP in status bar
+- [x] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.
 - [ ] **Morph overlay display** — F7 shows morph group assignments on modules, F5 shows morph ranges (start/end values)
 
 ## Roadmap
@@ -260,10 +263,10 @@ This section outlines all planned features to achieve feature parity with the or
 - [x] **Send Patch to Slot** - Upload editor patch to synth working slot (full 16-section PDL2 upload)
 - [x] **Save Patch in Synth** - Store uploaded patch to a bank location
 - [x] **New Patch** - Create a new empty patch in the editor
-- [x] **Multi-Slot Support** - All 4 slots (A, B, C, D) with independent patches, undo, and sync
+- [x] **Multi-Slot Support** - All 4 slots (A, B, C, D) with independent patches, undo, sync, hardware selection, and active-slot switching
 
 ### Synth Communication
-- [ ] **Synth Settings Dialog** (Ctrl+G) - Configure synth parameters:
+- [x] **Synth Settings Dialog** (Ctrl+G) - Configure synth parameters:
   - Synth name editing
   - MIDI channel assignment per slot (1-16)
   - MIDI clock (Internal/External, BPM, Global sync)
@@ -274,6 +277,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Pedal polarity (Normal / Inverted)
   - Program change send/receive
   - Local off, LEDs active
+  - Sends/receives settings over SysEx and verifies refreshed synth state
 - [ ] **Upload Active Slot** (Ctrl+U) - Upload current synth patch to editor
 - [ ] **Send Controller Snapshot** - Send current controller state to synth
 - [ ] **Bank Upload from Synth** - Upload entire bank (99 patches) from synth to disk

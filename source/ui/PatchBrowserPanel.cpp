@@ -166,6 +166,16 @@ void PatchBrowserPanel::setLoadedPatch(int section, int position)
     treeView->repaint();
 }
 
+void PatchBrowserPanel::setSelectedPatch(int section, int position)
+{
+    if (selectedSection == section && selectedPosition == position)
+        return;
+
+    selectedSection = section;
+    selectedPosition = position;
+    treeView->repaint();
+}
+
 void PatchBrowserPanel::rebuildTree(const std::vector<std::string>& names)
 {
     std::cout << "[INSPECTOR] rebuildTree starting, names.size()=" << names.size() << std::endl;
@@ -269,15 +279,29 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
                      && section >= 0 && position >= 0
                      && section == panel->loadedSection
                      && position == panel->loadedPosition);
+    bool isSelected = (panel != nullptr
+                       && section >= 0 && position >= 0
+                       && section == panel->selectedSection
+                       && position == panel->selectedPosition);
 
-    if (isLoaded)
+    if (isSelected)
+    {
+        g.setColour(juce::Colour(isLoaded ? 0x44ffaa00 : 0x333d8bff));
+        g.fillRect(0, 0, width, height);
+
+        g.setColour(juce::Colour(isLoaded ? 0xffffcc44 : 0xff7aa2ff));
+        g.drawRect(0, 0, width, height);
+    }
+    else if (isLoaded)
     {
         // Subtle highlight background for the loaded patch
         g.setColour(juce::Colour(0x33ffaa00));
         g.fillRect(0, 0, width, height);
     }
 
-    juce::Colour textColor = isLoaded ? juce::Colour(0xffffcc44) : juce::Colour(0xffcccccc);
+    juce::Colour textColor = isLoaded ? juce::Colour(0xffffcc44)
+                            : isSelected ? juce::Colour(0xffdbe6ff)
+                                         : juce::Colour(0xffcccccc);
 
     if (section >= 0 && position == -1)
     {
@@ -311,7 +335,16 @@ void PatchBrowserPanel::PatchTreeItem::itemClicked(const juce::MouseEvent& e)
     // Right-click: show context menu for patches (not banks)
     if (e.mods.isPopupMenu() && section >= 0 && position >= 0)
     {
+        if (panel)
+            panel->setSelectedPatch(section, position);
         showContextMenu();
+        return;
+    }
+
+    // Single-click: select patches so users get immediate feedback before double-click loading
+    if (section >= 0 && position >= 0 && panel)
+    {
+        panel->setSelectedPatch(section, position);
         return;
     }
 

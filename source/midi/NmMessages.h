@@ -5,6 +5,8 @@
 #include <string>
 #include <cstdint>
 
+#include "../model/SynthSettings.h"
+
 // Message command IDs (cc field in SysEx header)
 namespace NmCmd
 {
@@ -196,4 +198,29 @@ struct NewModuleMessage
     std::vector<int> customValues;     // Custom values (usually empty)
 
     std::vector<uint8_t> encode() const;
+};
+
+// RequestSynthSettings: ask synth for its global settings.
+// PDL2: PatchHandling(cc=0x17) with pp=0x44 (RequestSynthSettings)
+// Sent with cc=0x17, has checksum, slot=0, expects reply.
+struct RequestSynthSettingsMessage
+{
+    std::vector<uint8_t> encode() const;
+};
+
+// SynthSettings: 17 global parameters + 4 MIDI channels + optional extended block.
+// Sent and received as a PatchPacket-style envelope (cc=0x1c-0x1f) carrying a
+// section with type=0x03 followed by the bit-packed SynthSettings$data.
+struct SynthSettingsMessage
+{
+    SynthSettings settings;
+
+    // Encode a PatchPacket payload: pid + 7-bit-encoded SynthSettings section.
+    // Caller adds the SysEx envelope and checksum.
+    std::vector<uint8_t> encode(int pid) const;
+
+    // Decode the patchData carried by a PatchPacketMessage with a SynthSettings
+    // section (already stripped of cc header, command/pid byte, and checksum).
+    // Returns false if the payload is not a SynthSettings section.
+    static bool decode(const std::vector<uint8_t>& patchData, SynthSettings& out);
 };

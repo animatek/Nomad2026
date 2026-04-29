@@ -38,6 +38,8 @@ public:
     void requestPatch(int slot = 0);
     void loadPatchFromBank(int section, int position, int targetSlot = -1);  // -1 = use current slot
     void uploadPatch(int slot, const Patch& patch);  // Upload full patch to synth working slot
+    void requestSynthSettings();
+    void sendSynthSettings(const SynthSettings& settings);
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
     void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
@@ -91,6 +93,9 @@ public:
     using LightMeterCallback = std::function<void(const int lights[128], const int meters[128])>;
     void setLightMeterCallback(LightMeterCallback cb) { lightMeterCallback = std::move(cb); }
 
+    using SynthSettingsCallback = std::function<void(const SynthSettings& settings)>;
+    void setSynthSettingsCallback(SynthSettingsCallback cb) { synthSettingsCallback = std::move(cb); }
+
     // Patch list management
     using PatchListCallback = std::function<void(const std::vector<std::string>& names)>;
     void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
@@ -138,6 +143,7 @@ private:
     SlotChangedCallback slotChangedCallback;
     UploadCompleteCallback uploadCompleteCallback;
     LightMeterCallback lightMeterCallback;
+    SynthSettingsCallback synthSettingsCallback;
 
     // Global light/meter arrays updated by synth messages
     int globalLightValues[128] = {};

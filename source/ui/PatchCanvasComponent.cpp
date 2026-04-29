@@ -5526,6 +5526,8 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             { fileCommandCallback("save"); return true; }
         if (key == juce::KeyPress('p', juce::ModifierKeys::commandModifier, 0))
             { fileCommandCallback("patchSettings"); return true; }
+        if (key == juce::KeyPress('g', juce::ModifierKeys::commandModifier, 0))
+            { fileCommandCallback("synthSettings"); return true; }
     }
 
     // F1 → show help popup for the selected/hovered module

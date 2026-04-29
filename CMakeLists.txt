@@ -38,6 +38,7 @@ set(NOMAD_SHARED_SOURCES
     source/ui/PatchLocationDialog.cpp
     source/ui/PatchSettingsDialog.cpp
     source/ui/MidiSettingsDialog.cpp
+    source/ui/SynthSettingsDialog.cpp
     source/ui/QuickAddPopup.cpp
     source/ui/PatchBrowserPanel.cpp
 

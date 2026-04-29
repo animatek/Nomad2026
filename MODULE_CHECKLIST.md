@@ -202,6 +202,6 @@ For each module, check:
 - [x] Phaser display
 
 ### Custom Displays Missing
-- [ ] Spectral Oscillator display
-- [ ] Formant Oscillator display
+- [x] Spectral Oscillator display
+- [x] Formant Oscillator display
 - [x] Step sequencer position indicators

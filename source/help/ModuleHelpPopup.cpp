@@ -120,11 +120,9 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
     titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     titleLabel.setText(help.name, juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
+    titleLabel.setInterceptsMouseClicks(false, false);
     addAndMakeVisible(titleLabel);
 
-    closeButton.setButtonText("x");
-    closeButton.setColour(juce::TextButton::buttonColourId,   juce::Colours::transparentBlack);
-    closeButton.setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffaaaaaa));
     closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
     addAndMakeVisible(closeButton);
 
@@ -191,7 +189,8 @@ bool ModuleHelpPopup::keyPressed(const juce::KeyPress& key)
 
 void ModuleHelpPopup::mouseDown(const juce::MouseEvent& e)
 {
-    dragger.startDraggingComponent(this, e);
+    if (e.getPosition().getY() < 32)
+        dragger.startDraggingComponent(this, e);
 }
 
 void ModuleHelpPopup::mouseDrag(const juce::MouseEvent& e)
@@ -203,12 +202,27 @@ void ModuleHelpPopup::mouseDrag(const juce::MouseEvent& e)
 ModuleHelpPopup* ModuleHelpPopup::show(const juce::String& moduleFullname,
                                        juce::Component* relativeTo)
 {
-    const NordHelp::ModuleHelp* help = NordHelp::findModuleHelp(moduleFullname);
+    // moduleFullname may be "FullName|ShortName" — try each part
+    auto parts = juce::StringArray::fromTokens(moduleFullname, "|", "");
+
+    const NordHelp::ModuleHelp* help = nullptr;
+    for (auto& part : parts)
+    {
+        help = NordHelp::findModuleHelp(part.trim());
+        if (help != nullptr) break;
+    }
+
+    // Fallback: strip parenthesised suffixes from each part
     if (help == nullptr)
     {
-        juce::String trimmed = moduleFullname.upToFirstOccurrenceOf("(", false, false).trim();
-        help = NordHelp::findModuleHelp(trimmed);
+        for (auto& part : parts)
+        {
+            juce::String trimmed = part.upToFirstOccurrenceOf("(", false, false).trim();
+            help = NordHelp::findModuleHelp(trimmed);
+            if (help != nullptr) break;
+        }
     }
+
     if (help == nullptr)
     {
         std::cout << "[HELP] No help found for: " << moduleFullname << std::endl;

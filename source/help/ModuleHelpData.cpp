@@ -1856,11 +1856,152 @@ const juce::Array<ModuleHelp>& getHelpDatabase()
     return db;
 }
 
+static juce::String normalizeHelpName (const juce::String& s)
+{
+    return s.toLowerCase().replace ("-", " ").trim();
+}
+
+// Maps module fullnames / shortnames that can't be resolved by normalization
+// alone to their exact help-database entry names.
+static const std::pair<const char*, const char*> kHelpAliases[] = {
+    // Switches
+    { "1 to 4 Switch",                       "1-4 switch" },
+    { "1-4Switch",                           "1-4 switch" },
+    { "4 to 1 Switch",                       "4-1 switch" },
+    { "4-1Switch",                           "4-1 switch" },
+    // Filter bank
+    { "14 Band Filter Bank",                 "Filter Bank" },
+    { "FilterBank",                          "Filter Bank" },
+    // Envelopes
+    { "ADH Envelope",                        "AHD-Envelope" },
+    { "AHD",                                 "AHD-Envelope" },
+    { "Modulated Envelope",                  "MOD-Envelope" },
+    { "Mod-Env",                             "MOD-Envelope" },
+    { "Multiple Envelope",                   "Multistage envelope" },
+    { "Multi-Env",                           "Multistage envelope" },
+    // EQ
+    { "Center Frequency Equalizer",          "EQ Mid" },
+    { "EqMid",                               "EQ Mid" },
+    { "Hi/Lo Shelving Equalizer",            "Shelving EQ" },
+    { "EqShelving",                          "Shelving EQ" },
+    // Pattern / sequencer
+    { "Clocked Pattern Generator",           "Pattern generator" },
+    { "PatternGen",                          "Pattern generator" },
+    // Comparators
+    { "Constant Comparator",                 "Compare to level" },
+    { "CompareLev",                          "Compare to level" },
+    { "Control Signal Comparator",           "Compare AB" },
+    { "CompareAB",                           "Compare AB" },
+    // Mixer / crossfader
+    { "Control Signal Mixer",                "Control mixer" },
+    { "ControlMixer",                        "Control mixer" },
+    { "Crossfader",                          "X-Fade with modulator" },
+    { "X-Fade",                              "X-Fade with modulator" },
+    // Diode / drum
+    { "Diode Processor",                     "Diode processing" },
+    { "Diode",                               "Diode processing" },
+    { "Drum Synthesizer",                    "Drum synth" },
+    { "DrumSynth",                           "Drum synth" },
+    // Oscillators
+    { "Multiple Oscillator A",               "Oscillator A" },
+    { "OscA",                                "Oscillator A" },
+    { "Multiple Oscillator B",               "Oscillator B" },
+    { "OscB",                                "Oscillator B" },
+    { "Sine Oscillator",                     "Oscillator C" },
+    { "OscC",                                "Oscillator C" },
+    { "Formant Oscillator",                  "Formant OSC" },
+    { "FormantOsc",                          "Formant OSC" },
+    // Slave oscillators
+    { "Multiple Slave Oscillator",           "Oscillator slave A" },
+    { "OscSlvA",                             "Oscillator slave A" },
+    { "Square/Pulse Slave Oscillator",       "Oscillator slave B" },
+    { "OscSlvB",                             "Oscillator slave B" },
+    { "Sawtooth Slave Oscillator",           "Oscillator slave C" },
+    { "OscSlvC",                             "Oscillator slave C" },
+    { "Triangle Slave Oscillator",           "Oscillator slave D" },
+    { "OscSlvD",                             "Oscillator slave D" },
+    { "Sine Slave Oscillator",               "Oscillator slave E" },
+    { "OscSlvE",                             "Oscillator slave E" },
+    { "FM Slave Oscillator",                 "Oscillator slave FM" },
+    { "OscSlvFM",                            "Oscillator slave FM" },
+    { "Sine Bank Slave Oscillator",          "Sine Bank" },
+    { "OscSineBank",                         "Sine Bank" },
+    // LFO slaves
+    { "Multiple Slave LFO",                  "LFO slave A" },
+    { "LFOSlvA",                             "LFO slave A" },
+    { "Sawtooth Slave LFO",                  "LFO slave B" },
+    { "LFOSlvB",                             "LFO slave B" },
+    { "Sine Slave LFO",                      "LFO slave C" },
+    { "LFOSlvC",                             "LFO slave C" },
+    { "Square/Pulse Slave LFO",              "LFO slave D" },
+    { "LFOSlvD",                             "LFO slave D" },
+    { "Triangle Slave LFO",                  "LFO slave E" },
+    { "LFOSlvE",                             "LFO slave E" },
+    // Level controls
+    { "Level Multi (Attenuator/Phase Shift)", "Adjustable gain control" },
+    { "LevMult",                             "Adjustable gain control" },
+    { "Level Offset (Bias)",                 "Adjustable offset" },
+    { "LevAdd",                              "Adjustable offset" },
+    { "Inversable Level Shifter",            "Inverter & level shifter" },
+    { "InvLevShift",                         "Inverter & level shifter" },
+    // Note
+    { "Note Detector",                       "Note detect" },
+    { "NoteDetect",                          "Note detect" },
+    { "Note Velocity Scaler",                "Note and velocity scaler" },
+    { "NoteVelScal",                         "Note and velocity scaler" },
+    // Misc
+    { "Percussion Oscillator",               "Perc oscillator" },
+    { "PercOsc",                             "Perc oscillator" },
+    { "Polyphonic Area In",                  "Poly Area In" },
+    { "PolyAreaIn",                          "Poly Area In" },
+    { "Ring/Amplitude Modulator",            "Ring and Amp modulator" },
+    { "RingMod",                             "Ring and Amp modulator" },
+    { "Fixed Clock Divider",                 "Clock divider fixed" },
+    { "ClkDivFix",                           "Clock divider fixed" },
+    { "Wave Wrapper",                        "Wavewrapper" },
+    { "WaveWrap",                            "Wavewrapper" },
+};
+
 const ModuleHelp* findModuleHelp (const juce::String& moduleName)
 {
+    // 1. Exact case-insensitive
     for (auto& m : getHelpDatabase())
         if (m.name.equalsIgnoreCase (moduleName))
             return &m;
+
+    auto norm = normalizeHelpName (moduleName);
+
+    // 2. Normalize hyphens → spaces  ("ADSR-Envelope" ↔ "ADSR Envelope")
+    for (auto& m : getHelpDatabase())
+        if (normalizeHelpName (m.name) == norm)
+            return &m;
+
+    // 3. Strip trailing variant letter A-E  ("Note Sequencer A" → "Note Sequencer")
+    auto stripped = norm;
+    if (stripped.length() > 2
+        && stripped[stripped.length() - 2] == ' '
+        && stripped[stripped.length() - 1] >= 'a'
+        && stripped[stripped.length() - 1] <= 'e')
+    {
+        stripped = stripped.dropLastCharacters (2).trim();
+        for (auto& m : getHelpDatabase())
+            if (normalizeHelpName (m.name) == stripped)
+                return &m;
+    }
+
+    // 4. Singular / plural  ("2 Output" ↔ "2 Outputs")
+    for (auto& m : getHelpDatabase())
+    {
+        auto normHelp = normalizeHelpName (m.name);
+        if (normHelp + "s" == norm || norm + "s" == normHelp)
+            return &m;
+    }
+
+    // 5. Static alias table for names that differ semantically
+    for (auto& [alias, target] : kHelpAliases)
+        if (juce::String (alias).equalsIgnoreCase (moduleName))
+            return findModuleHelp (juce::String (target));
+
     return nullptr;
 }
 

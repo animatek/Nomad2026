@@ -38,8 +38,9 @@ public:
             writeBits(ch, 8);
         }
 
-        // Null terminator
-        writeBits(0, 8);
+        // Null terminator only if the string didn't fill all 16 slots
+        if (len < 16)
+            writeBits(0, 8);
     }
 
     // Align to next 8-bit boundary

@@ -147,9 +147,9 @@ std::vector<uint8_t> PatchSerializer::serializeHeader(const Patch& patch)
     bs.writeBits(h.bendRange, 5);
     bs.writeBits(h.portamentoTime, 7);
     bs.writeBits(h.portamento ? 1 : 0, 1);
-    bs.writeBits(h.pedalMode, 1);
-    bs.writeBits(h.voices - 1, 5);  // 0-based
-    bs.writeBits(h.unknown2, 2);
+    bs.writeBits(1, 1);                    // pedalMode: Java always sends 1
+    bs.writeBits(h.voices - 1, 5);        // 0-based
+    bs.writeBits(0, 2);                    // unknown2: Java always sends 0
     bs.writeBits(h.separatorPosition, 12);
     bs.writeBits(h.octaveShift, 3);
     bs.writeBits(h.cableVisRed ? 1 : 0, 1);
@@ -161,8 +161,8 @@ std::vector<uint8_t> PatchSerializer::serializeHeader(const Patch& patch)
     bs.writeBits(h.cableVisWhite ? 1 : 0, 1);
     bs.writeBits(h.voiceRetriggerCommon, 1);
     bs.writeBits(h.voiceRetriggerPoly, 1);
-    bs.writeBits(h.unknown3, 4);
-    bs.writeBits(h.unknown4, 3);
+    bs.writeBits(0xF, 4);                  // unknown3: Java always sends 0xF
+    bs.writeBits(0, 3);                    // unknown4: Java always sends 0
     bs.alignToByte();
 
     return bs.toMidiBytes();

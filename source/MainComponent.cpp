@@ -4,6 +4,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/PatchSettingsDialog.h"
+#include "ui/SynthSettingsDialog.h"
 #include "protocol/StorePatchMessage.h"
 #include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "BinaryData.h"
@@ -163,6 +164,19 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       mainLayout->getPatchBrowser().setPatchList(names);
       mainLayout->getPatchBrowser().setLoadingState(false);
     });
+  });
+
+  connectionManager.setSynthSettingsCallback([this](const SynthSettings& settings) {
+    cachedSynthSettings = settings;
+    if (!settings.name.empty())
+      mainLayout->getHeaderBar().setSynthName(juce::String(settings.name));
+    if (synthSettingsDialog != nullptr)
+      synthSettingsDialog->setSettings(settings);
+    if (pendingSynthSettingsDialogOpen)
+    {
+      pendingSynthSettingsDialogOpen = false;
+      openSynthSettingsDialog();
+    }
   });
 
   // Wire patch browser callbacks
@@ -541,6 +555,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     else if (cmd == "open")  openPatch();
     else if (cmd == "save")  savePatch();
     else if (cmd == "patchSettings") showPatchSettingsDialog();
+    else if (cmd == "synthSettings") showSynthSettingsDialog();
     else if (cmd == "randomize") randomizeParameters(false);
     else if (cmd == "randomizeGaussian") randomizeParameters(true);
   });
@@ -608,7 +623,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   connectionManager.setSlotChangedCallback([this](int slot) {
     juce::MessageManager::callAsync([this, slot]() {
       mainLayout->getSlotBar().setCurrentTab(slot);
-      switchToSlot(slot);
+      switchToSlot(slot, /*notifySynth=*/false);
     });
   });
 
@@ -655,6 +670,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(4, "Save As...");
     menu.addSeparator();
     menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
+    menu.addItem(9, "Synth Settings...\tCtrl+G");
     menu.addSeparator();
     menu.addItem(10, "Quit\tCtrl+Q");
   } else if (menuIndex == 1) // Edit
@@ -706,9 +722,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 5) // About
   {
+    menu.addItem(53, "Nomad2026 Website", true);
     menu.addItem(50, "Support the Project (Patreon)", true);
     menu.addItem(51, "Source Code (GitHub)", true);
-    menu.addItem(52, "Website", true);
+    menu.addItem(52, "animatek.net", true);
   }
 
   return menu;
@@ -749,6 +766,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 8:
     showPatchSettingsDialog();
+    break;
+  case 9:
+    showSynthSettingsDialog();
     break;
   case 10:
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
@@ -798,13 +818,16 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
 
   // About menu
+  case 53:  // Nomad2026 website
+    openURL("https://animatek.net/nomad2026_eng/");
+    break;
   case 50:  // Patreon
     openURL("https://www.patreon.com/collection/2038913");
     break;
   case 51:  // GitHub
     openURL("https://github.com/animatek/Nomad2026/");
     break;
-  case 52:  // Website
+  case 52:  // animatek.net
     openURL("https://animatek.net/");
     break;
 
@@ -836,14 +859,21 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   }
 }
 
-void MainComponent::switchToSlot(int slot) {
-  if (slot < 0 || slot >= numSlots || slot == activeSlot)
+void MainComponent::switchToSlot(int slot, bool notifySynth) {
+  if (slot < 0 || slot >= numSlots)
     return;
+
+  if (slot == activeSlot) {
+    if (notifySynth && connectionManager.isConnected()
+        && connectionManager.getCurrentSlot() != slot)
+      connectionManager.selectSlot(slot);
+    return;
+  }
 
   activeSlot = slot;
 
-  // Tell synth to switch active slot
-  if (connectionManager.isConnected())
+  // Tell synth to switch active slot (skip when the synth itself initiated the change)
+  if (notifySynth && connectionManager.isConnected())
     connectionManager.selectSlot(slot);
 
   // Clear inspector (points into old slot's patch)
@@ -1140,6 +1170,39 @@ void MainComponent::showPatchSettingsDialog() {
       });
 }
 
+void MainComponent::showSynthSettingsDialog() {
+  if (connectionManager.isConnected())
+  {
+    pendingSynthSettingsDialogOpen = true;
+    connectionManager.requestSynthSettings();
+    mainLayout->getStatusBar().showMessage("Requesting synth settings...", 1200);
+
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(2500, [safeThis]() {
+      if (safeThis != nullptr && safeThis->pendingSynthSettingsDialogOpen)
+      {
+        safeThis->pendingSynthSettingsDialogOpen = false;
+        safeThis->openSynthSettingsDialog();
+      }
+    });
+    return;
+  }
+
+  openSynthSettingsDialog();
+}
+
+void MainComponent::openSynthSettingsDialog() {
+  synthSettingsDialog = SynthSettingsDialog::show(this, cachedSynthSettings,
+      [this](const SynthSettings& s)
+      {
+        cachedSynthSettings = s;
+        mainLayout->getHeaderBar().setSynthName(juce::String(s.name));
+        mainLayout->getStatusBar().showMessage("Synth settings updated", 2000);
+        if (connectionManager.isConnected())
+          connectionManager.sendSynthSettings(s);
+      });
+}
+
 void MainComponent::showMidiSettingsDialog() {
   MidiSettingsDialog::show(
       this, lastInputId, lastOutputId, connectionManager.getStatus(),
@@ -1180,10 +1243,11 @@ void MainComponent::onConnectionStatusChanged(
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
-    connectionManager.requestPatchList();
-
     // Show synth name in header bar (will be replaced by real name from SynthSettings later)
     mainLayout->getHeaderBar().setSynthName("Nord Modular");
+
+    connectionManager.requestPatchList();
+    connectionManager.requestSynthSettings();
   } else {
     // Disable all synchronizers on disconnect
     for (int s = 0; s < numSlots; ++s)
@@ -1312,8 +1376,10 @@ public:
         addAndMakeVisible(titleLabel);
 
         closeButton.setButtonText("x");
-        closeButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
-        closeButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaaaa));
+        closeButton.setColour(juce::TextButton::buttonColourId,   juce::Colour(0xff14142a));
+        closeButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff252540));
+        closeButton.setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffffcc44));
+        closeButton.setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
         closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
         addAndMakeVisible(closeButton);
 

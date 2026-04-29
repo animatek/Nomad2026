@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "ModuleHelpData.h"
+#include "../ui/FlatCloseButton.h"
 
 /**
  * Floating help popup shown when F1 is pressed with a module selected.
@@ -26,7 +27,7 @@ public:
 
 private:
     juce::Label      titleLabel;
-    juce::TextButton closeButton;
+    FlatCloseButton  closeButton;
     juce::Viewport   viewport;
     juce::ComponentDragger dragger;
 
