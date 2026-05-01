@@ -882,6 +882,10 @@ public:
     {
         createdIndices_.clear();
 
+        // Suppress incremental sync while we mutate the model.
+        // We'll do one full upload at the end — same pattern as DeleteModuleAction::undo().
+        SyncSuppressor guard(ctx_.syncPtr);
+
         for (auto& entry : snip_.entries)
         {
             auto& container = ctx_.patch.getContainer(entry.section);
@@ -919,7 +923,7 @@ public:
             createdIndices_.push_back({ entry.section, mod->getContainerIndex() });
         }
 
-        // Recreate cables
+        // Recreate cables (still suppressed — one full upload handles everything)
         for (auto& cb : snip_.cables)
         {
             if (cb.srcIdx < 0 || cb.srcIdx >= (int)createdIndices_.size()) continue;
