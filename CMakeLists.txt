@@ -22,6 +22,7 @@ set(NOMAD_SHARED_SOURCES
     source/model/PatchParser.cpp
     source/model/PatchSerializer.cpp
     source/model/PchFileIO.cpp
+    source/model/SnipFileIO.cpp
     source/model/ThemeData.cpp
 
     # Value Formatters (ported from nmformat.js)

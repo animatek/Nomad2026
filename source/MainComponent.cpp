@@ -558,6 +558,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         initializeModule(section, module);
       });
 
+  // Wire snippet save callback
+  mainLayout->getCanvas().setSnippetSaveCallback(
+      [this](SnipData snip) { saveSnippet(std::move(snip)); });
+
   // Wire cable visibility toggles to repaint the canvas
   mainLayout->getHeaderBar().setCableVisibilityCallback(
       [this]() { mainLayout->getCanvas().repaintCanvas(); });
@@ -718,6 +722,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(3, "Save\tCtrl+S");
     menu.addItem(4, "Save As...");
     menu.addSeparator();
+    menu.addItem(5, "Import Snippet...", currentPatch() != nullptr);
+    menu.addSeparator();
     menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
     menu.addItem(9, "Synth Settings...\tCtrl+G");
     menu.addItem(11, "Editor Options...\tCtrl+E");
@@ -815,6 +821,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 4:
     savePatchAs();
+    break;
+  case 5:
+    importSnippet();
     break;
   case 8:
     showPatchSettingsDialog();
@@ -1913,4 +1922,73 @@ void MainComponent::updateDspLoadDisplay() {
   mainLayout->getHeaderBar().setLoadValues(
       static_cast<float>(polyCycles / 100.0),
       static_cast<float>(total / 100.0));
+}
+
+void MainComponent::saveSnippet(SnipData snip)
+{
+  auto chooser = std::make_shared<juce::FileChooser>(
+      "Save Snippet", juce::File(), "*.pch");
+
+  chooser->launchAsync(
+      juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+      [this, chooser, snip = std::move(snip)](const juce::FileChooser& fc) mutable {
+        auto result = fc.getResult();
+        if (result == juce::File()) return;
+
+        auto file = result.hasFileExtension(".pch") ? result : result.withFileExtension("pch");
+        snip.name = file.getFileNameWithoutExtension();
+
+        auto tempPatch = snipDataToPatch(snip, moduleDescs);
+        PchFileIO io(moduleDescs);
+        if (io.writeFile(*tempPatch, file))
+          mainLayout->getStatusBar().showMessage("Snippet saved: " + file.getFileName(), 3000);
+        else
+          mainLayout->getStatusBar().showMessage("ERROR: Failed to save snippet", 5000);
+      });
+}
+
+void MainComponent::importSnippet()
+{
+  if (!currentPatch() || !undoContext()) return;
+
+  auto chooser = std::make_shared<juce::FileChooser>(
+      "Import Snippet", juce::File(), "*.pch");
+
+  chooser->launchAsync(
+      juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+      [this, chooser](const juce::FileChooser& fc) {
+        auto result = fc.getResult();
+        if (!result.existsAsFile()) return;
+
+        PchFileIO io(moduleDescs);
+        auto tempPatch = io.readFile(result);
+        if (!tempPatch)
+        {
+          mainLayout->getStatusBar().showMessage("ERROR: Could not read .pch file", 5000);
+          return;
+        }
+
+        auto snip = patchToSnipData(*tempPatch);
+        if (snip.entries.empty())
+        {
+          mainLayout->getStatusBar().showMessage("ERROR: No modules found in file", 5000);
+          return;
+        }
+
+        // Offset so snippet lands at grid position (3, 3)
+        int minX = snip.entries[0].gridPos.x;
+        int minY = snip.entries[0].gridPos.y;
+        for (auto& e : snip.entries)
+        {
+          minX = std::min(minX, e.gridPos.x);
+          minY = std::min(minY, e.gridPos.y);
+        }
+
+        undoManager().beginNewTransaction("Import Snippet");
+        undoManager().perform(new InsertSnippetAction(
+            *undoContext(), std::move(snip), 3 - minX, 3 - minY));
+
+        mainLayout->getStatusBar().showMessage(
+            "Snippet imported from " + result.getFileName(), 3000);
+      });
 }

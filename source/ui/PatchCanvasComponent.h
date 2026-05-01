@@ -4,6 +4,7 @@
 #include "../model/Patch.h"
 #include "../model/ModuleDescriptions.h"
 #include "../model/ThemeData.h"
+#include "../model/SnipFileIO.h"
 #include "QuickAddPopup.h"
 #include "../help/ModuleHelpPopup.h"
 #include "ColorScheme.h"
@@ -40,6 +41,8 @@ public:
     using MidiCtrlAssignCallback = std::function<void(int section, int moduleId, int paramId, int midiCC)>;
     // Initialize module: section, module pointer
     using InitModuleCallback = std::function<void(int section, Module* module)>;
+    // Snippet save: fires with SnipData after "Save as Snippet" in context menu
+    using SnippetSaveCallback = std::function<void(SnipData)>;
 
     PatchCanvas();
     ~PatchCanvas();
@@ -90,6 +93,8 @@ public:
     void setKnobAssignCallback(KnobAssignCallback cb) { knobAssignCallback = std::move(cb); }
     void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
     void setInitModuleCallback(InitModuleCallback cb) { initModuleCallback = std::move(cb); }
+    void setSnippetSaveCallback(SnippetSaveCallback cb) { snippetSaveCallback_ = std::move(cb); }
+    void saveSelectionAsSnippet();
     void setCableCreatedCallback(CableCallback cb) { cableCreatedCallback = std::move(cb); }
     void setCableDeletedCallback(CableCallback cb) { cableDeletedCallback = std::move(cb); }
     void setUndoCallback(std::function<void()> cb) { undoCallback = std::move(cb); }
@@ -198,6 +203,7 @@ private:
     KnobAssignCallback knobAssignCallback;
     MidiCtrlAssignCallback midiCtrlAssignCallback;
     InitModuleCallback initModuleCallback;
+    SnippetSaveCallback snippetSaveCallback_;
     CableCallback cableCreatedCallback;
     CableCallback cableDeletedCallback;
     std::function<void()> undoCallback;
@@ -414,6 +420,12 @@ public:
     {
         polyCanvas.setInitModuleCallback(cb);
         commonCanvas.setInitModuleCallback(std::move(cb));
+    }
+
+    void setSnippetSaveCallback(PatchCanvas::SnippetSaveCallback cb)
+    {
+        polyCanvas.setSnippetSaveCallback(cb);
+        commonCanvas.setSnippetSaveCallback(std::move(cb));
     }
 
     /** Aggregate selected modules from both canvases */

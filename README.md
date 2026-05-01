@@ -271,7 +271,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [ ] **Browser** (Ctrl+B) - Standalone preset/snippet browser
 
 ### Patch Tools
-- [ ] **Snippet System** - Save and reuse module groups
+- [x] **Snippet System** - Save and reuse module groups
 - [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
 
 ### Quality of Life
@@ -365,12 +365,11 @@ This section outlines all planned features to achieve feature parity with the or
   - **Parameter Lock**: Right-click any parameter to lock/unlock it from randomization (lock icon indicator)
   - Locked parameters are preserved across randomize operations
   - Full undo/redo support
-- [ ] **Snippet System** - Save and reuse module groups
-  - Select modules on canvas → right-click → "Save Selection as Snippet"
-  - Saves selected modules + internal cables + parameters as partial .pch
-  - Module indices reindexed on import to avoid collisions
-  - Insert via drag & drop from browser, or File → Import Snippet
-  - Full undo/redo support for snippet insertion
+- [x] **Snippet System** - Save and reuse module groups
+  - Select modules → right-click → "Save as Snippet..." → saves standard `.pch` file
+  - File → Import Snippet... → inserts modules at grid (3,3) with overlap avoidance
+  - Full undo/redo support via `InsertSnippetAction` (proper model-level undo)
+  - Snippets are valid `.pch` files — openable in NM 3.03, Nomad, and any NM tool
 - [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
   - Separate resizable window (not embedded in canvas), toggle open/close
   - **User Preset Library**: configurable root folder for .pch files, set on first launch

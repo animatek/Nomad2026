@@ -6481,6 +6481,7 @@ void PatchCanvas::showSelectionContextMenu()
     menu.addItem(1, "Duplicate");
     menu.addItem(2, "Duplicate with Cables");
     menu.addItem(3, "Copy");
+    menu.addItem(6, "Save as Snippet...");
     menu.addSeparator();
     menu.addItem(5, "Initialize");
     menu.addSeparator();
@@ -6500,7 +6501,36 @@ void PatchCanvas::showSelectionContextMenu()
                         initModuleCallback(sel.section, sel.module);
             }
         }
+        else if (result == 6) saveSelectionAsSnippet();
     });
+}
+
+void PatchCanvas::saveSelectionAsSnippet()
+{
+    if (selection.empty() || !snippetSaveCallback_) return;
+
+    copySelectionToClipboard();
+    if (clipboard.empty()) return;
+
+    SnipData snip;
+    snip.name = "snippet";
+
+    for (auto& e : clipboard)
+    {
+        SnipEntry se;
+        se.typeIndex   = e.typeIndex;
+        se.name        = e.name;
+        se.section     = e.section;
+        se.gridPos     = e.gridPos;
+        se.paramValues = e.paramValues;
+        snip.entries.push_back(std::move(se));
+    }
+
+    for (auto& cb : clipboardCables)
+        snip.cables.push_back({ cb.srcModuleClipIdx, cb.srcConnectorIdx,
+                                 cb.dstModuleClipIdx, cb.dstConnectorIdx });
+
+    snippetSaveCallback_(std::move(snip));
 }
 
 // --- PatchCanvasComponent (two-panel split viewport) ---

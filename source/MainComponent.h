@@ -6,6 +6,7 @@
 #include "model/ThemeData.h"
 #include "model/Patch.h"
 #include "model/PchFileIO.h"
+#include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
 #include "midi/ConnectionManager.h"
 #include "sync/PatchSynchronizer.h"
@@ -41,6 +42,8 @@ private:
     void storePatchToBank();
     void loadPatchFromFile(const juce::File& file);
     bool savePatchToFile(const juce::File& file);
+    void importSnippet();
+    void saveSnippet(SnipData snip);
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();

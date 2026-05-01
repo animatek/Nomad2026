@@ -3,6 +3,7 @@
 #include <juce_data_structures/juce_data_structures.h>
 #include "../model/Patch.h"
 #include "../model/ModuleDescriptions.h"
+#include "../model/SnipFileIO.h"
 #include "../midi/ConnectionManager.h"
 #include "../sync/PatchSynchronizer.h"
 #include "../protocol/MorphAssignmentMessage.h"
@@ -866,4 +867,104 @@ private:
 
     UndoContext& ctx_;
     std::vector<ParamChange> changes_;
+};
+
+// ============================================================================
+// InsertSnippetAction
+// ============================================================================
+class InsertSnippetAction : public juce::UndoableAction
+{
+public:
+    InsertSnippetAction(UndoContext& ctx, SnipData snip, int offsetX, int offsetY)
+        : ctx_(ctx), snip_(std::move(snip)), offsetX_(offsetX), offsetY_(offsetY) {}
+
+    bool perform() override
+    {
+        createdIndices_.clear();
+
+        for (auto& entry : snip_.entries)
+        {
+            auto& container = ctx_.patch.getContainer(entry.section);
+            int tx = entry.gridPos.x + offsetX_;
+            int ty = entry.gridPos.y + offsetY_;
+            if (tx < 0) tx = 0;
+            if (ty < 0) ty = 0;
+
+            // Simple Y overlap avoidance
+            int h = 1;
+            if (auto* desc = ctx_.descs.getModuleByIndex(entry.typeIndex))
+                h = desc->height;
+            for (int attempt = 0; attempt < 128; ++attempt)
+            {
+                bool occupied = false;
+                for (auto& m : container.getModules())
+                {
+                    int mh = m->getDescriptor() ? m->getDescriptor()->height : 1;
+                    if (m->getPosition().x == tx &&
+                        std::abs(m->getPosition().y - ty) < std::max(h, mh))
+                    { occupied = true; break; }
+                }
+                if (!occupied) break;
+                ++ty;
+            }
+
+            auto* mod = ctx_.patch.createModule(entry.section, entry.typeIndex,
+                                                tx, ty, entry.name, ctx_.descs);
+            if (!mod) { createdIndices_.push_back({ entry.section, -1 }); continue; }
+
+            auto& params = mod->getParameters();
+            for (size_t i = 0; i < entry.paramValues.size() && i < params.size(); ++i)
+                params[i].setValue(entry.paramValues[i]);
+
+            createdIndices_.push_back({ entry.section, mod->getContainerIndex() });
+        }
+
+        // Recreate cables
+        for (auto& cb : snip_.cables)
+        {
+            if (cb.srcIdx < 0 || cb.srcIdx >= (int)createdIndices_.size()) continue;
+            if (cb.dstIdx < 0 || cb.dstIdx >= (int)createdIndices_.size()) continue;
+            auto [srcSec, srcCI] = createdIndices_[cb.srcIdx];
+            auto [dstSec, dstCI] = createdIndices_[cb.dstIdx];
+            if (srcCI < 0 || dstCI < 0 || srcSec != dstSec) continue;
+
+            auto& container = ctx_.patch.getContainer(srcSec);
+            auto* src = container.getModuleByIndex(srcCI);
+            auto* dst = container.getModuleByIndex(dstCI);
+            if (!src || !dst) continue;
+            auto* sc = src->getConnector(cb.srcConn);
+            auto* dc = dst->getConnector(cb.dstConn);
+            if (sc && dc) container.addConnection(sc, dc);
+        }
+
+        ctx_.repaint();
+        if (ctx_.syncToSynth) ctx_.syncToSynth();
+        return !createdIndices_.empty();
+    }
+
+    bool undo() override
+    {
+        for (auto& [sec, cidx] : createdIndices_)
+        {
+            if (cidx < 0) continue;
+            auto& container = ctx_.patch.getContainer(sec);
+            auto* mod = container.getModuleByIndex(cidx);
+            if (mod)
+            {
+                SyncSuppressor guard(ctx_.syncPtr);
+                container.removeModule(mod);
+            }
+        }
+        ctx_.repaint();
+        if (ctx_.syncToSynth) ctx_.syncToSynth();
+        return true;
+    }
+
+    int getSizeInUnits() override { return (int)snip_.entries.size(); }
+
+private:
+    UndoContext& ctx_;
+    SnipData snip_;
+    int offsetX_, offsetY_;
+    std::vector<std::pair<int, int>> createdIndices_;  // {section, containerIndex}
 };
