@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../midi/ConnectionManager.h"
+#include "FlatCloseButton.h"
 
 class MidiSettingsDialog : public juce::Component
 {
@@ -12,11 +13,14 @@ public:
     void setSelectedPorts(const juce::String& inputId, const juce::String& outputId);
     void setConnectedState(const ConnectionManager::Status& status);
 
-    // Callbacks
     std::function<void(const juce::String& inputId, const juce::String& outputId)> onConnectionRequest;
     std::function<void()> onDisconnectionRequest;
 
-    void resized() override;
+    void paint   (juce::Graphics& g) override;
+    void resized () override;
+    bool keyPressed (const juce::KeyPress& key) override;
+    void mouseDown  (const juce::MouseEvent& e) override;
+    void mouseDrag  (const juce::MouseEvent& e) override;
 
     static void show(juce::Component* parent,
                      const juce::String& currentInputId,
@@ -26,20 +30,22 @@ public:
                      std::function<void()> disconnectCb);
 
 private:
-    juce::Label inputLabel;
-    juce::ComboBox inputCombo;
-    juce::Label outputLabel;
-    juce::ComboBox outputCombo;
-    juce::TextButton connectButton { "Connect" };
-    juce::Label statusLabel;
-
-    // Store device identifiers parallel to combo box items
-    juce::StringArray inputIds;
-    juce::StringArray outputIds;
+    void close();
+    void updateButtonState();
 
     bool connected = false;
+    juce::ComponentDragger dragger;
+    FlatCloseButton closeButton;
 
-    void updateButtonState();
+    juce::Label    inputLabel    { {}, "MIDI INPUT" };
+    juce::ComboBox inputCombo;
+    juce::Label    outputLabel   { {}, "MIDI OUTPUT" };
+    juce::ComboBox outputCombo;
+    juce::TextButton connectButton;
+    juce::Label    statusLabel;
+
+    juce::StringArray inputIds;
+    juce::StringArray outputIds;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiSettingsDialog)
 };

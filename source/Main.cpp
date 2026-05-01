@@ -16,7 +16,47 @@ public:
         options.osxLibrarySubFolder = "Application Support";
         appProperties.setStorageParameters(options);
 
+        applyDarkTheme();
         mainWindow = std::make_unique<MainWindow>(getApplicationName(), appProperties);
+    }
+
+    static void applyDarkTheme()
+    {
+        auto& lf = juce::LookAndFeel::getDefaultLookAndFeel();
+
+        // PopupMenu / ComboBox dropdowns / context menus / main menu bar
+        lf.setColour (juce::PopupMenu::backgroundColourId,            juce::Colour (0xff14142a));
+        lf.setColour (juce::PopupMenu::textColourId,                  juce::Colour (0xffcccccc));
+        lf.setColour (juce::PopupMenu::headerTextColourId,            juce::Colour (0xffffcc44));
+        lf.setColour (juce::PopupMenu::highlightedBackgroundColourId, juce::Colour (0xff353560));
+        lf.setColour (juce::PopupMenu::highlightedTextColourId,       juce::Colour (0xffffcc44));
+
+        // ComboBox widget itself
+        lf.setColour (juce::ComboBox::backgroundColourId,             juce::Colour (0xff22223a));
+        lf.setColour (juce::ComboBox::outlineColourId,                juce::Colour (0xff3a3a5a));
+        lf.setColour (juce::ComboBox::textColourId,                   juce::Colour (0xffcccccc));
+        lf.setColour (juce::ComboBox::arrowColourId,                  juce::Colour (0xffffaa44));
+        lf.setColour (juce::ComboBox::focusedOutlineColourId,         juce::Colour (0xffffcc44));
+
+        // TextButton defaults
+        lf.setColour (juce::TextButton::buttonColourId,               juce::Colour (0xff252540));
+        lf.setColour (juce::TextButton::buttonOnColourId,             juce::Colour (0xff353560));
+        lf.setColour (juce::TextButton::textColourOffId,              juce::Colour (0xffcccccc));
+        lf.setColour (juce::TextButton::textColourOnId,               juce::Colour (0xffffcc44));
+
+        // ScrollBar
+        lf.setColour (juce::ScrollBar::thumbColourId,                 juce::Colour (0xff353560));
+        lf.setColour (juce::ScrollBar::trackColourId,                 juce::Colour (0xff14142a));
+
+        // ToggleButton
+        lf.setColour (juce::ToggleButton::textColourId,               juce::Colour (0xffcccccc));
+        lf.setColour (juce::ToggleButton::tickColourId,               juce::Colour (0xffffaa44));
+        lf.setColour (juce::ToggleButton::tickDisabledColourId,       juce::Colour (0xff888899));
+
+        // AlertWindow
+        lf.setColour (juce::AlertWindow::backgroundColourId,          juce::Colour (0xff14142a));
+        lf.setColour (juce::AlertWindow::textColourId,                juce::Colour (0xffcccccc));
+        lf.setColour (juce::AlertWindow::outlineColourId,             juce::Colour (0xff333355));
     }
 
     void shutdown() override

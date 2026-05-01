@@ -1,150 +1,209 @@
 #include "PatchLocationDialog.h"
 
-PatchLocationDialog::PatchLocationDialog(const std::vector<std::string>& patchList,
-                                         bool showSlot,
-                                         int currentSlot)
-    : patchList_(patchList)
-    , showSlot_(showSlot)
+static const juce::Colour kBg     { 0xff14142a };
+static const juce::Colour kSep    { 0xff333355 };
+static const juce::Colour kGold   { 0xffffcc44 };
+static const juce::Colour kAmber  { 0xffffaa44 };
+static const juce::Colour kText   { 0xffcccccc };
+static const juce::Colour kCtrlBg { 0xff22223a };
+static const juce::Colour kCtrlBd { 0xff3a3a5a };
+static const juce::Colour kBtnBg  { 0xff252540 };
+static const juce::Colour kBtnOn  { 0xff353560 };
+static const juce::Colour kOkBg   { 0xff1e3a1e };
+static const juce::Colour kOkOn   { 0xff2a5a2a };
+
+static void styleLabel (juce::Label& l)
 {
-    // Slot selector (A-D)
+    l.setFont (juce::Font (juce::FontOptions (10.0f, juce::Font::bold)));
+    l.setColour (juce::Label::textColourId,       kGold);
+    l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+}
+
+static void styleCombo (juce::ComboBox& c)
+{
+    c.setColour (juce::ComboBox::backgroundColourId,      kCtrlBg);
+    c.setColour (juce::ComboBox::outlineColourId,         kCtrlBd);
+    c.setColour (juce::ComboBox::textColourId,            kText);
+    c.setColour (juce::ComboBox::arrowColourId,           kAmber);
+    c.setColour (juce::ComboBox::focusedOutlineColourId,  kGold);
+}
+
+static void styleBtn (juce::TextButton& b, bool isOk = false)
+{
+    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : kBtnBg);
+    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
+    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : kText);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+PatchLocationDialog::PatchLocationDialog(const juce::String& title,
+                                         const std::vector<std::string>& patchList,
+                                         bool showSlot,
+                                         int  currentSlot,
+                                         Callback cb)
+    : title_ (title), patchList_ (patchList), showSlot_ (showSlot), callback (std::move (cb))
+{
+    setOpaque (true);
+    setWantsKeyboardFocus (true);
+
+    closeButton.onClick = [this]() { cancel(); };
+    addAndMakeVisible (closeButton);
+
+    // Slot
     if (showSlot_)
     {
-        slotLabel.setText("Slot:", juce::dontSendNotification);
-        slotLabel.setJustificationType(juce::Justification::centredRight);
-        addAndMakeVisible(slotLabel);
-
-        slotCombo.addItem("A (Slot 1)", 1);
-        slotCombo.addItem("B (Slot 2)", 2);
-        slotCombo.addItem("C (Slot 3)", 3);
-        slotCombo.addItem("D (Slot 4)", 4);
-        slotCombo.setSelectedItemIndex(currentSlot, juce::dontSendNotification);
-        addAndMakeVisible(slotCombo);
+        styleLabel (slotLabel);
+        slotCombo.addItem ("A  (Slot 1)", 1);
+        slotCombo.addItem ("B  (Slot 2)", 2);
+        slotCombo.addItem ("C  (Slot 3)", 3);
+        slotCombo.addItem ("D  (Slot 4)", 4);
+        slotCombo.setSelectedItemIndex (currentSlot, juce::dontSendNotification);
+        styleCombo (slotCombo);
+        addAndMakeVisible (slotLabel);
+        addAndMakeVisible (slotCombo);
     }
 
-    // Bank selector (1-9)
-    bankLabel.setText("Bank:", juce::dontSendNotification);
-    bankLabel.setJustificationType(juce::Justification::centredRight);
-    addAndMakeVisible(bankLabel);
-
+    // Bank
+    styleLabel (bankLabel);
     for (int b = 1; b <= 9; ++b)
-        bankCombo.addItem("Bank " + juce::String(b), b);
-    bankCombo.setSelectedItemIndex(0, juce::dontSendNotification);
+        bankCombo.addItem ("Bank " + juce::String (b), b);
+    bankCombo.setSelectedItemIndex (0, juce::dontSendNotification);
     bankCombo.onChange = [this]() { updatePositionItems(); };
-    addAndMakeVisible(bankCombo);
+    styleCombo (bankCombo);
+    addAndMakeVisible (bankLabel);
+    addAndMakeVisible (bankCombo);
 
-    // Position selector (1-99 with patch names)
-    positionLabel.setText("Position:", juce::dontSendNotification);
-    positionLabel.setJustificationType(juce::Justification::centredRight);
-    addAndMakeVisible(positionLabel);
-
-    addAndMakeVisible(positionCombo);
+    // Position
+    styleLabel (positionLabel);
+    styleCombo (positionCombo);
+    addAndMakeVisible (positionLabel);
+    addAndMakeVisible (positionCombo);
     updatePositionItems();
 
     // Buttons
-    confirmButton.setButtonText("OK");
-    confirmButton.onClick = [this]() { onConfirm(); };
-    addAndMakeVisible(confirmButton);
+    styleBtn (okButton, true);
+    styleBtn (cancelButton);
+    okButton    .onClick = [this]() { confirm(); };
+    cancelButton.onClick = [this]() { cancel();  };
+    addAndMakeVisible (okButton);
+    addAndMakeVisible (cancelButton);
 
-    cancelButton.setButtonText("Cancel");
-    cancelButton.onClick = [this]() { onCancel(); };
-    addAndMakeVisible(cancelButton);
-
-    setSize(400, showSlot_ ? 200 : 160);
+    setSize (380, showSlot_ ? 250 : 218);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 void PatchLocationDialog::updatePositionItems()
 {
-    int bank = bankCombo.getSelectedItemIndex() + 1;  // 1-9
-    int section = bank - 1;  // 0-8
+    const int bank    = bankCombo.getSelectedItemIndex() + 1;
+    const int section = bank - 1;
 
-    positionCombo.clear(juce::dontSendNotification);
-
+    positionCombo.clear (juce::dontSendNotification);
     for (int pos = 1; pos <= 99; ++pos)
     {
-        int position = pos - 1;  // 0-98
-        int index = section * 99 + position;
-
-        juce::String patchName = (index < static_cast<int>(patchList_.size()) && !patchList_[index].empty())
-                                  ? juce::String(patchList_[index])
-                                  : "--";
-
-        positionCombo.addItem(juce::String(pos).paddedLeft('0', 2) + ": " + patchName, pos);
+        int idx = section * 99 + (pos - 1);
+        juce::String name = (idx < static_cast<int>(patchList_.size()) && !patchList_[idx].empty())
+                            ? juce::String (patchList_[idx]) : "--";
+        positionCombo.addItem (juce::String (pos).paddedLeft ('0', 2) + ":  " + name, pos);
     }
-
-    positionCombo.setSelectedItemIndex(0, juce::dontSendNotification);
+    positionCombo.setSelectedItemIndex (0, juce::dontSendNotification);
 }
 
-void PatchLocationDialog::onConfirm()
+void PatchLocationDialog::confirm()
 {
-    Result result;
-    result.slot = showSlot_ ? slotCombo.getSelectedItemIndex() : 0;
-    result.section = bankCombo.getSelectedItemIndex();  // 0-8
-    result.position = positionCombo.getSelectedItemIndex();  // 0-98
-    result.confirmed = true;
-
-    // Close the dialog window
-    if (auto* window = findParentComponentOfClass<juce::DialogWindow>())
-        window->exitModalState(1);
-
-    if (callback)
-        callback(result);
+    Result r;
+    r.slot      = showSlot_ ? slotCombo.getSelectedItemIndex() : 0;
+    r.section   = bankCombo.getSelectedItemIndex();
+    r.position  = positionCombo.getSelectedItemIndex();
+    r.confirmed = true;
+    if (callback) callback (r);
+    close();
 }
 
-void PatchLocationDialog::onCancel()
+void PatchLocationDialog::cancel()
 {
-    Result result;
-    result.confirmed = false;
+    Result r;  r.confirmed = false;
+    if (callback) callback (r);
+    close();
+}
 
-    // Close the dialog window
-    if (auto* window = findParentComponentOfClass<juce::DialogWindow>())
-        window->exitModalState(0);
+void PatchLocationDialog::close() { removeFromDesktop(); delete this; }
 
-    if (callback)
-        callback(result);
+bool PatchLocationDialog::keyPressed (const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::escapeKey) { cancel(); return true; }
+    if (key == juce::KeyPress::returnKey) { confirm(); return true; }
+    return false;
+}
+
+void PatchLocationDialog::mouseDown (const juce::MouseEvent& e)
+    { if (e.getPosition().getY() < 32) dragger.startDraggingComponent (this, e); }
+void PatchLocationDialog::mouseDrag (const juce::MouseEvent& e)
+    { dragger.dragComponent (this, e, nullptr); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+void PatchLocationDialog::paint (juce::Graphics& g)
+{
+    g.fillAll (kBg);
+
+    g.setColour (kGold);
+    g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
+    g.drawText (title_, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
+
+    g.setColour (kSep);
+    g.fillRect (0, 31, getWidth(), 1);
+
+    const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
+    const int sepY = getHeight() - 50;
+    g.drawHorizontalLine (sepY, x0, x1);
 }
 
 void PatchLocationDialog::resized()
 {
-    auto bounds = getLocalBounds().reduced(20);
-    int rowHeight = 32;
-    int labelWidth = 80;
-    int gap = 10;
+    constexpr int titleH = 32, pad = 14, secH = 14, rowH = 28, gap = 6;
 
-    // Slot row (if visible)
-    if (showSlot_)
+    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+
+    int y = titleH + gap;
+
+    auto addRow = [&](juce::Label& lbl, juce::ComboBox& combo)
     {
-        auto slotRow = bounds.removeFromTop(rowHeight);
-        slotLabel.setBounds(slotRow.removeFromLeft(labelWidth));
-        slotRow.removeFromLeft(gap);
-        slotCombo.setBounds(slotRow);
-        bounds.removeFromTop(gap);
-    }
+        lbl.setBounds   (pad, y, getWidth() - pad * 2, secH);
+        y += secH + 2;
+        combo.setBounds (pad, y, getWidth() - pad * 2, rowH);
+        y += rowH + gap + 4;
+    };
 
-    // Bank row
-    auto bankRow = bounds.removeFromTop(rowHeight);
-    bankLabel.setBounds(bankRow.removeFromLeft(labelWidth));
-    bankRow.removeFromLeft(gap);
-    bankCombo.setBounds(bankRow);
-    bounds.removeFromTop(gap);
+    if (showSlot_) addRow (slotLabel, slotCombo);
+    addRow (bankLabel, bankCombo);
+    addRow (positionLabel, positionCombo);
 
-    // Position row
-    auto posRow = bounds.removeFromTop(rowHeight);
-    positionLabel.setBounds(posRow.removeFromLeft(labelWidth));
-    posRow.removeFromLeft(gap);
-    positionCombo.setBounds(posRow);
-    bounds.removeFromTop(gap * 2);
-
-    // Buttons row
-    auto buttonRow = bounds.removeFromTop(rowHeight);
-    int buttonWidth = 80;
-    int buttonGap = 10;
-    buttonRow.removeFromRight((buttonRow.getWidth() - 2 * buttonWidth - buttonGap) / 2);
-    cancelButton.setBounds(buttonRow.removeFromRight(buttonWidth));
-    buttonRow.removeFromRight(buttonGap);
-    confirmButton.setBounds(buttonRow.removeFromRight(buttonWidth));
+    // Buttons pinned to bottom
+    const int btnW = 80, btnH = 26;
+    const int btnY = getHeight() - pad - btnH;
+    cancelButton.setBounds (getWidth() - pad - btnW,         btnY, btnW, btnH);
+    okButton    .setBounds (getWidth() - pad - btnW * 2 - 8, btnY, btnW, btnH);
 }
 
-void PatchLocationDialog::paint(juce::Graphics& g)
+// ─────────────────────────────────────────────────────────────────────────────
+void PatchLocationDialog::show(juce::Component* parent,
+                                const juce::String& title,
+                                const std::vector<std::string>& patchList,
+                                bool showSlot,
+                                int  currentSlot,
+                                Callback cb)
 {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    auto* dlg = new PatchLocationDialog (title, patchList, showSlot, currentSlot, std::move (cb));
+
+    if (parent != nullptr)
+    {
+        auto* top    = parent->getTopLevelComponent();
+        auto  screen = top->localAreaToGlobal (top->getLocalBounds());
+        dlg->setTopLeftPosition (screen.getX() + (screen.getWidth()  - dlg->getWidth())  / 2,
+                                 screen.getY() + (screen.getHeight() - dlg->getHeight()) / 2);
+    }
+
+    dlg->addToDesktop (juce::ComponentPeer::windowHasDropShadow);
+    dlg->setVisible (true);
+    dlg->toFront (true);
+    dlg->grabKeyboardFocus();
 }

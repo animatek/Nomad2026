@@ -11,6 +11,7 @@
 #include "sync/PatchSynchronizer.h"
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
+#include "ui/EditorOptionsDialog.h"
 
 class SynthSettingsDialog;
 
@@ -22,6 +23,7 @@ public:
     ~MainComponent() override;
 
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     // MenuBarModel
     juce::StringArray getMenuBarNames() override;
@@ -43,6 +45,7 @@ private:
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
     void showSynthSettingsDialog();
+    void showEditorOptionsDialog();
     void openSynthSettingsDialog();
     void showBetaWarning(bool forceShow = false);
     void randomizeParameters(bool gaussian);
@@ -75,6 +78,8 @@ private:
     std::unique_ptr<UndoContext> slotUndoContexts[numSlots];
 
     int activeSlot = 0;  // Which slot is currently displayed in the UI
+
+    EditorOptions editorOptions;
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;

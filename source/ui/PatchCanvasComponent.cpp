@@ -127,6 +127,29 @@ PatchCanvas::PatchCanvas()
     loadDrumPresetsFromFile();
 }
 
+bool PatchCanvas::handleMorphOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
+{
+    if (key == juce::KeyPress::F5Key)
+    {
+        morphOverlayMode = (morphOverlayMode == MorphOverlayMode::Values)
+            ? MorphOverlayMode::Off
+            : MorphOverlayMode::Values;
+        repaintTarget.repaint();
+        return true;
+    }
+
+    if (key == juce::KeyPress::F7Key)
+    {
+        morphOverlayMode = (morphOverlayMode == MorphOverlayMode::Groups)
+            ? MorphOverlayMode::Off
+            : MorphOverlayMode::Groups;
+        repaintTarget.repaint();
+        return true;
+    }
+
+    return false;
+}
+
 void PatchCanvas::updateSizeForZoom()
 {
     int w = juce::roundToInt(canvasWidth * zoomLevel);
@@ -436,6 +459,7 @@ void PatchCanvas::paint(juce::Graphics& g)
 
     paintModules(g, container, 0);
     paintCables(g, container, 0);
+    paintMorphOverlays(g, container, 0);
 
     // Cable creation preview (rubber-band cable)
     if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
@@ -556,6 +580,23 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
     }
 }
 
+void PatchCanvas::paintMorphOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset)
+{
+    if (morphOverlayMode == MorphOverlayMode::Off || themeData == nullptr)
+        return;
+
+    for (auto& modulePtr : container.getModules())
+    {
+        auto& m = *modulePtr;
+        auto rect = getModuleBounds(m, yOffset);
+        if (!g.getClipBounds().intersects(rect))
+            continue;
+
+        if (const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId))
+            paintMorphOverlay(g, m, rect, *theme);
+    }
+}
+
 void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container)
 {
     paintModuleBackground(g, m, bounds, theme);
@@ -577,6 +618,106 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintLights(g, m, section, bounds, theme);
     if (m.getDescriptor()->index == 58)
         paintDrumSynthExtras(g, m, bounds);
+}
+
+void PatchCanvas::paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+{
+    if (morphOverlayMode == MorphOverlayMode::Off)
+        return;
+
+    juce::StringArray seen;
+
+    auto paintControl = [&](const juce::String& componentId, juce::Rectangle<float> controlBounds)
+    {
+        if (componentId.isEmpty() || seen.contains(componentId))
+            return;
+
+        seen.add(componentId);
+        if (auto* param = findParameter(m, componentId))
+            if (param->getMorphGroup() >= 0 && param->getMorphGroup() < 4)
+                paintMorphOverlayBadge(g, controlBounds, bounds, *param);
+    };
+
+    for (const auto& tk : theme.knobs)
+        paintControl(tk.componentId,
+                     { static_cast<float>(bounds.getX() + tk.x),
+                       static_cast<float>(bounds.getY() + tk.y),
+                       static_cast<float>(tk.size),
+                       static_cast<float>(tk.size) });
+
+    for (const auto& ts : theme.sliders)
+        paintControl(ts.componentId,
+                     { static_cast<float>(bounds.getX() + ts.x),
+                       static_cast<float>(bounds.getY() + ts.y),
+                       static_cast<float>(ts.width),
+                       static_cast<float>(ts.height) });
+
+    for (const auto& tb : theme.buttons)
+        paintControl(tb.componentId,
+                     { static_cast<float>(bounds.getX() + tb.x),
+                       static_cast<float>(bounds.getY() + tb.y),
+                       static_cast<float>(tb.width),
+                       static_cast<float>(tb.height) });
+
+    for (const auto& td : theme.textDisplays)
+        paintControl(td.componentId,
+                     { static_cast<float>(bounds.getX() + td.x),
+                       static_cast<float>(bounds.getY() + td.y),
+                       static_cast<float>(td.width),
+                       static_cast<float>(td.height) });
+}
+
+void PatchCanvas::paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
+                                         juce::Rectangle<int> moduleBounds, const Parameter& param)
+{
+    auto text = getMorphOverlayText(param);
+    if (text.isEmpty())
+        return;
+
+    g.setFont(juce::FontOptions("Fira Sans", 10.0f, juce::Font::bold));
+    const float badgeH = 14.0f;
+    const float badgeW = juce::jlimit(18.0f, 70.0f, static_cast<float>(text.length()) * 6.0f + 8.0f);
+    float bx = controlBounds.getCentreX() - badgeW * 0.5f;
+    float by = controlBounds.getY() - badgeH - 2.0f;
+
+    const auto module = moduleBounds.toFloat().reduced(3.0f, 2.0f);
+    bx = juce::jlimit(module.getX(), module.getRight() - badgeW, bx);
+    if (by < module.getY())
+        by = controlBounds.getBottom() + 2.0f;
+    by = juce::jlimit(module.getY(), module.getBottom() - badgeH, by);
+
+    juce::Rectangle<float> badge(bx, by, badgeW, badgeH);
+    const int group = param.getMorphGroup();
+    const juce::Colour fillColor = (group >= 0 && group < 4)
+        ? activeScheme_.morphColor[group].withAlpha(0.92f)
+        : juce::Colours::white;
+    const juce::Colour textColor = fillColor.getBrightness() > 0.55f
+        ? juce::Colours::black.withAlpha(0.85f)
+        : juce::Colours::white;
+    g.setColour(fillColor);
+    g.fillRoundedRectangle(badge, 3.0f);
+    g.setColour(fillColor.darker(0.25f));
+    g.drawRoundedRectangle(badge, 3.0f, 1.4f);
+    g.setColour(textColor);
+    g.drawText(text, badge.toNearestInt(), juce::Justification::centred, false);
+}
+
+juce::String PatchCanvas::getMorphOverlayText(const Parameter& param) const
+{
+    const int group = param.getMorphGroup();
+    if (group < 0 || group >= 4)
+        return {};
+
+    if (morphOverlayMode == MorphOverlayMode::Groups)
+        return "M" + juce::String(group + 1);
+
+    if (morphOverlayMode == MorphOverlayMode::Values)
+    {
+        const int range = param.getMorphRange();
+        return (range >= 0 ? "+" : "") + juce::String(range);
+    }
+
+    return {};
 }
 
 void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
@@ -631,6 +772,16 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
 bool PatchCanvas::hasHiddenCable(const Connector& conn, const ModuleContainer& container) const
 {
     if (patch == nullptr) return false;
+
+    // If all cables are fully transparent, treat every connected cable as "hidden"
+    if (cableOpacity < 0.01f)
+    {
+        for (auto& connection : container.getConnections())
+            if (connection.output == &conn || connection.input == &conn)
+                return true;
+        return false;
+    }
+
     const auto& hdr = patch->getHeader();
 
     for (auto& connection : container.getConnections())
@@ -3876,35 +4027,46 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
             default: cableCol = getSignalColour(conn.output->getDescriptor()->signalType); break;
         }
 
-        // Draw a curved cable with optional shake offset
+        if (cableOpacity < 0.01f)
+            continue;
+
+        // Build path — curved or straight depending on style
         juce::Path path;
         path.startNewSubPath(srcPos.toFloat());
 
-        float midY = (srcPos.y + dstPos.y) * 0.5f;
-        float baseSag = std::abs(static_cast<float>(srcPos.x - dstPos.x)) * 0.15f + 15.0f;
+        const bool isCurved   = (cableStyleIdx == 0 || cableStyleIdx == 2);
+        const bool isThick    = (cableStyleIdx == 0 || cableStyleIdx == 1);
+        const float strokeW   = isThick ? 2.5f : 1.4f;
+        const float outlineW  = isThick ? 4.0f : 2.2f;
 
-        // Apply shake offset if present
-        float sagMultiplier = 1.0f;
-        auto key = std::make_pair(conn.output, conn.input);
-        auto it = cableSagOffsets.find(key);
-        if (it != cableSagOffsets.end())
-            sagMultiplier += it->second;
+        if (isCurved)
+        {
+            float midY = (srcPos.y + dstPos.y) * 0.5f;
+            float baseSag = std::abs(static_cast<float>(srcPos.x - dstPos.x)) * 0.15f + 15.0f;
 
-        float sag = baseSag * sagMultiplier;
+            float sagMultiplier = 1.0f;
+            auto key = std::make_pair(conn.output, conn.input);
+            auto it = cableSagOffsets.find(key);
+            if (it != cableSagOffsets.end())
+                sagMultiplier += it->second;
 
-        path.cubicTo(static_cast<float>(srcPos.x), midY + sag,
-                     static_cast<float>(dstPos.x), midY + sag,
-                     static_cast<float>(dstPos.x), static_cast<float>(dstPos.y));
+            path.cubicTo(static_cast<float>(srcPos.x), midY + baseSag * sagMultiplier,
+                         static_cast<float>(dstPos.x), midY + baseSag * sagMultiplier,
+                         static_cast<float>(dstPos.x), static_cast<float>(dstPos.y));
+        }
+        else
+        {
+            path.lineTo(static_cast<float>(dstPos.x), static_cast<float>(dstPos.y));
+        }
 
-        // Dark outline behind the cable for contrast
-        g.setColour(juce::Colour(0xaa000000));
-        g.strokePath(path, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved,
-                                                 juce::PathStrokeType::rounded));
+        // Dark outline for contrast, then colored cable on top
+        g.setColour(juce::Colour(0xaa000000).withMultipliedAlpha(cableOpacity));
+        g.strokePath(path, juce::PathStrokeType(outlineW, juce::PathStrokeType::curved,
+                                                juce::PathStrokeType::rounded));
 
-        // Colored cable on top (semi-transparent for better depth perception)
-        g.setColour(cableCol.withAlpha(0.80f));
-        g.strokePath(path, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved,
-                                                 juce::PathStrokeType::rounded));
+        g.setColour(cableCol.withAlpha(0.80f * cableOpacity));
+        g.strokePath(path, juce::PathStrokeType(strokeW, juce::PathStrokeType::curved,
+                                                juce::PathStrokeType::rounded));
     }
 }
 
@@ -3912,6 +4074,8 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
 
 void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 {
+    grabKeyboardFocus();
+
     if (patch == nullptr || themeData == nullptr)
         return;
 
@@ -5166,7 +5330,7 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
             dragState.parameter->setValue(newValue);
             repaint();
 
-            if (parameterChangeCallback && newValue != dragState.lastSentValue)
+            if (autoUploadOn && parameterChangeCallback && newValue != dragState.lastSentValue)
             {
                 auto now = juce::Time::getMillisecondCounter();
                 if (now - dragState.lastSendTime >= paramSendIntervalMs)
@@ -5201,7 +5365,7 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
             dragState.parameter->setValue(newValue);
             repaint();
 
-            if (parameterChangeCallback && newValue != dragState.lastSentValue)
+            if (autoUploadOn && parameterChangeCallback && newValue != dragState.lastSentValue)
             {
                 auto now = juce::Time::getMillisecondCounter();
                 if (now - dragState.lastSendTime >= paramSendIntervalMs)
@@ -5227,10 +5391,35 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 
     if (dragState.type == DragState::Knob)
     {
-        // Rotary control: vertical drag (down = increase, up = decrease)
-        int deltaY = dragState.startPos.y - currentPos.y;
-        float sensitivity = 0.5f;  // Adjust for feel
-        int valueDelta = static_cast<int>(deltaY * sensitivity);
+        int rawDelta = 0;
+        if (knobControlIdx == 1)
+        {
+            // Circular: clockwise from top = increase.
+            // atan2(dx, -dy): 0=up, +π/2=right, -π/2=left.
+            // 90° arc = full parameter range. Clamp at ±153° to avoid bottom discontinuity.
+            auto d = currentPos - dragState.startPos;
+            const float len = std::sqrt(static_cast<float>(d.x * d.x + d.y * d.y));
+            if (len >= 5.0f)
+            {
+                constexpr float kHalfPi = juce::MathConstants<float>::pi / 2.0f;
+                constexpr float kClamp  = juce::MathConstants<float>::pi * 0.85f;
+                float angle = std::atan2(static_cast<float>(d.x), static_cast<float>(-d.y));
+                angle = juce::jlimit(-kClamp, kClamp, angle);
+                const int range = pd->maxValue - pd->minValue;
+                rawDelta = static_cast<int>(angle / kHalfPi * range);
+            }
+        }
+        else if (knobControlIdx == 2)
+        {
+            // Vertical: up = increase
+            rawDelta = dragState.startPos.y - currentPos.y;
+        }
+        else
+        {
+            // Horizontal (default): right = increase
+            rawDelta = currentPos.x - dragState.startPos.x;
+        }
+        int valueDelta = static_cast<int>(rawDelta * 0.5f);
         newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
     }
     else if (dragState.type == DragState::Slider)
@@ -5567,6 +5756,17 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             ModuleHelpPopup::show(helpQuery, this);
         }
 
+        return true;
+    }
+
+    // F5 / F7 -> morph overlay display
+    if (auto* parent = findParentComponentOfClass<PatchCanvasComponent>())
+    {
+        if (handleMorphOverlayKey(key, *parent))
+            return true;
+    }
+    else if (handleMorphOverlayKey(key, *this))
+    {
         return true;
     }
 
@@ -6307,6 +6507,8 @@ void PatchCanvas::showSelectionContextMenu()
 
 PatchCanvasComponent::PatchCanvasComponent()
 {
+    setWantsKeyboardFocus(true);
+
     // Set sections before anything else
     polyCanvas.setSection(1);    // Poly (top)
     commonCanvas.setSection(0);  // Common (bottom)
@@ -6327,6 +6529,11 @@ PatchCanvasComponent::PatchCanvasComponent()
     layout.setItemLayout(0, 60, -1.0, -0.9);   // poly  (min 60px, preferred 90%)
     layout.setItemLayout(1, resizerThick, resizerThick, resizerThick);  // resizer
     layout.setItemLayout(2, 60, -1.0, -0.1);   // common (min 60px, preferred 10%)
+}
+
+bool PatchCanvasComponent::keyPressed(const juce::KeyPress& key)
+{
+    return PatchCanvas::handleMorphOverlayKey(key, *this);
 }
 
 void PatchCanvasComponent::resized()

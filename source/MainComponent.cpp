@@ -11,8 +11,63 @@
 #include <iostream>
 #include <set>
 
+// ─── Cable opacity slider for View menu ──────────────────────────────────────
+class CableOpacitySlider : public juce::PopupMenu::CustomComponent
+{
+public:
+    CableOpacitySlider()
+        : juce::PopupMenu::CustomComponent(false)  // false = don't auto-dismiss on click
+    {
+        slider.setRange(0.0, 1.0, 0.01);
+        slider.setValue(static_cast<double>(PatchCanvas::getCableOpacity()),
+                        juce::dontSendNotification);
+        slider.setSliderStyle(juce::Slider::LinearHorizontal);
+        slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 38, 18);
+        slider.setColour(juce::Slider::textBoxTextColourId,       juce::Colour(0xffffaa44));
+        slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff22223a));
+        slider.setColour(juce::Slider::textBoxOutlineColourId,    juce::Colour(0xff3a3a5a));
+        slider.setColour(juce::Slider::thumbColourId,             juce::Colour(0xffffcc44));
+        slider.setColour(juce::Slider::trackColourId,             juce::Colour(0xff353560));
+        slider.onValueChange = [this]
+        {
+            PatchCanvas::setCableOpacity(static_cast<float>(slider.getValue()));
+            if (auto* topComp = juce::Desktop::getInstance().getComponent(0))
+                topComp->repaint();
+        };
+        addAndMakeVisible(slider);
+    }
+
+    void getIdealSize(int& w, int& h) override { w = 230; h = 28; }
+
+    void resized() override
+    {
+        auto b = getLocalBounds().reduced(2, 2);
+        const int labelW = 90;
+        slider.setBounds(b.withTrimmedLeft(labelW));
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        g.setColour(juce::Colour(0xffcccccc));
+        g.setFont(juce::FontOptions(12.0f));
+        g.drawText("Cable Opacity", getLocalBounds().withTrimmedRight(getWidth() - 90).reduced(6, 0),
+                   juce::Justification::centredLeft);
+    }
+
+private:
+    juce::Slider slider;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CableOpacitySlider)
+};
+
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
+  editorOptions = EditorOptions::load(appProperties.getUserSettings());
+  PatchCanvas::setCableStyle   (static_cast<int>(editorOptions.cableStyle));
+  PatchCanvas::setKnobControl  (static_cast<int>(editorOptions.knobControl));
+  PatchCanvas::setAutoUpload   (editorOptions.autoUpload);
+  PatchCanvas::setCableOpacity (editorOptions.cableOpacity);
+  setWantsKeyboardFocus(true);
+
   // Helper: find a data file by probing multiple locations regardless of CWD.
   // Searches CWD, next to the executable, and up to 5 parent dirs of the
   // executable.
@@ -212,37 +267,21 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
 
   mainLayout->getPatchBrowser().onPatchCopy = [this](int section, int position) {
-    const auto& patchList = connectionManager.getPatchList();
-    auto* dlg = new PatchLocationDialog(patchList, false, 0);
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    dlg->setCallback([safeThis, section, position](const PatchLocationDialog::Result& r) {
-      if (safeThis != nullptr && r.confirmed)
-        safeThis->connectionManager.copyPatchInBank(section, position, r.section, r.position);
-    });
-    juce::DialogWindow::LaunchOptions opts;
-    opts.content.setOwned(dlg);
-    opts.dialogTitle = "Copy Patch";
-    opts.escapeKeyTriggersCloseButton = true;
-    opts.useNativeTitleBar = true;
-    opts.resizable = false;
-    opts.launchAsync();
+    PatchLocationDialog::show(this, "Copy Patch", connectionManager.getPatchList(), false, 0,
+      [safeThis, section, position](const PatchLocationDialog::Result& r) {
+        if (safeThis != nullptr && r.confirmed)
+          safeThis->connectionManager.copyPatchInBank(section, position, r.section, r.position);
+      });
   };
 
   mainLayout->getPatchBrowser().onPatchMove = [this](int section, int position) {
-    const auto& patchList = connectionManager.getPatchList();
-    auto* dlg = new PatchLocationDialog(patchList, false, 0);
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    dlg->setCallback([safeThis, section, position](const PatchLocationDialog::Result& r) {
-      if (safeThis != nullptr && r.confirmed)
-        safeThis->connectionManager.movePatchInBank(section, position, r.section, r.position);
-    });
-    juce::DialogWindow::LaunchOptions opts;
-    opts.content.setOwned(dlg);
-    opts.dialogTitle = "Move Patch";
-    opts.escapeKeyTriggersCloseButton = true;
-    opts.useNativeTitleBar = true;
-    opts.resizable = false;
-    opts.launchAsync();
+    PatchLocationDialog::show(this, "Move Patch", connectionManager.getPatchList(), false, 0,
+      [safeThis, section, position](const PatchLocationDialog::Result& r) {
+        if (safeThis != nullptr && r.confirmed)
+          safeThis->connectionManager.movePatchInBank(section, position, r.section, r.position);
+      });
   };
 
   connectionManager.setPatchDataCallback(
@@ -653,6 +692,16 @@ void MainComponent::resized() {
   mainLayout->setBounds(area);
 }
 
+bool MainComponent::keyPressed(const juce::KeyPress& key) {
+  if (key == juce::KeyPress('e', juce::ModifierKeys::commandModifier, 0))
+  {
+    showEditorOptionsDialog();
+    return true;
+  }
+  return mainLayout != nullptr
+      && PatchCanvas::handleMorphOverlayKey(key, mainLayout->getCanvas());
+}
+
 juce::StringArray MainComponent::getMenuBarNames() {
   return {"File", "Edit", "View", "Device", "Help", "About"};
 }
@@ -671,6 +720,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
     menu.addItem(9, "Synth Settings...\tCtrl+G");
+    menu.addItem(11, "Editor Options...\tCtrl+E");
     menu.addSeparator();
     menu.addItem(10, "Quit\tCtrl+Q");
   } else if (menuIndex == 1) // Edit
@@ -695,6 +745,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(-1, zoomLabel, false);
     menu.addSeparator();
     menu.addItem(64, "Shake Cables\tS");
+    menu.addSeparator();
+    menu.addCustomItem(65, std::make_unique<CableOpacitySlider>());
     menu.addSeparator();
     juce::PopupMenu themeMenu;
     bool isDark = (mainLayout->getCanvas().getThemeId() == ThemeId::Dark);
@@ -769,6 +821,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 9:
     showSynthSettingsDialog();
+    break;
+  case 11:
+    showEditorOptionsDialog();
     break;
   case 10:
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
@@ -1087,41 +1142,25 @@ void MainComponent::storePatchToBank() {
   }
 
   int slot = connectionManager.getCurrentSlot();
-
-  auto* locationDialog = new PatchLocationDialog(connectionManager.getPatchList(),
-                                                  true, slot);
-
   juce::Component::SafePointer<MainComponent> safeThis(this);
-  locationDialog->setCallback([safeThis](const PatchLocationDialog::Result& result) {
-    if (safeThis == nullptr || !result.confirmed)
-      return;
 
-    int location = (result.section + 1) * 100 + result.position + 1;
-    safeThis->mainLayout->getStatusBar().showMessage(
-        "Storing to bank location " + juce::String(location) + "...", 0);
+  PatchLocationDialog::show(this, "Store Patch to Bank",
+    connectionManager.getPatchList(), true, slot,
+    [safeThis](const PatchLocationDialog::Result& result) {
+      if (safeThis == nullptr || !result.confirmed) return;
 
-    StorePatchMessage msg(result.slot, result.section, result.position);
-    auto sysex = msg.toSysEx(result.slot);
-    safeThis->connectionManager.sendRawSysEx(sysex);
+      int location = (result.section + 1) * 100 + result.position + 1;
+      safeThis->mainLayout->getStatusBar().showMessage(
+          "Storing to bank location " + juce::String(location) + "...", 0);
 
-    std::cout << "[STORE] Sent StorePatch: slot=" << result.slot
-        << " section=" << result.section << " pos=" << result.position
-        << " (location " << location << ")" << std::endl;
+      StorePatchMessage msg(result.slot, result.section, result.position);
+      safeThis->connectionManager.sendRawSysEx(msg.toSysEx(result.slot));
 
-    const char* slotNames[] = {"A", "B", "C", "D"};
-    safeThis->mainLayout->getStatusBar().showMessage(
-        "Stored slot " + juce::String(slotNames[result.slot])
-        + " to bank location " + juce::String(location), 3000);
-  });
-
-  juce::DialogWindow::LaunchOptions options;
-  options.content.setOwned(locationDialog);
-  options.dialogTitle = "Store Patch to Bank";
-  options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-  options.escapeKeyTriggersCloseButton = true;
-  options.useNativeTitleBar = true;
-  options.resizable = false;
-  options.launchAsync();
+      const char* slotNames[] = {"A", "B", "C", "D"};
+      safeThis->mainLayout->getStatusBar().showMessage(
+          "Stored slot " + juce::String(slotNames[result.slot])
+          + " to bank location " + juce::String(location), 3000);
+    });
 }
 
 bool MainComponent::savePatchToFile(const juce::File &file) {
@@ -1210,6 +1249,17 @@ void MainComponent::showMidiSettingsDialog() {
         handleConnectionRequest(inputId, outputId);
       },
       [this]() { handleDisconnectionRequest(); });
+}
+
+void MainComponent::showEditorOptionsDialog() {
+  EditorOptionsDialog::show(this, editorOptions, [this](const EditorOptions& opts) {
+    editorOptions = opts;
+    editorOptions.save(appProperties.getUserSettings());
+    PatchCanvas::setCableStyle  (static_cast<int>(opts.cableStyle));
+    PatchCanvas::setKnobControl (static_cast<int>(opts.knobControl));
+    PatchCanvas::setAutoUpload  (opts.autoUpload);
+    mainLayout->getCanvas().repaint();
+  });
 }
 
 void MainComponent::handleConnectionRequest(const juce::String &inputId,

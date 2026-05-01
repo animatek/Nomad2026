@@ -699,6 +699,12 @@ bool SynthSettingsMessage::decode(const std::vector<uint8_t>& patchData, SynthSe
         out.knobMode             = bs.readBits(1);
         bs.readBits(5);                                       // 0:5 padding
         out.name = bs.readString16();
+
+        // If every character was replaced with '?' the offset is almost certainly
+        // a false-positive type-byte match — try the next candidate offset instead.
+        if (!out.name.empty() && out.name.find_first_not_of('?') == std::string::npos)
+            return false;
+
         if (! findAndReadMidiChannelSlots(bs, out))
         {
             std::cout << "[SYNTH] Synth settings decoded without MIDI channels"

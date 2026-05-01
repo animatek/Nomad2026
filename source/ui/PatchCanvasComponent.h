@@ -45,6 +45,7 @@ public:
     ~PatchCanvas();
 
     void shakeCables();
+    static bool handleMorphOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget);
 
     void setTheme(const ColorScheme& cs) { activeScheme_ = cs; repaint(); }
     void setTheme(const ColorScheme& cs, ThemeId id) { activeScheme_ = cs; activeThemeId_ = id; repaint(); }
@@ -123,6 +124,7 @@ public:
 private:
     void paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset);
     void paintCables(juce::Graphics& g, const ModuleContainer& container, int yOffset);
+    void paintMorphOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset);
     juce::Rectangle<int> getModuleBounds(const Module& m, int yOffset) const;
     juce::Point<int> getConnectorPosition(const Module& m, const Connector& conn, int yOffset) const;
 
@@ -140,6 +142,10 @@ private:
     void paintCustomDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintResetButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
+                                juce::Rectangle<int> moduleBounds, const Parameter& param);
+    juce::String getMorphOverlayText(const Parameter& param) const;
     void paintModuleFallback(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
 
     // Find parameter value by component-id (e.g. "p1")
@@ -287,6 +293,23 @@ private:
     float zoomLevel = 1.0f;
     ColorScheme activeScheme_ = kDarkTheme;
     ThemeId activeThemeId_ = ThemeId::Dark;
+    enum class MorphOverlayMode { Off, Groups, Values };
+    inline static MorphOverlayMode morphOverlayMode = MorphOverlayMode::Off;
+
+    // Editor-wide settings (shared across all PatchCanvas instances)
+    inline static float cableOpacity   = 0.80f; // 0..1
+    inline static int   cableStyleIdx  = 0;     // 0=CurvedThick 1=StraightThick 2=CurvedThin 3=StraightThin
+    inline static int   knobControlIdx = 0;     // 0=Horizontal 1=Circular 2=Vertical
+    inline static bool  autoUploadOn   = true;
+
+public:
+    static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
+    static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }
+    static void setKnobControl  (int idx)  { knobControlIdx = idx; }
+    static void setAutoUpload   (bool on)  { autoUploadOn   = on;  }
+    static float getCableOpacity()         { return cableOpacity; }
+
+private:
     static constexpr float zoomMin = 0.75f;
     static constexpr float zoomMax = 3.0f;
     static constexpr float zoomStep = 0.1f;
@@ -315,6 +338,7 @@ public:
     PatchCanvasComponent();
 
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
 

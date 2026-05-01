@@ -253,7 +253,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 ## TODO
 
 ### Next Steps
-- [ ] **Morph overlay display** — F7 shows morph group assignments on modules, F5 shows morph ranges (start/end values)
+- [x] **Morph overlay display** — F7 shows morph group color-coded badges (M1/M2/M3/M4), F5 shows morph range delta (+N/-N) per parameter
 
 ### Synth Communication
 - [ ] **Upload Active Slot** (Ctrl+U) - Upload current synth patch to editor
@@ -262,7 +262,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [ ] **Bank Download to Synth** - Download entire bank from disk to synth
 
 ### Editor Preferences
-- [ ] **Editor Options Dialog** - Configure editor behavior
+- [x] **Editor Options Dialog** (Ctrl+E) - Configure editor behavior (implemented)
 
 ### Floating Windows
 - [ ] **Keyboard Floater** (Ctrl+F) - Virtual MIDI keyboard
@@ -323,11 +323,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Progress bar with overwrite warning
 
 ### Editor Preferences
-- [ ] **Editor Options Dialog** - Configure editor behavior:
-  - **Cable Style**: Straight 3D, Curved 3D (default), Straight Thin, Curved Thin
-  - **Knob Control**: Circular, Horizontal (default), Vertical
-  - **Auto Upload**: Automatically send parameter changes to synth
-  - **Recycle Windows**: Reuse patch windows instead of creating new ones
+- [x] **Editor Options Dialog** (Ctrl+E) - Configure editor behavior (cable style, knob control, auto upload, recycle windows — persisted in user settings)
 
 ### Floating Windows
 - [ ] **Keyboard Floater** (Ctrl+F) - Virtual MIDI keyboard
