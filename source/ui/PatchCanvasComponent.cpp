@@ -6375,13 +6375,15 @@ void PatchCanvas::copySelectionToClipboard()
         modToClipIdx[sel.module] = i;
     }
 
-    // Store internal cables
+    // Store internal cables — scan each unique section once (NOT per selected module,
+    // which would duplicate every cable N times for N selected modules in that section).
     std::set<Module*> selSet;
-    for (auto& s : selection) selSet.insert(s.module);
+    std::set<int> sectionsToScan;
+    for (auto& s : selection) { selSet.insert(s.module); sectionsToScan.insert(s.section); }
 
-    for (auto& sel : selection)
+    for (int section : sectionsToScan)
     {
-        auto& container = patch->getContainer(sel.section);
+        auto& container = patch->getContainer(section);
         for (auto& cable : container.getConnections())
         {
             Module* srcMod = nullptr; Module* dstMod = nullptr;
