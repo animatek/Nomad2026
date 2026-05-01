@@ -1,5 +1,6 @@
 #include "ConnectionManager.h"
 #include "../protocol/StorePatchMessage.h"
+#include "../protocol/DeletePatchMessage.h"
 #include "../protocol/SetPatchTitleMessage.h"
 #include "../model/PatchSerializer.h"
 #include "../model/Patch.h"
@@ -49,6 +50,8 @@ void ConnectionManager::disconnect()
 {
     cancelHandshakeTimeout();
     collectingSections = false;
+    pendingBankLoadSlot = -1;
+    pendingBankLoadGeneration++;
     slotDetected = false;
     slotDetectGeneration++;
 
@@ -168,6 +171,19 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
         return;
 
     int slot = (targetSlot >= 0) ? targetSlot : currentSlot;
+    currentSlot = slot;
+    pendingPatchSlot = slot;
+
+    // A browser load supersedes any patch fetch already in flight. Without this,
+    // late packets from the previous request can finish after the double-click
+    // and briefly install the previously requested patch into the target slot.
+    waitingForPatchAck = false;
+    collectingSections = false;
+    patchPacketsReceived = 0;
+    sectionAccumulator.clear();
+    patchSections.clear();
+    sectionsReceived = 0;
+    patchTimeoutGeneration++;
 
     lastLoadedSection = section;
     lastLoadedPosition = position;
@@ -183,11 +199,22 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     auto payload = msg.encode();
     protocol.sendMessage(NmCmd::PatchHandling, slot, payload, /*expectsReply=*/true, /*addChecksum=*/true);
 
-    // After loading, request the patch data to update UI
-    // Give the synth a moment to load it
-    juce::Timer::callAfterDelay(200, [this, slot]()
-    {
-        requestPatch(slot);
+    const int loadGeneration = ++pendingBankLoadGeneration;
+    pendingBankLoadSlot = slot;
+
+    // Prefer the synth's NewPatchInSlot notification. This fallback covers
+    // devices/firmware paths that ACK the load but do not emit sc=0x38.
+    juce::Timer::callAfterDelay(1200, [this, slot, loadGeneration]() {
+        if (!isConnected())
+            return;
+
+        if (pendingBankLoadGeneration == loadGeneration && pendingBankLoadSlot == slot)
+        {
+            std::cout << "[LOAD] NewPatchInSlot fallback for slot=" << slot << std::endl;
+            pendingBankLoadSlot = -1;
+            if (!waitingForPatchAck && !collectingSections && !waitingForUploadAck)
+                requestPatch(slot);
+        }
     });
 }
 
@@ -537,6 +564,9 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     std::cout << "[PATCHLIST] nextSection=" << response.nextSection
               << " nextPosition=" << response.nextPosition << std::endl;
 
+    const int requestLinearIndex = patchListSection * 99 + patchListPosition;
+    int nextLinearIndex = requestLinearIndex;
+
     // Store entries in the flat array
     for (const auto& entry : response.entries)
     {
@@ -544,6 +574,7 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
         if (index >= 0 && index < static_cast<int>(patchListNames.size()))
         {
             patchListNames[static_cast<size_t>(index)] = entry.name.empty() ? "" : entry.name;
+            nextLinearIndex = std::max(nextLinearIndex, index + 1);
             std::cout << "[PATCHLIST]   Entry: section=" << entry.section
                       << " pos=" << entry.position
                       << " name=\"" << entry.name << "\"" << std::endl;
@@ -555,7 +586,7 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
         + " position " + juce::String(patchListPosition));
 
     // Check if we're done
-    if (response.nextSection < 0)
+    if (response.nextSection < 0 || nextLinearIndex >= static_cast<int>(patchListNames.size()))
     {
         std::cout << "[PATCHLIST] COMPLETE! Total entries in array: " << patchListNames.size() << std::endl;
         DBG("Patch list complete!");
@@ -566,9 +597,18 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
         return;
     }
 
-    // Continue with next request
-    patchListSection = response.nextSection;
-    patchListPosition = response.nextPosition;
+    // Continue with next request. Advance from the highest explicit entry we
+    // accepted, matching Nomad's worker behavior and avoiding duplicate page
+    // starts when sparse/empty bank positions are encoded in the response.
+    if (nextLinearIndex <= requestLinearIndex)
+    {
+        nextLinearIndex = response.nextSection >= 0
+            ? response.nextSection * 99 + response.nextPosition
+            : static_cast<int>(patchListNames.size());
+    }
+
+    patchListSection = nextLinearIndex / 99;
+    patchListPosition = nextLinearIndex % 99;
 
     std::cout << "[PATCHLIST] Requesting next: section=" << patchListSection
               << " position=" << patchListPosition << std::endl;
@@ -645,11 +685,20 @@ void ConnectionManager::finalizePatch()
     DBG(juce::String(sectionsReceived < totalSections ? "Partial" : "All") + " "
         + juce::String(patchSections.size()) + " sections — invoking parser");
 
+    const int completedSlot = pendingPatchSlot;
+
     // Mark this slot as the current one
-    currentSlot = pendingPatchSlot;
+    currentSlot = completedSlot;
 
     if (patchDataCallback)
-        patchDataCallback(patchSections);
+        patchDataCallback(patchSections, completedSlot);
+
+    if (patchFetchCompleteCallback)
+    {
+        auto cb = std::move(patchFetchCompleteCallback);
+        patchFetchCompleteCallback = nullptr;
+        cb(completedSlot);
+    }
 
     patchSections.clear();
     sectionsReceived = 0;
@@ -700,6 +749,22 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
         // Update the patch ID from the synth's notification
         currentPatchId = msg.newPatchPid;
+
+        if (msg.newPatchSlot >= 0
+            && pendingBankLoadSlot == msg.newPatchSlot
+            && isConnected()
+            && !waitingForPatchAck
+            && !collectingSections
+            && !waitingForUploadAck)
+        {
+            pendingBankLoadSlot = -1;
+            pendingBankLoadGeneration++;
+            suppressNextLocationClear = false;
+            std::cout << "[LOAD] NewPatchInSlot confirmed bank load for slot="
+                      << msg.newPatchSlot << std::endl;
+            requestPatch(msg.newPatchSlot);
+            return;
+        }
 
         // Auto-request the new patch data from the synth — unless suppressed.
         // pendingSyncEchoes_: decremented for each echo from a structural edit we sent.
@@ -912,62 +977,92 @@ void ConnectionManager::startSlotDetectionFallback()
     });
 }
 
-void ConnectionManager::copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition)
+void ConnectionManager::copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot)
 {
     if (!isConnected())
         return;
 
+    tempSlot = juce::jlimit(0, 3, tempSlot);
+
     std::cout << "[COPY] Copying patch from (" << srcSection << "," << srcPosition
-              << ") to (" << dstSection << "," << dstPosition << ")" << std::endl;
+              << ") to (" << dstSection << "," << dstPosition
+              << ") via slot " << tempSlot << std::endl;
 
-    // Use slot 3 as temporary slot for copy operation
-    constexpr int tempSlot = 3;
-
-    // Step 1: Load source patch to temp slot
-    loadPatchFromBank(srcSection, srcPosition, tempSlot);
-
-    // Step 2: After a brief delay, store from temp slot to destination
-    // The delay allows the synth to load the patch into the slot
-    juce::Timer::callAfterDelay(500, [this, tempSlot, dstSection, dstPosition]()
-    {
-        if (!isConnected())
+    patchFetchCompleteCallback = [this, tempSlot, dstSection, dstPosition](int completedSlot) {
+        if (completedSlot != tempSlot || !isConnected())
             return;
 
-        std::cout << "[COPY] Storing from slot " << tempSlot << " to bank ("
-                  << dstSection << "," << dstPosition << ")" << std::endl;
+        storeLoadedSlotToBank(tempSlot, dstSection, dstPosition, [this]() {
+            std::cout << "[COPY] Copy complete!" << std::endl;
+            juce::Timer::callAfterDelay(300, [this]() {
+                if (isConnected())
+                    requestPatchList();
+            });
+        });
+    };
 
-        // Create and send StorePatch message
-        auto msg = std::make_unique<StorePatchMessage>(tempSlot, dstSection, dstPosition);
-        auto sysex = msg->toSysEx(tempSlot);
-        sendRawSysEx(sysex);
-
-        std::cout << "[COPY] Copy complete!" << std::endl;
-    });
+    // Load source patch to temp slot. Store happens after requestPatch(tempSlot)
+    // has completed, via patchFetchCompleteCallback above.
+    loadPatchFromBank(srcSection, srcPosition, tempSlot);
 }
 
-void ConnectionManager::movePatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition)
+void ConnectionManager::movePatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot)
 {
-    // Move = Copy + Delete source
-    // For now, just do the copy. Delete requires creating an empty patch which needs serialization.
-    copyPatchInBank(srcSection, srcPosition, dstSection, dstPosition);
+    if (!isConnected())
+        return;
 
-    std::cout << "[MOVE] Copy complete. NOTE: Source patch not deleted (requires serialization)" << std::endl;
+    tempSlot = juce::jlimit(0, 3, tempSlot);
+
+    std::cout << "[MOVE] Moving patch from (" << srcSection << "," << srcPosition
+              << ") to (" << dstSection << "," << dstPosition
+              << ") via slot " << tempSlot << std::endl;
+
+    patchFetchCompleteCallback = [this, tempSlot, srcSection, srcPosition, dstSection, dstPosition](int completedSlot) {
+        if (completedSlot != tempSlot || !isConnected())
+            return;
+
+        storeLoadedSlotToBank(tempSlot, dstSection, dstPosition, [this, srcSection, srcPosition]() {
+            DeletePatchMessage deleteMsg(srcSection, srcPosition);
+            sendAckedSysEx(deleteMsg.toSysEx());
+
+            std::cout << "[MOVE] Move complete; delete queued for source bank ("
+                      << srcSection << "," << srcPosition << ")" << std::endl;
+
+            juce::Timer::callAfterDelay(500, [this]() {
+                if (isConnected())
+                    requestPatchList();
+            });
+        });
+    };
+
+    loadPatchFromBank(srcSection, srcPosition, tempSlot);
 }
 
 void ConnectionManager::deletePatchInBank(int section, int position)
 {
-    // Delete by creating an empty patch and storing it to the location
-    std::cout << "[DELETE] Deleting patch at bank " << section << " position " << position << std::endl;
+    if (!isConnected())
+        return;
 
-    // TODO: Implement by:
-    // 1. Creating an empty/init Patch object
-    // 2. Serializing it with PatchSerializer
-    // 3. Somehow loading it to a temp slot (requires AddModule/AddCable commands)
-    // 4. Storing to the target location
-    //
-    // For now, this is not implemented because the protocol doesn't have a "SetPatch"
-    // command - it only has AddModule, AddCable, etc. which would require implementing
-    // ~10 different message types.
+    std::cout << "[DELETE] Deleting patch at bank " << section
+              << " position " << position << std::endl;
 
-    std::cout << "[DELETE] Not implemented - protocol limitation" << std::endl;
+    DeletePatchMessage msg(section, position);
+    sendAckedSysEx(msg.toSysEx());
+
+    juce::Timer::callAfterDelay(500, [this]() {
+        if (isConnected())
+            requestPatchList();
+    });
+}
+
+void ConnectionManager::storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued)
+{
+    std::cout << "[BANK] Storing from slot " << slot << " to bank ("
+              << section << "," << position << ")" << std::endl;
+
+    StorePatchMessage msg(slot, section, position);
+    sendAckedSysEx(msg.toSysEx(slot));
+
+    if (afterStoreQueued)
+        afterStoreQueued();
 }

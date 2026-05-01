@@ -46,8 +46,8 @@ public:
     void sendAckedSysEx(const std::vector<uint8_t>& sysex);     // Queued, waits for ACK before next
 
     // Bank operations (high-level)
-    void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition);
-    void movePatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition);
+    void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot);
+    void movePatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot);
     void deletePatchInBank(int section, int position);
 
     int getCurrentSlot() const;
@@ -69,7 +69,7 @@ public:
     using VoiceCountCallback = std::function<void(const int voiceCounts[4])>;
     void setVoiceCountCallback(VoiceCountCallback cb) { voiceCountCallback = std::move(cb); }
 
-    using PatchDataCallback = std::function<void(const std::vector<std::vector<uint8_t>>& sections)>;
+    using PatchDataCallback = std::function<void(const std::vector<std::vector<uint8_t>>& sections, int slot)>;
     void setPatchDataCallback(PatchDataCallback cb) { patchDataCallback = std::move(cb); }
 
     // Called when synth sends a parameter change (knob turned on hardware)
@@ -131,6 +131,7 @@ private:
     void startPatchTimeout();
     void startSectionStaleTimeout();
     void finalizePatch();
+    void storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued = {});
 
     NmProtocol protocol;
     std::unique_ptr<MidiDeviceManager> midiDevice;
@@ -164,11 +165,14 @@ private:
     int uploadSectionIndex = 0;
     int pendingPatchSlot = 0;
     int currentSlot = 0;  // Track which slot is currently loaded
+    int pendingBankLoadSlot = -1;
+    int pendingBankLoadGeneration = 0;
     int lastLoadedSection = -1;   // Bank section of last loadPatchFromBank (-1=unknown)
     int lastLoadedPosition = -1;  // Bank position of last loadPatchFromBank (-1=unknown)
     bool suppressNextLocationClear = false;  // Set by loadPatchFromBank, cleared on NewPatchInSlot
     int currentPatchId = 0;  // Track the patch ID from ACK (used in parameter changes)
     int patchPacketsReceived = 0;
+    std::function<void(int slot)> patchFetchCompleteCallback;
 
     // Accumulate PatchPacket stream — each completed section stored separately
     std::vector<uint8_t> sectionAccumulator;              // current section being assembled

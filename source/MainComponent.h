@@ -81,6 +81,7 @@ private:
     std::unique_ptr<UndoContext> slotUndoContexts[numSlots];
 
     int activeSlot = 0;  // Which slot is currently displayed in the UI
+    int pendingBrowserLoadSlot = -1;  // Directed browser load target, while patch data is in flight
 
     EditorOptions editorOptions;
 

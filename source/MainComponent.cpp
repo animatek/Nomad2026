@@ -236,8 +236,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire patch browser callbacks
   mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
-    std::cout << "[MAIN] Loading patch from browser: section=" << section << " pos=" << position << std::endl;
-    connectionManager.loadPatchFromBank(section, position);
+    const int targetSlot = activeSlot;
+    pendingBrowserLoadSlot = targetSlot;
+    mainLayout->getSlotBar().setCurrentTab(targetSlot);
+
+    const char* slotLetters[] = {"A", "B", "C", "D"};
+    std::cout << "[MAIN] Loading patch from browser: section=" << section
+              << " pos=" << position
+              << " targetSlot=" << slotLetters[targetSlot] << std::endl;
+
+    connectionManager.loadPatchFromBank(section, position, targetSlot);
     mainLayout->getHeaderBar().setCurrentLocation(section, position);
     mainLayout->getPatchBrowser().setLoadedPatch(section, position);
   };
@@ -268,32 +276,34 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   mainLayout->getPatchBrowser().onPatchCopy = [this](int section, int position) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    PatchLocationDialog::show(this, "Copy Patch", connectionManager.getPatchList(), false, 0,
+    PatchLocationDialog::show(this, "Copy Patch", connectionManager.getPatchList(), true, activeSlot,
       [safeThis, section, position](const PatchLocationDialog::Result& r) {
         if (safeThis != nullptr && r.confirmed)
-          safeThis->connectionManager.copyPatchInBank(section, position, r.section, r.position);
+          safeThis->connectionManager.copyPatchInBank(section, position, r.section, r.position, r.slot);
       });
   };
 
   mainLayout->getPatchBrowser().onPatchMove = [this](int section, int position) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    PatchLocationDialog::show(this, "Move Patch", connectionManager.getPatchList(), false, 0,
+    PatchLocationDialog::show(this, "Move Patch", connectionManager.getPatchList(), true, activeSlot,
       [safeThis, section, position](const PatchLocationDialog::Result& r) {
         if (safeThis != nullptr && r.confirmed)
-          safeThis->connectionManager.movePatchInBank(section, position, r.section, r.position);
+          safeThis->connectionManager.movePatchInBank(section, position, r.section, r.position, r.slot);
       });
   };
 
   connectionManager.setPatchDataCallback(
-      [this](const std::vector<std::vector<uint8_t>> &sections) {
+      [this](const std::vector<std::vector<uint8_t>> &sections, int targetSlot) {
         DBG("Patch data received: " + juce::String(sections.size()) +
             " sections — parsing...");
 
-        int targetSlot = connectionManager.getCurrentSlot();
         PatchParser parser(moduleDescs);
         auto patch = parser.parse(sections);
 
         juce::MessageManager::callAsync([this, p = std::move(patch), targetSlot]() mutable {
+          if (targetSlot < 0 || targetSlot >= numSlots)
+            return;
+
           // Store patch in the correct slot
           slotSynchronizers[targetSlot].reset();
 
@@ -335,6 +345,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             std::cout << "[SYNC] Patch loaded into slot " << slotLetters[targetSlot]
                       << ": " << slotPatches[targetSlot]->getName().toStdString() << std::endl;
           }
+
+          if (pendingBrowserLoadSlot == targetSlot)
+            pendingBrowserLoadSlot = -1;
         });
       });
 
@@ -665,6 +678,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire synth slot changes (user presses slot button on hardware)
   connectionManager.setSlotChangedCallback([this](int slot) {
     juce::MessageManager::callAsync([this, slot]() {
+      if (pendingBrowserLoadSlot >= 0 && slot != pendingBrowserLoadSlot) {
+        std::cout << "[SLOT] Ignoring stale slot change " << slot
+                  << " during browser load to slot " << pendingBrowserLoadSlot << std::endl;
+        return;
+      }
       mainLayout->getSlotBar().setCurrentTab(slot);
       switchToSlot(slot, /*notifySynth=*/false);
     });
@@ -928,6 +946,7 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
     return;
 
   if (slot == activeSlot) {
+    mainLayout->getSlotBar().setCurrentTab(slot);
     if (notifySynth && connectionManager.isConnected()
         && connectionManager.getCurrentSlot() != slot)
       connectionManager.selectSlot(slot);
@@ -935,6 +954,7 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
   }
 
   activeSlot = slot;
+  mainLayout->getSlotBar().setCurrentTab(slot);
 
   // Tell synth to switch active slot (skip when the synth itself initiated the change)
   if (notifySynth && connectionManager.isConnected())

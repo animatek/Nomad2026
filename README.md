@@ -271,7 +271,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [ ] **Browser** (Ctrl+B) - Standalone preset/snippet browser
 
 ### Patch Tools
-- [x] **Snippet System** - Save and reuse module groups
+- [x] **Snippet System** - Save/import `.pch` module groups with synth-safe incremental sync
 - [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
 
 ### Quality of Life
@@ -368,6 +368,7 @@ This section outlines all planned features to achieve feature parity with the or
 - [x] **Snippet System** - Save and reuse module groups
   - Select modules → right-click → "Save as Snippet..." → saves standard `.pch` file
   - File → Import Snippet... → inserts modules at grid (3,3) with overlap avoidance
+  - Imported snippets sync to the synth incrementally (modules first, then cables) instead of forcing a full patch upload
   - Full undo/redo support via `InsertSnippetAction` (proper model-level undo)
   - Snippets are valid `.pch` files — openable in NM 3.03, Nomad, and any NM tool
 - [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets

@@ -60,6 +60,7 @@ set(NOMAD_SHARED_SOURCES
     source/protocol/DeleteModuleMessage.cpp
     source/protocol/ParameterEncoder.cpp
     source/protocol/StorePatchMessage.cpp
+    source/protocol/DeletePatchMessage.cpp
     source/protocol/SetPatchTitleMessage.cpp
     source/protocol/MorphAssignmentMessage.cpp
     source/protocol/MorphKeyboardAssignmentMessage.cpp

@@ -384,11 +384,13 @@ PatchListResponseMessage PatchListResponseMessage::decode(const uint8_t* data, s
             pos++;  // consume code
             if (pos + 2 < endmarkerIdx)
             {
+                // The original Java parser records these fields as oldsection /
+                // oldposition but does not apply them to the current list cursor.
+                // Applying them shifts refreshed entries after StorePatch by one
+                // visible bank location on some synth responses.
                 pos++;  // skip unknown byte
-                section = data[pos] & 0x7F;
-                pos++;
-                position = data[pos] & 0x7F;
-                pos++;
+                pos++;  // repeated section
+                pos++;  // repeated position
             }
         }
 

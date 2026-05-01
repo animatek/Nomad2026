@@ -881,10 +881,7 @@ public:
     bool perform() override
     {
         createdIndices_.clear();
-
-        // Suppress incremental sync while we mutate the model.
-        // We'll do one full upload at the end — same pattern as DeleteModuleAction::undo().
-        SyncSuppressor guard(ctx_.syncPtr);
+        bool createdAny = false;
 
         for (auto& entry : snip_.entries)
         {
@@ -912,24 +909,42 @@ public:
                 ++ty;
             }
 
-            auto* mod = ctx_.patch.createModule(entry.section, entry.typeIndex,
-                                                tx, ty, entry.name, ctx_.descs);
-            if (!mod) { createdIndices_.push_back({ entry.section, -1 }); continue; }
+            auto* desc = ctx_.descs.getModuleByIndex(entry.typeIndex);
+            if (!desc || !container.canAdd(*desc))
+            {
+                createdIndices_.push_back({ entry.section, -1 });
+                continue;
+            }
 
-            auto& params = mod->getParameters();
+            auto module = Module::createFromDescriptor(*desc);
+            if (!module)
+            {
+                createdIndices_.push_back({ entry.section, -1 });
+                continue;
+            }
+
+            module->setContainerIndex(nextContainerIndex(container));
+            module->setPosition({ tx, ty });
+            module->setTitle(entry.name.isNotEmpty() ? entry.name : desc->name);
+
+            auto& params = module->getParameters();
             for (size_t i = 0; i < entry.paramValues.size() && i < params.size(); ++i)
                 params[i].setValue(entry.paramValues[i]);
 
+            auto* mod = container.addModule(std::move(module));
             createdIndices_.push_back({ entry.section, mod->getContainerIndex() });
+            createdAny = true;
         }
 
-        // Recreate cables (still suppressed — one full upload handles everything)
+        // Let the normal synchronizer send the same ordered edit stream as the
+        // original Java editor: all modules first, then cables. Avoiding a full
+        // patch upload here keeps snippet insertion from locking the synth.
         for (auto& cb : snip_.cables)
         {
             if (cb.srcIdx < 0 || cb.srcIdx >= (int)createdIndices_.size()) continue;
             if (cb.dstIdx < 0 || cb.dstIdx >= (int)createdIndices_.size()) continue;
-            auto [srcSec, srcCI] = createdIndices_[cb.srcIdx];
-            auto [dstSec, dstCI] = createdIndices_[cb.dstIdx];
+            auto [srcSec, srcCI] = createdIndices_[static_cast<size_t>(cb.srcIdx)];
+            auto [dstSec, dstCI] = createdIndices_[static_cast<size_t>(cb.dstIdx)];
             if (srcCI < 0 || dstCI < 0 || srcSec != dstSec) continue;
 
             auto& container = ctx_.patch.getContainer(srcSec);
@@ -944,25 +959,21 @@ public:
         }
 
         ctx_.repaint();
-        if (ctx_.syncToSynth) ctx_.syncToSynth();
-        return !createdIndices_.empty();
+        return createdAny;
     }
 
     bool undo() override
     {
-        for (auto& [sec, cidx] : createdIndices_)
+        for (auto it = createdIndices_.rbegin(); it != createdIndices_.rend(); ++it)
         {
+            auto [sec, cidx] = *it;
             if (cidx < 0) continue;
             auto& container = ctx_.patch.getContainer(sec);
             auto* mod = container.getModuleByIndex(cidx);
             if (mod)
-            {
-                SyncSuppressor guard(ctx_.syncPtr);
                 container.removeModule(mod);
-            }
         }
         ctx_.repaint();
-        if (ctx_.syncToSynth) ctx_.syncToSynth();
         return true;
     }
 
@@ -973,4 +984,12 @@ private:
     SnipData snip_;
     int offsetX_, offsetY_;
     std::vector<std::pair<int, int>> createdIndices_;  // {section, containerIndex}
+
+    static int nextContainerIndex(const ModuleContainer& container)
+    {
+        int maxIndex = 0;
+        for (auto& m : container.getModules())
+            maxIndex = std::max(maxIndex, m->getContainerIndex());
+        return maxIndex + 1;
+    }
 };

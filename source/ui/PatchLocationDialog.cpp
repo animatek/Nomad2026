@@ -52,6 +52,9 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
     // Slot
     if (showSlot_)
     {
+        if (title_.startsWithIgnoreCase("Copy") || title_.startsWithIgnoreCase("Move"))
+            slotLabel.setText("TEMP SLOT", juce::dontSendNotification);
+
         styleLabel (slotLabel);
         slotCombo.addItem ("A  (Slot 1)", 1);
         slotCombo.addItem ("B  (Slot 2)", 2);
