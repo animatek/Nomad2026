@@ -239,6 +239,12 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - **Sequencer Random** — new `Rnd` button on EventSeq and NoteSeqA (left of `Clr`); randomises only the per-step controls (toggles in EventSeq, sliders in NoteSeqA), leaving transport/loop/length/UI params untouched
   - **KeyQuantizer scale presets** — right-click → Scales (root C): Chromatic, Major (Ionian), Natural/Harmonic/Melodic Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Major/Minor, Blues Major/Minor, Whole Tone, Diminished W-H (mirrors the VCV Fundamental Quantizer set)
 
+### Release v0.5.5
+- [x] **Synth patch browser reliability** — double-click loads the selected patch into the active A/B/C/D slot, with stale load protection
+- [x] **Bank operations** — copy, move, delete, and store use the selected slot/bank/position instead of falling back to slot D
+- [x] **Snippet import/export hardening** — `.pch` snippets sync incrementally, preserve connector direction, and filter singleton modules (`KeyboardPatch`, `MIDIGlobal`)
+- [x] **Device menu cleanup** — removed the confusing manual "Upload to Active Slot" command; use **Store to Bank...** for synth memory writes
+
 ### Recently Completed
 - [x] **Patch Settings Dialog** (Ctrl+P) — expanded dialog, working and synced with the synth
 - [x] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.; sends/receives SysEx and persists synth name changes
