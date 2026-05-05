@@ -43,6 +43,7 @@ set(NOMAD_SHARED_SOURCES
     source/ui/EditorOptionsDialog.cpp
     source/ui/QuickAddPopup.cpp
     source/ui/PatchBrowserPanel.cpp
+    source/ui/PresetBrowserWindow.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
@@ -140,6 +141,7 @@ juce_add_binary_data(NomadData SOURCES
     data/images/single/decoration-15.png
     data/images/single/decoration-17.png
     data/images/single/decoration-18.png
+    data/images/refresh-icon.svg
 )
 
 # --- Shared settings ---

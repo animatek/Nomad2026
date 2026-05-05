@@ -151,6 +151,10 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     midiButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };
 
+    libraryButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a2a4a));
+    libraryButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
+    libraryButton.onClick = [this]() { if (onLibraryFolderClicked) onLibraryFolderClicked(); };
+
     storeButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a2a4a));
     storeButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     storeButton.onClick = [this]() { if (onStoreToBankClicked) onStoreToBankClicked(); };
@@ -158,13 +162,18 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     // Left column: inspector + toolbar + slots
     leftColumn.addAndMakeVisible(inspectorPanel);
     leftColumn.addAndMakeVisible(midiButton);
+    leftColumn.addAndMakeVisible(libraryButton);
     leftColumn.addAndMakeVisible(storeButton);
     leftColumn.addAndMakeVisible(slotBar);
+
+    rightBrowserTabs.setTabBarDepth(28);
+    rightBrowserTabs.addTab("Synth", juce::Colour(0xff1e1e3a), &patchBrowserPanel, false);
+    rightBrowserTabs.addTab("Disk", juce::Colour(0xff1e1e3a), &diskPresetBrowserPanel, false);
 
     addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
     addAndMakeVisible(canvasComponent);
-    addAndMakeVisible(patchBrowserPanel);
+    addAndMakeVisible(rightBrowserTabs);
     addAndMakeVisible(statusBar);
     addAndMakeVisible(resizerBar1);
     addAndMakeVisible(resizerBar2);
@@ -190,7 +199,7 @@ void MainLayout::resized()
     headerBar.setBounds(area.removeFromTop(headerBarHeight));
 
     juce::Component* comps[] = {
-        &leftColumn, &resizerBar1, &canvasComponent, &resizerBar2, &patchBrowserPanel
+        &leftColumn, &resizerBar1, &canvasComponent, &resizerBar2, &rightBrowserTabs
     };
     layoutManager.layOutComponents(comps, 5,
                                    area.getX(), area.getY(),
@@ -201,8 +210,14 @@ void MainLayout::resized()
     auto leftArea = leftColumn.getLocalBounds();
     slotBar.setBounds(leftArea.removeFromBottom(slotBarHeight));
     auto toolRow = leftArea.removeFromBottom(toolbarHeight);
-    auto halfW = toolRow.getWidth() / 2;
-    midiButton.setBounds(toolRow.removeFromLeft(halfW).reduced(2));
+    auto thirdW = toolRow.getWidth() / 3;
+    midiButton.setBounds(toolRow.removeFromLeft(thirdW).reduced(2));
+    libraryButton.setBounds(toolRow.removeFromLeft(thirdW).reduced(2));
     storeButton.setBounds(toolRow.reduced(2));
     inspectorPanel.setBounds(leftArea);
+}
+
+void MainLayout::showDiskPresetBrowser()
+{
+    rightBrowserTabs.setCurrentTabIndex(1);
 }

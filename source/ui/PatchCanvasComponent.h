@@ -43,6 +43,7 @@ public:
     using InitModuleCallback = std::function<void(int section, Module* module)>;
     // Snippet save: fires with SnipData after "Save as Snippet" in context menu
     using SnippetSaveCallback = std::function<void(SnipData)>;
+    using SnippetDropCallback = std::function<void(const juce::File& file, int section, int gridX, int gridY)>;
 
     PatchCanvas();
     ~PatchCanvas();
@@ -94,6 +95,7 @@ public:
     void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
     void setInitModuleCallback(InitModuleCallback cb) { initModuleCallback = std::move(cb); }
     void setSnippetSaveCallback(SnippetSaveCallback cb) { snippetSaveCallback_ = std::move(cb); }
+    void setSnippetDropCallback(SnippetDropCallback cb) { snippetDropCallback_ = std::move(cb); }
     void saveSelectionAsSnippet();
     void setCableCreatedCallback(CableCallback cb) { cableCreatedCallback = std::move(cb); }
     void setCableDeletedCallback(CableCallback cb) { cableDeletedCallback = std::move(cb); }
@@ -204,6 +206,7 @@ private:
     MidiCtrlAssignCallback midiCtrlAssignCallback;
     InitModuleCallback initModuleCallback;
     SnippetSaveCallback snippetSaveCallback_;
+    SnippetDropCallback snippetDropCallback_;
     CableCallback cableCreatedCallback;
     CableCallback cableDeletedCallback;
     std::function<void()> undoCallback;
@@ -428,6 +431,12 @@ public:
     {
         polyCanvas.setSnippetSaveCallback(cb);
         commonCanvas.setSnippetSaveCallback(std::move(cb));
+    }
+
+    void setSnippetDropCallback(PatchCanvas::SnippetDropCallback cb)
+    {
+        polyCanvas.setSnippetDropCallback(cb);
+        commonCanvas.setSnippetDropCallback(std::move(cb));
     }
 
     /** Aggregate selected modules from both canvases */

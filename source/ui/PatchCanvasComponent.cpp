@@ -5717,6 +5717,8 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             { fileCommandCallback("patchSettings"); return true; }
         if (key == juce::KeyPress('g', juce::ModifierKeys::commandModifier, 0))
             { fileCommandCallback("synthSettings"); return true; }
+        if (key == juce::KeyPress('b', juce::ModifierKeys::commandModifier, 0))
+            { fileCommandCallback("presetBrowser"); return true; }
     }
 
     // F1 → show help popup for the selected/hovered module
@@ -5915,7 +5917,8 @@ bool PatchCanvas::isInterestedInDragSource(const SourceDetails& dragSourceDetail
     if (obj == nullptr)
         return false;
 
-    return obj->getProperty("type").toString() == "module";
+    auto type = obj->getProperty("type").toString();
+    return type == "module" || type == "snippetFile";
 }
 
 void PatchCanvas::itemDragEnter(const SourceDetails& dragSourceDetails)
@@ -5927,14 +5930,24 @@ void PatchCanvas::itemDragEnter(const SourceDetails& dragSourceDetails)
     if (obj == nullptr)
         return;
 
-    dropPreviewTypeId = obj->getProperty("typeId");
-    showModuleDropPreview = true;
+    if (obj->getProperty("type").toString() == "module")
+    {
+        dropPreviewTypeId = obj->getProperty("typeId");
+        showModuleDropPreview = true;
+    }
     repaint();
 }
 
 void PatchCanvas::itemDragMove(const SourceDetails& dragSourceDetails)
 {
-    if (!showModuleDropPreview || !patch || !moduleDescs)
+    if (!patch || !moduleDescs)
+        return;
+
+    auto* obj = dragSourceDetails.description.getDynamicObject();
+    if (obj == nullptr || obj->getProperty("type").toString() != "module")
+        return;
+
+    if (!showModuleDropPreview)
         return;
 
     auto mousePos = screenToCanvas(dragSourceDetails.localPosition.toInt());
@@ -5962,13 +5975,23 @@ void PatchCanvas::itemDropped(const SourceDetails& dragSourceDetails)
     if (obj == nullptr)
         return;
 
-    int typeId = obj->getProperty("typeId");
-    juce::String moduleName = obj->getProperty("name").toString();
-
     auto mousePos = screenToCanvas(dragSourceDetails.localPosition.toInt());
     int section = mySection;
     int dropX = juce::jlimit(0, 39, mousePos.x / PatchCanvas::gridX);
     int dropY = juce::jlimit(0, 127, mousePos.y / PatchCanvas::gridY);
+
+    auto type = obj->getProperty("type").toString();
+    if (type == "snippetFile")
+    {
+        auto file = juce::File(obj->getProperty("path").toString());
+        if (snippetDropCallback_ && file.existsAsFile())
+            snippetDropCallback_(file, section, dropX, dropY);
+        repaint();
+        return;
+    }
+
+    int typeId = obj->getProperty("typeId");
+    juce::String moduleName = obj->getProperty("name").toString();
 
     // Trigger callback if set
     if (moduleDropCallback)

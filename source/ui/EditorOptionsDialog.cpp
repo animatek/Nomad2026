@@ -31,6 +31,14 @@ static void styleBtn (juce::TextButton& b, bool isOk = false)
     b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
     b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : kText);
 }
+static void styleTextEditor (juce::TextEditor& e)
+{
+    e.setReadOnly (true);
+    e.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff202038));
+    e.setColour (juce::TextEditor::textColourId,       kText);
+    e.setColour (juce::TextEditor::outlineColourId,    kSep);
+    e.setColour (juce::TextEditor::focusedOutlineColourId, kAmber);
+}
 
 // ─── EditorOptions persistence ───────────────────────────────────────────────
 
@@ -43,6 +51,9 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.recycleWindows = props->getBoolValue  ("recycleWindows", true);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
+    auto libraryPath = props->getValue ("presetLibraryRoot", {});
+    if (libraryPath.isNotEmpty())
+        o.presetLibraryRoot = juce::File (libraryPath);
     return o;
 }
 
@@ -54,7 +65,29 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("recycleWindows",  recycleWindows);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
+    props->setValue ("presetLibraryRoot", presetLibraryRoot.getFullPathName());
     props->saveIfNeeded();
+}
+
+juce::File EditorOptions::getPatchesFolder() const
+{
+    return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Patches");
+}
+
+juce::File EditorOptions::getSnippetsFolder() const
+{
+    return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Snippets");
+}
+
+bool EditorOptions::ensureLibraryFolders() const
+{
+    if (presetLibraryRoot == juce::File())
+        return false;
+
+    auto rootOk = presetLibraryRoot.createDirectory().wasOk();
+    auto patchesOk = getPatchesFolder().createDirectory().wasOk();
+    auto snippetsOk = getSnippetsFolder().createDirectory().wasOk();
+    return rootOk && patchesOk && snippetsOk;
 }
 
 // ─── EditorOptionsDialog ─────────────────────────────────────────────────────
@@ -105,6 +138,17 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (recycleWinToggle);
 
+    // Preset library
+    styleLabel (libraryLabel, true);
+    styleTextEditor (libraryPath);
+    libraryPath.setText (options.presetLibraryRoot.getFullPathName(), juce::dontSendNotification);
+    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Nomad2026 will create Patches and Snippets inside it.", kDim);
+    styleBtn (browseLibraryButton);
+    browseLibraryButton.onClick = [this]() { browseLibraryRoot(); };
+    addAndMakeVisible (libraryLabel);
+    addAndMakeVisible (libraryPath);
+    addAndMakeVisible (browseLibraryButton);
+
     // Buttons
     styleBtn (okButton, true);
     styleBtn (cancelButton);
@@ -113,7 +157,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (420, 380);
+    setSize (560, 450);
 }
 
 // ─── paint ───────────────────────────────────────────────────────────────────
@@ -133,8 +177,9 @@ void EditorOptionsDialog::paint (juce::Graphics& g)
     //   after cable:     32 + 8 + (16+2) + 4*22 + 8  = 154
     //   after knob:     154 + 8 + (16+2) + 3*22 + 8  = 254
     //   after behaviour:254 + 8 + (16+2) + 2*22 + 12 = 336
+    //   after library: 336 + 8 + (16+2) + 26 + 12 = 400
     const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    for (int sy : { 154, 254, 336 })
+    for (int sy : { 154, 254, 336, 400 })
     {
         g.setColour (kSep);
         g.drawHorizontalLine (sy, x0, x1);
@@ -185,6 +230,15 @@ void EditorOptionsDialog::resized()
     recycleWinToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
     y += rowH + 12;  // → separator at y=336
 
+    // ── Preset Library ───────────────────────────────────────
+    y += sepGap;
+    libraryLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    y += secH + 2;
+    auto libraryRow = juce::Rectangle<int> (pad + 8, y, getWidth() - pad * 2 - 8, 26);
+    browseLibraryButton.setBounds (libraryRow.removeFromRight (92));
+    libraryPath.setBounds (libraryRow.removeFromLeft (libraryRow.getWidth() - 8));
+    y += 26 + 12; // → separator at y=400
+
     // ── OK / Cancel ──────────────────────────────────────────
     y += 10;
     const int btnW = 80, btnH = 26;
@@ -207,6 +261,31 @@ void EditorOptionsDialog::mouseDrag (const juce::MouseEvent& e)
     { dragger.dragComponent (this, e, nullptr); }
 
 void EditorOptionsDialog::close() { removeFromDesktop(); delete this; }
+
+void EditorOptionsDialog::browseLibraryRoot()
+{
+    auto start = options.presetLibraryRoot == juce::File()
+        ? juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
+        : options.presetLibraryRoot;
+
+    folderChooser = std::make_shared<juce::FileChooser> ("Choose Preset Library Folder", start);
+    auto chooser = folderChooser;
+    juce::Component::SafePointer<EditorOptionsDialog> safeThis (this);
+    folderChooser->launchAsync (
+        juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+        [safeThis, chooser](const juce::FileChooser& fc)
+        {
+            if (safeThis == nullptr)
+                return;
+
+            auto folder = fc.getResult();
+            if (folder == juce::File())
+                return;
+
+            safeThis->options.presetLibraryRoot = folder;
+            safeThis->libraryPath.setText (folder.getFullPathName(), juce::dontSendNotification);
+        });
+}
 
 void EditorOptionsDialog::apply()
 {

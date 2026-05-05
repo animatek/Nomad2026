@@ -44,7 +44,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Interactive hierarchical tree (9 banks, 99 patches each = 891 total)
   - Real-time search filter by patch name
   - "Hide Empty" toggle to show only patches (not empty slots)
-  - Refresh button to reload from synth
+  - Refresh button to reload from synth 
   - Double-click any patch to load it into current slot
   - Auto-loads patch list on connection
   - Context menu (right-click): Copy, Move, Delete patch operations
@@ -245,6 +245,12 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Snippet import/export hardening** — `.pch` snippets sync incrementally, preserve connector direction, and filter singleton modules (`KeyboardPatch`, `MIDIGlobal`)
 - [x] **Device menu cleanup** — removed the confusing manual "Upload to Active Slot" command; use **Store to Bank...** for synth memory writes
 
+### Release v0.5.6
+- [x] **Local preset library root** — Editor Options stores a user library folder and automatically creates `Patches/` and `Snippets/` subfolders
+- [x] **Right-panel browser tabs** — the existing synth patch browser now shares the right panel with a new `Disk` tab for local `.pch` patches and snippets
+- [x] **Disk preset browser** — recursive scan, search, All/Patches/Snippets filters, compact blue SVG refresh icon, and `Ctrl+B` jumps to the Disk tab
+- [x] **Disk patch/snippet actions** — double-click patches to load the active slot, double-click snippets to import, drag snippets onto the Poly/Common canvas at the drop position
+
 ### Recently Completed
 - [x] **Patch Settings Dialog** (Ctrl+P) — expanded dialog, working and synced with the synth
 - [x] **Synth Settings Dialog** (Ctrl+G) — synth name, MIDI channels, clock, master tune, knob mode, pedal polarity, etc.; sends/receives SysEx and persists synth name changes
@@ -265,17 +271,17 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [ ] **Bank Download to Synth** - Download entire bank from disk to synth
 
 ### Editor Preferences
-- [x] **Editor Options Dialog** (Ctrl+E) - Configure editor behavior (implemented)
+- [x] **Editor Options Dialog** (Ctrl+E) - Configure editor behavior and local preset library root (implemented)
 
 ### Floating Windows
 - [ ] **Keyboard Floater** (Ctrl+F) - Virtual MIDI keyboard
 - [ ] **Knob Floater** (Ctrl+K) - Hardware knob mapper
 - [ ] **Notes Floater** - Patch notes/comments window
-- [ ] **Browser** (Ctrl+B) - Standalone preset/snippet browser
+- [x] **Browser** (Ctrl+B) - Integrated right-panel Disk browser for local patches/snippets
 
 ### Patch Tools
 - [x] **Snippet System** - Save/import `.pch` module groups with synth-safe incremental sync
-- [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
+- [x] **Preset Browser** (Ctrl+B) - Integrated browser for disk patches and snippets
 
 ### Quality of Life
 - [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search
@@ -325,7 +331,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Progress bar with overwrite warning
 
 ### Editor Preferences
-- [x] **Editor Options Dialog** (Ctrl+E) - Configure editor behavior (cable style, knob control, auto upload, recycle windows — persisted in user settings)
+- [x] **Editor Options Dialog** (Ctrl+E) - Configure editor behavior (cable style, knob control, auto upload, recycle windows) and local preset library root — persisted in user settings
 
 ### Floating Windows
 - [ ] **Keyboard Floater** (Ctrl+F) - Virtual MIDI keyboard
@@ -341,7 +347,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Keyboard hold icon
   - Joystick/modulation wheel icon
 - [ ] **Notes Floater** - Patch notes/comments window
-- [ ] **Browser** (Ctrl+B) - See **Preset Browser Window** under Patch Tools for full spec
+- [x] **Browser** (Ctrl+B) - Integrated right-panel Disk browser for local patches/snippets
 
 ### Module Canvas Editing
 - [x] **Drag & Drop Modules** - Add modules from browser to canvas by dragging
@@ -370,16 +376,16 @@ This section outlines all planned features to achieve feature parity with the or
 - [x] **Snippet System** - Save and reuse module groups
   - Select modules → right-click → "Save as Snippet..." → saves standard `.pch` file
   - File → Import Snippet... → inserts modules at grid (3,3) with overlap avoidance
+  - Disk browser snippets can be dragged directly onto the Poly/Common canvas and import at the drop position
   - Imported snippets sync to the synth incrementally (modules first, then cables) instead of forcing a full patch upload
   - Full undo/redo support via `InsertSnippetAction` (proper model-level undo)
   - Snippets are valid `.pch` files — openable in NM 3.03, Nomad, and any NM tool
-- [ ] **Preset Browser Window** (Ctrl+B) - Bitwig-style standalone browser for patches and snippets
-  - Separate resizable window (not embedded in canvas), toggle open/close
-  - **User Preset Library**: configurable root folder for .pch files, set on first launch
-  - Indexed metadata (name, category, date) cached in JSON/SQLite for fast search
-  - Sections: Recent, All Presets, Snippets
-  - Real-time search/filter by name and tags
-  - Double-click or drag & drop to load preset into current slot / insert snippet into canvas
+- [x] **Preset Browser** (Ctrl+B) - Integrated right-panel browser for patches and snippets
+  - **User Preset Library**: configurable root folder for `.pch` files in Editor Options
+  - Automatically creates `Patches/` and `Snippets/` subfolders
+  - Right panel has `Synth` and `Disk` tabs; `Ctrl+B` opens the `Disk` tab
+  - Recursive disk scan with search and All/Patches/Snippets filters
+  - Double-click patches to load into the current slot; double-click or drag snippets into the canvas
   - File → Import Snippet also available as alternative to browser
   - **Synth Dump to Disk**: download all 9 banks × 99 slots from synth to user's preset folder
   - **Community Patches** (future): browse electro-music.com patch archive from within browser

@@ -13,9 +13,13 @@ struct EditorOptions
     bool        autoUpload     = true;
     bool        recycleWindows = true;
     float       cableOpacity   = 0.80f;
+    juce::File  presetLibraryRoot;
 
     static EditorOptions load(juce::PropertiesFile* props);
     void save(juce::PropertiesFile* props) const;
+    juce::File getPatchesFolder() const;
+    juce::File getSnippetsFolder() const;
+    bool ensureLibraryFolders() const;
 };
 
 class EditorOptionsDialog : public juce::Component
@@ -38,6 +42,7 @@ public:
 private:
     void close();
     void apply();
+    void browseLibraryRoot();
 
     EditorOptions options;
     juce::ComponentDragger dragger;
@@ -60,6 +65,12 @@ private:
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
     juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
     juce::ToggleButton recycleWinToggle   { "Recycle Windows  (reuse patch windows)" };
+
+    // Preset Library
+    juce::Label      libraryLabel { {}, "PRESET LIBRARY" };
+    juce::TextEditor libraryPath;
+    juce::TextButton browseLibraryButton { "Browse..." };
+    std::shared_ptr<juce::FileChooser> folderChooser;
 
     // Buttons
     juce::TextButton okButton     { "OK" };

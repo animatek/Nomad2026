@@ -13,6 +13,7 @@
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
 #include "ui/EditorOptionsDialog.h"
+#include "ui/PresetBrowserWindow.h"
 
 class SynthSettingsDialog;
 
@@ -42,7 +43,13 @@ private:
     void loadPatchFromFile(const juce::File& file);
     bool savePatchToFile(const juce::File& file);
     void importSnippet();
+    void importSnippetFromFile(const juce::File& file);
+    void importSnippetFromFile(const juce::File& file, int targetGridX, int targetGridY);
     void saveSnippet(SnipData snip);
+    void choosePresetLibraryFolder();
+    void applyEditorOptions(const EditorOptions& opts);
+    void togglePresetBrowser();
+    void showPresetBrowser();
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
@@ -83,6 +90,7 @@ private:
     int pendingBrowserLoadSlot = -1;  // Directed browser load target, while patch data is in flight
 
     EditorOptions editorOptions;
+    std::unique_ptr<PresetBrowserWindow> presetBrowserWindow;
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;

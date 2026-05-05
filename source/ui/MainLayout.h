@@ -6,6 +6,7 @@
 #include "PatchBrowserPanel.h"
 #include "StatusBar.h"
 #include "PatchHeaderBar.h"
+#include "PresetBrowserWindow.h"
 #include "../model/ModuleDescriptions.h"
 
 // Custom slot selector panel — shows 4 slot buttons with patch names
@@ -52,13 +53,16 @@ public:
     void setTheme(const ColorScheme& cs, ThemeId id) { canvasComponent.setTheme(cs, id); }
     InspectorPanel&       getInspector()   { return inspectorPanel; }
     PatchBrowserPanel&    getPatchBrowser() { return patchBrowserPanel; }
+    DiskPresetBrowserPanel& getDiskPresetBrowser() { return diskPresetBrowserPanel; }
     StatusBar&            getStatusBar()   { return statusBar; }
     PatchHeaderBar&       getHeaderBar()   { return headerBar; }
     SlotBar&              getSlotBar()     { return slotBar; }
+    void showDiskPresetBrowser();
 
     std::function<void(int)> onSlotChanged;  // called with slot index 0-3
     std::function<void()> onMidiSettingsClicked;
     std::function<void()> onStoreToBankClicked;
+    std::function<void()> onLibraryFolderClicked;
 
 private:
     // Left column: inspector + toolbar + slots
@@ -67,11 +71,14 @@ private:
 
     // Toolbar buttons
     juce::TextButton midiButton { "MIDI" };
+    juce::TextButton libraryButton { "Library" };
     juce::TextButton storeButton { "Store" };
     juce::Component   leftColumn;   // groups all left elements
 
     PatchCanvasComponent canvasComponent; // centre — patch canvas
-    PatchBrowserPanel patchBrowserPanel;  // right  — synth patch browser
+    PatchBrowserPanel patchBrowserPanel;  // right tab — synth patch browser
+    DiskPresetBrowserPanel diskPresetBrowserPanel; // right tab — disk presets/snippets
+    juce::TabbedComponent rightBrowserTabs { juce::TabbedButtonBar::TabsAtTop };
     StatusBar         statusBar;
     PatchHeaderBar    headerBar;
 

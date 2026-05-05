@@ -62,6 +62,7 @@ private:
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
   editorOptions = EditorOptions::load(appProperties.getUserSettings());
+  editorOptions.ensureLibraryFolders();
   PatchCanvas::setCableStyle   (static_cast<int>(editorOptions.cableStyle));
   PatchCanvas::setKnobControl  (static_cast<int>(editorOptions.knobControl));
   PatchCanvas::setAutoUpload   (editorOptions.autoUpload);
@@ -581,6 +582,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire snippet save callback
   mainLayout->getCanvas().setSnippetSaveCallback(
       [this](SnipData snip) { saveSnippet(std::move(snip)); });
+  mainLayout->getCanvas().setSnippetDropCallback(
+      [this](const juce::File& file, int, int gridX, int gridY) {
+        importSnippetFromFile(file, gridX, gridY);
+      });
 
   // Wire cable visibility toggles to repaint the canvas
   mainLayout->getHeaderBar().setCableVisibilityCallback(
@@ -621,6 +626,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     else if (cmd == "save")  savePatch();
     else if (cmd == "patchSettings") showPatchSettingsDialog();
     else if (cmd == "synthSettings") showSynthSettingsDialog();
+    else if (cmd == "presetBrowser") togglePresetBrowser();
     else if (cmd == "randomize") randomizeParameters(false);
     else if (cmd == "randomizeGaussian") randomizeParameters(true);
   });
@@ -675,7 +681,15 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire toolbar buttons
   mainLayout->onMidiSettingsClicked = [this]() { showMidiSettingsDialog(); };
+  mainLayout->onLibraryFolderClicked = [this]() { choosePresetLibraryFolder(); };
   mainLayout->onStoreToBankClicked = [this]() { storePatchToBank(); };
+  mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
+  mainLayout->getDiskPresetBrowser().onPatchChosen = [this](const juce::File& file) {
+    loadPatchFromFile(file);
+  };
+  mainLayout->getDiskPresetBrowser().onSnippetChosen = [this](const juce::File& file) {
+    importSnippetFromFile(file);
+  };
   // Wire bug report button on header bar
   mainLayout->getHeaderBar().setReportBugCallback([this]() {
     openURL("https://github.com/animatek/Nomad2026/issues");
@@ -756,6 +770,11 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     showEditorOptionsDialog();
     return true;
   }
+  if (key == juce::KeyPress('b', juce::ModifierKeys::commandModifier, 0))
+  {
+    togglePresetBrowser();
+    return true;
+  }
   return mainLayout != nullptr
       && PatchCanvas::handleMorphOverlayKey(key, mainLayout->getCanvas());
 }
@@ -777,6 +796,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(4, "Save As...");
     menu.addSeparator();
     menu.addItem(5, "Import Snippet...", currentPatch() != nullptr);
+    menu.addItem(6, "Preset Browser...\tCtrl+B");
     menu.addSeparator();
     menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
     menu.addItem(9, "Synth Settings...\tCtrl+G");
@@ -877,6 +897,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 5:
     importSnippet();
+    break;
+  case 6:
+    togglePresetBrowser();
     break;
   case 8:
     showPatchSettingsDialog();
@@ -1053,8 +1076,9 @@ void MainComponent::newPatch() {
 
 
 void MainComponent::openPatch() {
+  auto startFolder = editorOptions.getPatchesFolder();
   auto chooser = std::make_shared<juce::FileChooser>(
-      "Open Patch", juce::File(), "*.pch");
+      "Open Patch", startFolder.exists() ? startFolder : juce::File(), "*.pch");
 
   chooser->launchAsync(
       juce::FileBrowserComponent::openMode |
@@ -1081,8 +1105,9 @@ void MainComponent::savePatchAs() {
   if (currentPatch() == nullptr)
     return;
 
+  auto startFolder = editorOptions.getPatchesFolder();
   auto chooser = std::make_shared<juce::FileChooser>(
-      "Save Patch As", juce::File(), "*.pch");
+      "Save Patch As", startFolder.exists() ? startFolder : juce::File(), "*.pch");
 
   chooser->launchAsync(
       juce::FileBrowserComponent::saveMode |
@@ -1273,13 +1298,93 @@ void MainComponent::showMidiSettingsDialog() {
 
 void MainComponent::showEditorOptionsDialog() {
   EditorOptionsDialog::show(this, editorOptions, [this](const EditorOptions& opts) {
-    editorOptions = opts;
-    editorOptions.save(appProperties.getUserSettings());
-    PatchCanvas::setCableStyle  (static_cast<int>(opts.cableStyle));
-    PatchCanvas::setKnobControl (static_cast<int>(opts.knobControl));
-    PatchCanvas::setAutoUpload  (opts.autoUpload);
-    mainLayout->getCanvas().repaint();
+    applyEditorOptions(opts);
   });
+}
+
+void MainComponent::applyEditorOptions(const EditorOptions& opts) {
+  editorOptions = opts;
+  auto libraryOk = editorOptions.ensureLibraryFolders();
+  editorOptions.save(appProperties.getUserSettings());
+  PatchCanvas::setCableStyle   (static_cast<int>(opts.cableStyle));
+  PatchCanvas::setKnobControl  (static_cast<int>(opts.knobControl));
+  PatchCanvas::setAutoUpload   (opts.autoUpload);
+  PatchCanvas::setCableOpacity (opts.cableOpacity);
+  mainLayout->getCanvas().repaint();
+
+  if (editorOptions.presetLibraryRoot != juce::File()) {
+    if (mainLayout)
+      mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
+
+    if (libraryOk)
+      mainLayout->getStatusBar().showMessage(
+          "Preset library: " + editorOptions.presetLibraryRoot.getFullPathName(), 4000);
+    else
+      mainLayout->getStatusBar().showMessage(
+          "ERROR: Could not create Patches/Snippets folders", 5000);
+  }
+}
+
+void MainComponent::choosePresetLibraryFolder() {
+  auto start = editorOptions.presetLibraryRoot == juce::File()
+      ? juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+      : editorOptions.presetLibraryRoot;
+
+  auto chooser = std::make_shared<juce::FileChooser>(
+      "Choose Preset Library Folder", start);
+
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  chooser->launchAsync(
+      juce::FileBrowserComponent::openMode |
+          juce::FileBrowserComponent::canSelectDirectories,
+      [safeThis, chooser](const juce::FileChooser& fc) {
+        if (safeThis == nullptr) return;
+
+        auto folder = fc.getResult();
+        if (folder == juce::File()) return;
+
+        auto opts = safeThis->editorOptions;
+        opts.presetLibraryRoot = folder;
+        safeThis->applyEditorOptions(opts);
+        safeThis->mainLayout->getDiskPresetBrowser().setLibraryRoot(folder);
+        if (safeThis->presetBrowserWindow)
+          safeThis->presetBrowserWindow->setLibraryRoot(folder);
+      });
+}
+
+void MainComponent::togglePresetBrowser() {
+  mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
+  mainLayout->showDiskPresetBrowser();
+}
+
+void MainComponent::showPresetBrowser() {
+  if (!presetBrowserWindow)
+  {
+    presetBrowserWindow = std::make_unique<PresetBrowserWindow>();
+
+    presetBrowserWindow->onPatchChosen = [this](const juce::File& file) {
+      loadPatchFromFile(file);
+    };
+    presetBrowserWindow->onSnippetChosen = [this](const juce::File& file) {
+      importSnippetFromFile(file);
+    };
+    presetBrowserWindow->onChooseLibraryFolder = [this]() {
+      choosePresetLibraryFolder();
+    };
+  }
+
+  presetBrowserWindow->setLibraryRoot(editorOptions.presetLibraryRoot);
+
+  auto* top = getTopLevelComponent();
+  auto screen = top != nullptr ? top->localAreaToGlobal(top->getLocalBounds())
+                               : juce::Rectangle<int>(100, 100, 1280, 800);
+  presetBrowserWindow->setTopLeftPosition(
+      screen.getX() + (screen.getWidth() - presetBrowserWindow->getWidth()) / 2,
+      screen.getY() + (screen.getHeight() - presetBrowserWindow->getHeight()) / 2);
+  presetBrowserWindow->addToDesktop(juce::ComponentPeer::windowHasDropShadow |
+                                    juce::ComponentPeer::windowHasTitleBar);
+  presetBrowserWindow->setVisible(true);
+  presetBrowserWindow->toFront(true);
 }
 
 void MainComponent::handleConnectionRequest(const juce::String &inputId,
@@ -1938,8 +2043,9 @@ void MainComponent::updateDspLoadDisplay() {
 
 void MainComponent::saveSnippet(SnipData snip)
 {
+  auto startFolder = editorOptions.getSnippetsFolder();
   auto chooser = std::make_shared<juce::FileChooser>(
-      "Save Snippet", juce::File(), "*.pch");
+      "Save Snippet", startFolder.exists() ? startFolder : juce::File(), "*.pch");
 
   chooser->launchAsync(
       juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
@@ -1963,44 +2069,56 @@ void MainComponent::importSnippet()
 {
   if (!currentPatch() || !undoContext()) return;
 
+  auto startFolder = editorOptions.getSnippetsFolder();
   auto chooser = std::make_shared<juce::FileChooser>(
-      "Import Snippet", juce::File(), "*.pch");
+      "Import Snippet", startFolder.exists() ? startFolder : juce::File(), "*.pch");
 
   chooser->launchAsync(
       juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
       [this, chooser](const juce::FileChooser& fc) {
         auto result = fc.getResult();
-        if (!result.existsAsFile()) return;
-
-        PchFileIO io(moduleDescs);
-        auto tempPatch = io.readFile(result);
-        if (!tempPatch)
-        {
-          mainLayout->getStatusBar().showMessage("ERROR: Could not read .pch file", 5000);
-          return;
-        }
-
-        auto snip = patchToSnipData(*tempPatch);
-        if (snip.entries.empty())
-        {
-          mainLayout->getStatusBar().showMessage("ERROR: No modules found in file", 5000);
-          return;
-        }
-
-        // Offset so snippet lands at grid position (3, 3)
-        int minX = snip.entries[0].gridPos.x;
-        int minY = snip.entries[0].gridPos.y;
-        for (auto& e : snip.entries)
-        {
-          minX = std::min(minX, e.gridPos.x);
-          minY = std::min(minY, e.gridPos.y);
-        }
-
-        undoManager().beginNewTransaction("Import Snippet");
-        undoManager().perform(new InsertSnippetAction(
-            *undoContext(), std::move(snip), 3 - minX, 3 - minY));
-
-        mainLayout->getStatusBar().showMessage(
-            "Snippet imported from " + result.getFileName(), 3000);
+        importSnippetFromFile(result);
       });
+}
+
+void MainComponent::importSnippetFromFile(const juce::File& file)
+{
+  importSnippetFromFile(file, 3, 3);
+}
+
+void MainComponent::importSnippetFromFile(const juce::File& file, int targetGridX, int targetGridY)
+{
+  if (!currentPatch() || !undoContext()) return;
+  if (!file.existsAsFile()) return;
+
+  PchFileIO io(moduleDescs);
+  auto tempPatch = io.readFile(file);
+  if (!tempPatch)
+  {
+    mainLayout->getStatusBar().showMessage("ERROR: Could not read .pch file", 5000);
+    return;
+  }
+
+  auto snip = patchToSnipData(*tempPatch);
+  if (snip.entries.empty())
+  {
+    mainLayout->getStatusBar().showMessage("ERROR: No modules found in file", 5000);
+    return;
+  }
+
+  // Offset so snippet lands at the requested grid position.
+  int minX = snip.entries[0].gridPos.x;
+  int minY = snip.entries[0].gridPos.y;
+  for (auto& e : snip.entries)
+  {
+    minX = std::min(minX, e.gridPos.x);
+    minY = std::min(minY, e.gridPos.y);
+  }
+
+  undoManager().beginNewTransaction("Import Snippet");
+  undoManager().perform(new InsertSnippetAction(
+      *undoContext(), std::move(snip), targetGridX - minX, targetGridY - minY));
+
+  mainLayout->getStatusBar().showMessage(
+      "Snippet imported from " + file.getFileName(), 3000);
 }
