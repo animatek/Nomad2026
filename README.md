@@ -246,10 +246,36 @@ application that runs on macOS, Windows, and Linux without requiring Java.
 - [x] **Device menu cleanup** — removed the confusing manual "Upload to Active Slot" command; use **Store to Bank...** for synth memory writes
 
 ### Release v0.5.6
-- [x] **Local preset library root** — Editor Options stores a user library folder and automatically creates `Patches/` and `Snippets/` subfolders
-- [x] **Right-panel browser tabs** — the existing synth patch browser now shares the right panel with a new `Disk` tab for local `.pch` patches and snippets
-- [x] **Disk preset browser** — recursive scan, search, All/Patches/Snippets filters, compact blue SVG refresh icon, and `Ctrl+B` jumps to the Disk tab
-- [x] **Disk patch/snippet actions** — double-click patches to load the active slot, double-click snippets to import, drag snippets onto the Poly/Common canvas at the drop position
+- [x] **New integrated Preset Browser** — right-panel browser opens with `Ctrl+B` and jumps directly to the `Disk` tab for local library browsing
+  - Search patches and snippets from inside NOMAD
+  - Filter by `All`, `Patches`, or `Snippets`
+  - Recursive folder scanning
+  - Double-click patches to load them into the current slot
+  - Double-click snippets to import them, or drag snippets directly onto the Poly/Common canvas
+  - `File -> Import Snippet` remains available for the classic menu workflow
+- [x] **Configurable user preset library** — Editor Options now has a `Preset Library` root folder setting
+  - Automatically creates `Patches/` and `Snippets/` subfolders
+  - Keeps complete patches separate from reusable snippet building blocks
+- [x] **Synth/Disk browser split** — the right panel now separates the connected synth patch browser (`Synth`) from the local preset library (`Disk`)
+- [x] **Snippet workflow upgrade** — snippets can be treated as reusable modular building blocks for sequencers, modulation structures, drum setups, latches, and other patch fragments
+- [x] **Contextual module help** — `F1` opens module documentation for the selected/hovered module, including descriptions, inputs, outputs, and behaviour
+- [x] **Dark-mode app icon** — new versioned icon asset embedded into the JUCE app metadata and applied to the native window icon
+- [x] **Plugin and UI stability fixes**
+  - Improved VST3 plugin configuration for DAW recognition
+  - Fixed crash on VST3 plugin close
+  - Moved more hardcoded UI colours into the `ColorScheme` system
+  - Improved bank operations and snippet synchronisation
+  - Fixed copy/paste/duplicate cable duplication and incorrect-connection cases
+  - Improved connector restoration when loading cables from snippets
+  - Temporarily pauses `PatchSynchronizer` during snippet insertion to avoid editor/synth sync conflicts
+- [x] **Patch loading, serialisation, and SysEx reliability**
+  - Better cable detection and normalisation when importing `.pch` files
+  - Duplicate connection prevention inside the patch model
+  - Clearer per-section logs during patch uploads
+  - ACK timeouts so failed uploads do not hang indefinitely
+  - Short delay between upload sections so the Nord Modular can keep up
+  - `ParameterDump` uploads split by module for better synth compatibility
+  - MIDI queue unblocks correctly when the synth responds with `NewPatchInSlot` instead of a normal ACK
 
 ### Recently Completed
 - [x] **Patch Settings Dialog** (Ctrl+P) — expanded dialog, working and synced with the synth
@@ -397,6 +423,7 @@ This section outlines all planned features to achieve feature parity with the or
   - Categories: In/Out, Oscillator, Filter, Amplifier, Envelope, LFO, FX, Delay, Mixer, Switch, Logic, Sequencer, MIDI, Random
 - [ ] **Module Search Tags** - Add tags (bass, pad, utility, modulation...) to module descriptors for improved QuickAdd/Browser search
 - [x] **Dark/Light Theme** - Runtime-switchable via View → Theme; Dark (default) + Classic; `ColorScheme` struct with 50 fields
+- [x] **Dark-mode app icon** - Versioned icon asset embedded in JUCE metadata and applied to the native window icon
 - [ ] **Verify Input/Output Connectors** - Ensure visual distinction between inputs and outputs
 - [x] **Undo/Redo System** - Full undo/redo for all patch operations
 - [ ] **Keyboard Shortcuts** - Complete keyboard shortcut system matching original editor
